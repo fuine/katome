@@ -108,4 +108,5 @@ impl cmp::Ord for ReadSlice {
 
 pub type Graph = HM<ReadSlice, Edges>;
 pub type Sequence = Vec<u8>;
-pub type Sequences = Vec<Sequence>;
+pub type ReadPtr  = Box<Sequence>;
+pub type Sequences = Vec<ReadPtr>;
