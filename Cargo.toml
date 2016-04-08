@@ -1,0 +1,15 @@
+[package]
+name = "katome"
+version = "0.1.0"
+authors = ["Łukasz Neumann <fuine@riseup.net>"]
+
+
+[[bin]]
+name = "katome"
+path = "src/client.rs"
+
+[lib]
+name = "katome"
+
+[dependencies]
+pbr = "0.1.1"
