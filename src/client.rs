@@ -12,7 +12,10 @@ fn main(){
     // let v = read_sequences("***REMOVED***".to_string());
     let mut sequences: Sequences = Vec::new();
     let mut graph: Graph = Graph::new();
+    // read_sequences("***REMOVED***".to_string(),
     read_sequences("***REMOVED***".to_string(),
+    // read_sequences("***REMOVED***".to_string(),
+    // read_sequences("***REMOVED***".to_string(),
                    &mut sequences, &mut graph);
     // let v = read_sequences("./test2.txt".to_string());
     // println!("{}G", memy(v.len(), v[0].len()));
