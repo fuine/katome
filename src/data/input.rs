@@ -1,4 +1,4 @@
-
+extern crate pbr;
 // open.rs
 use std::error::Error;
 use std::fs::File;
@@ -9,10 +9,13 @@ use std::slice;
 use std::boxed;
 use data::types::{Sequence, Sequences, Graph, Edges,
                   VertexId, ReadSlice, K_SIZE, ReadPtr};
-
+use self::pbr::{ProgressBar};
 // creates graph
 pub fn read_sequences(path: String, sequences: &mut Sequences, graph: &mut Graph) {
     let mut sequences: Sequences = Vec::new();
+    // let mut pb = ProgressBar::new(24294983 as u64);
+    // let mut counter = 0;
+    // pb.format("╢▌▌░╟");
     let mut lines = match lines_from_file(&path) {
         Err(why) => panic!("Couldn't open {}: {}", path,
                                                    Error::description(&why)),
@@ -32,14 +35,16 @@ pub fn read_sequences(path: String, sequences: &mut Sequences, graph: &mut Graph
         }
         lines.next(); // read +
         lines.next(); // read quality
+        // pb.inc();
     }
 }
 
-pub fn add_sequence_to_graph<'a>(
-        vec: &'a Sequence, graph: &'a mut Graph) -> Option<ReadPtr>{
+pub fn add_sequence_to_graph<'a, 'b>(
+        vec: &'a Sequence, graph: &'b mut Graph) -> Option<ReadPtr>{
     // XXX iterates 2 times through the read
     let last_item = vec.windows(K_SIZE).last().unwrap();
     let mut inserted: Option<Box<Vec<u8>>> = None;
+    let mut cnt = 0;
     for window in vec.windows(K_SIZE){
         if (window as *const _) != (last_item as *const _) {
             let from = ReadSlice::new(&window[0] as VertexId);
@@ -50,19 +55,43 @@ pub fn add_sequence_to_graph<'a>(
                 None => found = false,
             }
             if !found { // we need to insert a new sequence and keep it's pointer valid
-                let ptr: VertexId = match inserted {
-                    Some(ref seq) => &(**seq)[0], //unwrap ref to box and then box itself
+                let ptrs: (VertexId, VertexId) = match inserted {
+                    Some(ref seq) => (&(**seq)[cnt], &(**seq)[cnt + 1]), //unwrap ref to box and then box itself
                     None      => {
                         let s: ReadPtr = Box::new(vec.clone());  // sequence is on the heap now
-                        let b: VertexId = &(*s)[0];
+                        let from_: VertexId = &(*s)[cnt];
+                        let to_: VertexId = &(*s)[cnt + 1];
                         inserted = Some(s);
-                        b
+                        (from_, to_)
                     }
                 };
                 // let ptr: *const u8 = &(*seq)[0];
-                graph.insert(from, Edges::new(ReadSlice::new(ptr)));
+                graph.insert(ReadSlice::new(ptrs.0), Edges::new(ReadSlice::new(ptrs.1)));
             }
         }
+        else{
+            let from = ReadSlice::new(&window[0] as VertexId);
+            let mut found = true;
+            match graph.get_mut(&from) {
+                Some(edges) => {},
+                None => found = false,
+            }
+            if !found {
+                let ptrs: VertexId= match inserted {
+                    Some(ref seq) => (&(**seq)[cnt]), //unwrap ref to box and then box itself
+                    None      => {
+                        let s: ReadPtr = Box::new(vec.clone());  // sequence is on the heap now
+                        let from_: VertexId = &(*s)[cnt];
+                        inserted = Some(s);
+                        from_
+                    }
+                };
+                // let ptr: *const u8 = &(*seq)[0];
+                graph.insert(ReadSlice::new(ptrs), Edges::empty());
+            }
+        }
+
+        cnt += 1;
     }
     inserted
 }
