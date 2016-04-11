@@ -31,6 +31,12 @@ impl Edges {
             // in_vertices: vec![]
         }
     }
+    pub fn empty() -> Edges {
+        Edges {
+            outgoing: Vec::new(),
+            in_size: 0,
+        }
+    }
 }
 
 pub fn memy(vlen: usize, ilen: usize) -> usize {
