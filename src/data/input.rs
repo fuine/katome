@@ -49,6 +49,17 @@ pub fn add_sequence_to_graph<'a>(vec: &'a Sequence, graph: &'a mut Graph, window
                 graph.insert(from, Edges::new(to));
             }
         }
+        else{
+            let from = ReadSlice::new(&window[0] as VertexId);
+            let mut found = true;
+            match graph.get_mut(&from) {
+                Some(edges) => {},
+                None => found = false,
+            }
+            if !found {
+                graph.insert(from, Edges::empty());
+            }
+        }
     }
 }
 
