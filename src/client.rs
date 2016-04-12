@@ -13,9 +13,10 @@ fn main(){
     let mut sequences: Sequences = Vec::new();
     let mut graph: Graph = Graph::new();
     // read_sequences("***REMOVED***".to_string(),
-    read_sequences("***REMOVED***".to_string(),
     // read_sequences("***REMOVED***".to_string(),
     // read_sequences("***REMOVED***".to_string(),
+    // read_sequences("***REMOVED***".to_string(),
+    read_sequences("./test3.fastaq".to_string(),
                    &mut sequences, &mut graph);
     // let v = read_sequences("./test2.txt".to_string());
     // println!("{}G", memy(v.len(), v[0].len()));
@@ -29,10 +30,10 @@ fn main(){
         // }
         // pb.inc();
     // }
-    // println!("\nMap has {} unique keys for {} sequences", graph.len(), counter);
+    println!("\nMap has {} unique keys for sequences", graph.len());
     // for (key, val) in graph.iter() {
     // for val in graph.values() {
-        // println!("{}: {:?}", key.name(), val.weights);
+        // println!("{}: {:?}", key.name(), val.outgoing.iter().fold(Vec::new() as Vec<u64>, |mut vec, &x| {vec.push(x.1); vec}));
         // println!("{:?}", val.outgoing);
     // }
 

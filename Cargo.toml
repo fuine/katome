@@ -14,5 +14,5 @@ name = "katome"
 [dependencies]
 pbr = "0.1.1"
 
-[profile.release]
-debug = true
+# [profile.release]
+# debug = true

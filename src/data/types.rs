@@ -5,7 +5,7 @@ use std::slice;
 use std::str;
 use std::option::{Option};
 use std::mem;
-use std::usize;
+// use std::usize;
 
 // pub type VertexId = *const u8;
 pub type VertexId = *const u8;
@@ -14,7 +14,8 @@ pub static K_SIZE: usize = 40;
 #[allow(dead_code)]
 pub struct Edges{
     pub outgoing: Vec<(ReadSlice, u64)>, // data is aligned to ptr in tuple
-    pub in_size: u64,                        // data is aligned to 8 bytes in this struct
+    // pub in_size: u64,                        // data is aligned to 8 bytes in this struct
+    pub key: VertexId,
     // pub weights: Vec<u32>,
     // pub in_size: u32,
     // pub out_size: u32
@@ -22,20 +23,28 @@ pub struct Edges{
 }
 
 impl Edges {
-    pub fn new(to: ReadSlice) -> Edges {
-        Edges {
-            outgoing: vec![(to, 1)],
-            // weights: vec![1],
-            in_size: 0,
-            // out_size: 1,
-            // in_vertices: vec![]
+    pub fn new(key_: VertexId, to: Option<ReadSlice>) -> Edges {
+        if let Some(r) = to {
+            Edges {
+                outgoing: vec![(r, 0)],
+                // in_size: 0,
+                key: key_,
+            }
+        }
+        else {
+            Edges {
+                outgoing: Vec::new(),
+                // in_size: 0,
+                key: key_,
+            }
         }
     }
-    pub fn empty() -> Edges {
+    pub fn empty(key_: VertexId) -> Edges {
         Edges {
             outgoing: vec![],
             // weights: vec![1],
-            in_size: 1,
+            // in_size: 1,
+            key: key_,
             // out_size: 1,
             // in_vertices: vec![]
         }
@@ -51,7 +60,7 @@ pub fn memy(vlen: usize, ilen: usize) -> usize {
 
 #[derive(Eq, Copy, Clone)]
 pub struct ReadSlice {
-    ptr: VertexId,
+    pub ptr: VertexId,
 }
 
 impl ReadSlice {
@@ -117,5 +126,5 @@ impl cmp::Ord for ReadSlice {
 
 pub type Graph = HM<ReadSlice, Edges>;
 pub type Sequence = Vec<u8>;
-pub type ReadPtr  = Box<Sequence>;
-pub type Sequences = Vec<ReadPtr>;
+// pub type ReadPtr  = Box<Sequence>;
+pub type Sequences = Vec<Sequence>;
