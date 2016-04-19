@@ -10,9 +10,14 @@ path = "src/client.rs"
 
 [lib]
 name = "katome"
+path = "src/katome/lib.rs"
 
 [dependencies]
 pbr = "0.1.1"
+rand = "*"
+
+# [dependencies.alloc]
+# git = "https://github.com/phil-opp/nightly-liballoc.git"
 
 [profile.release]
 debug = true
