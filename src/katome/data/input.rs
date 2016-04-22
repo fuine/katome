@@ -8,6 +8,7 @@ use std::slice;
 use std::sync::Arc;
 use std::cell::RefCell;
 use data::edges::{Edges};
+use std::collections::hash_map::Entry::*;
 use data::read_slice::{ReadSlice};
 use data::types::{Sequences, Graph, VecArc, // VecRcPtr,
                   VertexId, K_SIZE};
@@ -18,97 +19,89 @@ pub fn read_sequences(path: String, sequences: VecArc, graph: &mut Graph) {
     // let mut pb = ProgressBar::new(24294983 as u64);
     // let mut counter = 0;
     // pb.format("╢▌▌░╟");
-    // let mut lines = match lines_from_file(&path) {
-        // Err(why) => panic!("Couldn't open {}: {}", path,
-                                                   // Error::description(&why)),
-        // Ok(lines) => lines,
-    // };
-    // let register: VecArc = Arc::new(RefCell::new(Vec::with_capacity(100))); // registry for a single line
-    // loop {
-        // match lines.next() { // read line -- id
-            // None => { break },
-            // _ => {}
-        // }
-        // // TODO exit gracefully if format is wrong
-        // register.borrow_mut().clear(); // remove last line
-        // // XXX consider using append
-        // register.borrow_mut().extend_from_slice(lines.next().unwrap().unwrap().into_bytes().as_slice());
-        // add_sequence_to_graph(register.clone(), graph, reads.clone());
-
-        // lines.next(); // read +
-        // lines.next(); // read quality
-        // // pb.inc();
-    // }
+    let mut lines = match lines_from_file(&path) {
+        Err(why) => panic!("Couldn't open {}: {}", path,
+                                                   Error::description(&why)),
+        Ok(lines) => lines,
+    };
+    let register: VecArc = Arc::new(RefCell::new(Vec::with_capacity(100))); // registry for a single line
+    loop {
+        match lines.next() { // read line -- id
+            None => { break },
+            _ => {}
+        }
+        // TODO exit gracefully if format is wrong
+        register.borrow_mut().clear(); // remove last line
+        // XXX consider using append
+        register.borrow_mut().extend_from_slice(lines.next().unwrap().unwrap().into_bytes().as_slice());
+        add_sequence_to_graph(register.clone(), graph, sequences.clone());
+        lines.next(); // read +
+        lines.next(); // read quality
+        // pb.inc();
+    }
 }
 
 pub fn add_sequence_to_graph(
         vec: VecArc, graph: &mut Graph, reads: VecArc) {
-    // let iterations = vec.len() - K_SIZE;
-    // // let refcount: Rc<RefCell<Vec<u8>>> = Rc::new(RefCell::new(vec.clone()));
-    // let ins_counter = 0;
-    // // let mut inserted = false;
-    // let mut cnt = 0;
-    // let mut first_iter = true;
-    // for window in vec.windows(K_SIZE){
-        // if first_iter {
-            // first_iter = false;
-            // let from = ReadSlice::new(vec.clone(), cnt);
-            // let to   = ReadSlice::new(vec.clone(), cnt + 1);
-            // let mut found = true;
-            // match graph.get_mut(&from) {
-                // Some(edges) => {
-                    // ins_counter += 1;
-                    // modify_edge(edges, to);
-                // }
-                // None => found = false
-            // }
-            // if !found { // we need to insert a new sequence and keep it's pointer valid
-                // let seq_offset = reads.len();
-                // if ins_counter == 0 || ins_counter >= K_SIZE {
-                    // // append whole window
-                // }
-                // else {
-                    // // append specified bytes
-                // }
-                // graph.insert(ReadSlice::new(ptrs.0), Edges::new(ReadSlice::new(ptrs.1)));
-            // };
-        // }
-        // else {
-
-        // }
-        // if cnt == total_size -1 { // last iter
-            // let from = ReadSlice::new(&window[0] as VertexId);
-            // let mut found = true;
-            // match graph.get_mut(&from) {
-                // Some(edges) => {},
-                // None => found = false,
-            // }
-            // if !found {
-                // let ptrs: VertexId= match inserted {
-                    // Some(ref seq) => (&(**seq)[cnt]), //unwrap ref to box and then box itself
-                    // None          => {
-                        // let s: ReadPtr = Box::new(vec.clone());  // sequence is on the heap now
-                        // let from_: VertexId = &(*s)[cnt];
-                        // inserted = Some(s);
-                        // from_
-                    // }
-                // };
-                // // let ptr: *const u8 = &(*seq)[0];
-                // graph.insert(ReadSlice::new(ptrs), Edges::empty());
-            // }
-        // }
-        // else {
-
-        // }
-
-        // cnt += 1;
-    // }
+    assert!(vec.borrow().len() >= K_SIZE + 1, "Read is too short!");
+    // let iterations = vec.borrow().len() - K_SIZE;
+    // let refcount: Rc<RefCell<Vec<u8>>> = Rc::new(RefCell::new(vec.clone()));
+    let mut ins_counter = 0;
+    let mut cnt = 0;
+    // let mut inserted = false;
+    let mut index_counter = reads.borrow().len();
+    let mut current: ReadSlice = ReadSlice::new(reads.clone(), index_counter);
+    let mut previous: ReadSlice = ReadSlice::new(reads.clone(), index_counter);
+    let mut insert = false;
+    for window in vec.borrow().windows(K_SIZE){
+        let from_tmp = ReadSlice::new(vec.clone(), cnt);
+        current = {
+            match graph.entry(from_tmp) {
+                Occupied(oe) => {
+                    if ins_counter > 0 {
+                        ins_counter += 1;
+                    }
+                    oe.key().clone()
+                }
+                Vacant(_) => { // we cant use that VE because it is keyed with a temporary value
+                    // push to vector
+                    if ins_counter == 0 {
+                        // append window to vector
+                        reads.borrow_mut().extend_from_slice(window);
+                    }
+                    else if ins_counter > K_SIZE {
+                        // append window to vector
+                        reads.borrow_mut().extend_from_slice(window);
+                        index_counter += K_SIZE;
+                    }
+                    else {
+                        // append only ins_counter last bytes of window
+                        reads.borrow_mut().extend_from_slice(&window[K_SIZE - ins_counter ..]);
+                        index_counter += ins_counter;
+                    }
+                    ins_counter = 1;
+                    insert = true;
+                    ReadSlice::new(reads.clone(), index_counter)
+                }
+            }
+        };
+        if insert {
+            graph.insert(current.clone(), Edges::empty());
+            insert = false;
+        }
+        if cnt > 0 { // insert current sequence as a member of the previous
+            modify_edge(graph.get_mut(&previous).unwrap(), current.offset);
+        }
+        previous = current.clone();
+        // XXX
+        cnt += 1;
+    }
 }
 
 
-fn modify_edge<'a>(edges: &mut Edges, to: ReadSlice){
+fn modify_edge<'a>(edges: &mut Edges, to: VertexId){
     for i in edges.outgoing.iter_mut(){
-        if i.0 == to{
+        if i.0 == to {
             i.1 += 1;
             return
         }

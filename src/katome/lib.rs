@@ -1,3 +1,4 @@
+#![feature(map_entry_keys)]
 extern crate pbr;
 
 pub mod data;

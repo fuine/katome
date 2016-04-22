@@ -8,7 +8,7 @@ use std::option::{Option};
 
 #[derive(Eq, Clone)]
 pub struct ReadSlice {
-    offset: VertexId,
+    pub offset: VertexId,
     vec: VecArc,
 }
 
