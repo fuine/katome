@@ -1,7 +1,7 @@
 use data::types::{VertexId};
-use data::read_slice::{ReadSlice};
 
 #[allow(dead_code)]
+#[derive(Clone)]
 pub struct Edges{
     pub outgoing: Vec<(VertexId, u64)>, // data is aligned to ptr in tuple
     pub in_size: u64,                        // data is aligned to 8 bytes in this struct

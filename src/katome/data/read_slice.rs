@@ -2,7 +2,6 @@ use data::types::{VertexId, K_SIZE, VecArc};
 // use asm::assembler::{VECTOR_RC};
 use std::cmp;
 use std::hash;
-use std::slice;
 use std::str;
 use std::option::{Option};
 
