@@ -10,12 +10,12 @@ use std::cell::RefCell;
 use data::edges::{Edges};
 use std::collections::hash_map::Entry::*;
 use data::read_slice::{ReadSlice};
-use data::types::{Sequences, Graph, VecArc, // VecRcPtr,
+use data::types::{Graph, VecArc,
                   VertexId, K_SIZE};
 // use asm::assembler::{VECTOR_RC};
 // use ::pbr::{ProgressBar};
 // creates graph
-pub fn read_sequences(path: String, sequences: VecArc, graph: &mut Graph) {
+pub fn read_sequences(path: String, sequences: VecArc, graph: &mut Graph, saved: &mut usize, total: &mut usize) {
     // let mut pb = ProgressBar::new(24294983 as u64);
     // let mut counter = 0;
     // pb.format("╢▌▌░╟");
@@ -34,7 +34,8 @@ pub fn read_sequences(path: String, sequences: VecArc, graph: &mut Graph) {
         register.borrow_mut().clear(); // remove last line
         // XXX consider using append
         register.borrow_mut().extend_from_slice(lines.next().unwrap().unwrap().into_bytes().as_slice());
-        add_sequence_to_graph(register.clone(), graph, sequences.clone());
+        *total += register.borrow().len();
+        add_sequence_to_graph(register.clone(), graph, sequences.clone(), saved);
         lines.next(); // read +
         lines.next(); // read quality
         // pb.inc();
@@ -42,7 +43,7 @@ pub fn read_sequences(path: String, sequences: VecArc, graph: &mut Graph) {
 }
 
 pub fn add_sequence_to_graph(
-        vec: VecArc, graph: &mut Graph, reads: VecArc) {
+        vec: VecArc, graph: &mut Graph, reads: VecArc, saved: &mut usize) {
     assert!(vec.borrow().len() >= K_SIZE + 1, "Read is too short!");
     // let iterations = vec.borrow().len() - K_SIZE;
     // let refcount: Rc<RefCell<Vec<u8>>> = Rc::new(RefCell::new(vec.clone()));
@@ -51,16 +52,19 @@ pub fn add_sequence_to_graph(
     // let mut inserted = false;
     let mut index_counter = reads.borrow().len();
     let mut current: ReadSlice = ReadSlice::new(reads.clone(), index_counter);
-    let mut previous: ReadSlice = ReadSlice::new(reads.clone(), index_counter);
+    // let mut previous: ReadSlice = ReadSlice::new(reads.clone(), index_counter);
     let mut insert = false;
+    let mut prev_val_old: *mut Edges = 0 as *mut Edges;
+    let mut prev_val_new: *mut Edges = 0 as *mut Edges;
     for window in vec.borrow().windows(K_SIZE){
         let from_tmp = ReadSlice::new(vec.clone(), cnt);
-        current = {
+        current = { // get a proper key to the hashmap
             match graph.entry(from_tmp) {
-                Occupied(oe) => {
+                Occupied(mut oe) => {
                     if ins_counter > 0 {
                         ins_counter += 1;
                     }
+                    prev_val_new = oe.get_mut() as *mut Edges;
                     oe.key().clone()
                 }
                 Vacant(_) => { // we cant use that VE because it is keyed with a temporary value
@@ -68,16 +72,19 @@ pub fn add_sequence_to_graph(
                     if ins_counter == 0 {
                         // append window to vector
                         reads.borrow_mut().extend_from_slice(window);
+                        *saved += K_SIZE;
                     }
                     else if ins_counter > K_SIZE {
                         // append window to vector
                         reads.borrow_mut().extend_from_slice(window);
                         index_counter += K_SIZE;
+                        *saved += K_SIZE;
                     }
                     else {
                         // append only ins_counter last bytes of window
                         reads.borrow_mut().extend_from_slice(&window[K_SIZE - ins_counter ..]);
                         index_counter += ins_counter;
+                        *saved += ins_counter;
                     }
                     ins_counter = 1;
                     insert = true;
@@ -85,15 +92,18 @@ pub fn add_sequence_to_graph(
                 }
             }
         };
+        if cnt > 0 { // insert current sequence as a member of the previous
+            let e: &mut Edges = unsafe {
+                &mut *prev_val_old as &mut Edges
+            };
+            modify_edge(e, current.offset);
+        }
         if insert {
-            graph.insert(current.clone(), Edges::empty());
+            prev_val_new = graph.entry(current.clone()).or_insert(Edges::empty()) as *mut Edges;
             insert = false;
         }
-        if cnt > 0 { // insert current sequence as a member of the previous
-            modify_edge(graph.get_mut(&previous).unwrap(), current.offset);
-        }
-        previous = current.clone();
-        // XXX
+        prev_val_old = prev_val_new;
+        // previous = current;
         cnt += 1;
     }
 }

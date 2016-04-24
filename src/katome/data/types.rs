@@ -1,9 +1,13 @@
+extern crate fnv;
+
 use std::collections::HashMap as HM;
 use std::mem;
 use std::sync::Arc;
 use std::cell::RefCell;
 use data::read_slice::{ReadSlice};
 use data::edges::{Edges};
+use std::hash::BuildHasherDefault;
+use self::fnv::FnvHasher;
 
 // pub type VertexId = *const u8;
 pub type VertexId = usize;
@@ -17,7 +21,8 @@ pub fn memy(vlen: usize, ilen: usize) -> usize {
 
 
 
-pub type Graph = HM<ReadSlice, Edges>;
+pub type MyHasher = BuildHasherDefault<FnvHasher>;
+pub type Graph = HM<ReadSlice, Edges, MyHasher>;
 pub type Sequences = Vec<u8>;
 pub type VecArc = Arc<RefCell<Sequences>>;
 // pub type VecARcPtr = *const VecRc;
