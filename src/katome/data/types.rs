@@ -1,6 +1,7 @@
 extern crate fnv;
 
 use std::collections::HashMap as HM;
+use std::collections::HashSet;
 use std::mem;
 use std::sync::Arc;
 use std::cell::RefCell;
@@ -25,4 +26,11 @@ pub type MyHasher = BuildHasherDefault<FnvHasher>;
 pub type Graph = HM<ReadSlice, Edges, MyHasher>;
 pub type Sequences = Vec<u8>;
 pub type VecArc = Arc<RefCell<Sequences>>;
+pub type Nodes = HashSet<VertexId, MyHasher>;
+
+pub struct Asm{
+    pub graph: Graph,
+    pub in_nodes: Nodes,
+    pub out_nodes: Nodes,
+}
 // pub type VecARcPtr = *const VecRc;
