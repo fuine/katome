@@ -20,7 +20,7 @@ impl ReadSlice {
     }
 
     pub fn name(&self) -> String {
-        str::from_utf8(&self.vec.borrow()[self.offset..self.offset+K_SIZE]).unwrap().to_string()
+        str::from_utf8(&self.vec.borrow()[self.offset as usize..(self.offset+K_SIZE) as usize]).unwrap().to_string()
     }
 }
 
