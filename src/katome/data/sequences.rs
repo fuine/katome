@@ -1,6 +1,6 @@
 const SIZE: usize = 4;
 
-pub fn sequence_to_u64(s: &String) -> u64 {
+pub fn sequence_to_u64(s: &str) -> u64 {
     let mut encoded: u64 = 0;
     for c in s.chars() {
         println!("{:#010b}", encoded);
@@ -27,7 +27,7 @@ pub fn u64_to_sequence(i: u64) -> String {
 fn encode_char(c: char, i: u64) -> u64 {
     let x: u64 = i << 2; // make room for a new character
     match c {
-        'a' => x | 0,
+        'a' => x,
         'b' => x | 1,
         'c' => x | 2,
         'd' => x | 3,
