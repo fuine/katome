@@ -1,4 +1,4 @@
-// open.rs
+// input.rs
 use std::error::Error;
 use std::fs::File;
 use std::io::prelude::*;
@@ -8,15 +8,14 @@ use std::slice;
 use std::sync::Arc;
 use std::cell::RefCell;
 use data::edges::{Edges};
-use std::collections::hash_map::Entry::*;
+use std::collections::hash_map::{Entry};
 use data::read_slice::{ReadSlice};
 use data::types::{Graph, VecArc,
-                  VertexId, K_SIZE, Nodes};
-// use asm::assembler::{VECTOR_RC};
-use ::pbr::{ProgressBar};
+                  VertexId, K_SIZE};
+// use ::pbr::{ProgressBar};
+
 // creates graph
 pub fn read_sequences(path: String, sequences: VecArc, graph: &mut Graph,
-                      in_nodes: &mut Nodes, out_nodes: &mut Nodes,
                       saved: &mut VertexId, total: &mut VertexId) {
     // let mut pb = ProgressBar::new(24294983 as u64);
     // let mut pb = ProgressBar::new(14214324 as u64);
@@ -26,9 +25,7 @@ pub fn read_sequences(path: String, sequences: VecArc, graph: &mut Graph,
                                                    Error::description(&why)),
         Ok(lines) => lines,
     };
-    let register: VecArc = Arc::new(RefCell::new(Vec::with_capacity(100))); // registry for a single line
-    // TODO create new thread for in_ and out_ nodes
-    // let mut cnt: u64 = 0;
+    let register: VecArc = Arc::new(RefCell::new(Vec::with_capacity(100))); // register for a single line
     loop {
         if let None = lines.next() { break }  // read line -- id
         // TODO exit gracefully if format is wrong
@@ -36,56 +33,34 @@ pub fn read_sequences(path: String, sequences: VecArc, graph: &mut Graph,
         // XXX consider using append
         register.borrow_mut().extend_from_slice(lines.next().unwrap().unwrap().into_bytes().as_slice());
         *total += register.borrow().len() as VertexId;
-        add_sequence_to_graph(register.clone(), graph, sequences.clone(), in_nodes, out_nodes, saved);
+        add_sequence_to_graph(register.clone(), graph, sequences.clone(), saved);
         lines.next(); // read +
         lines.next(); // read quality
         // pb.inc();
-        // cnt += 1;
-        // if cnt % 1000000 == 0 {
-            // println!("{}: Graph has {} sequences and {} capacity", cnt, graph.len(), graph.capacity());
-        // }
     }
-    // TODO join on the in out thread
 }
 
 pub fn add_sequence_to_graph(
-        vec: VecArc, graph: &mut Graph, reads: VecArc, in_nodes: &mut Nodes,
-        out_nodes: &mut Nodes, saved: &mut VertexId) {
+        vec: VecArc, graph: &mut Graph, reads: VecArc, saved: &mut VertexId) {
     assert!(vec.borrow().len() as VertexId >= K_SIZE + 1, "Read is too short!");
-    let iterations = vec.borrow().len() - K_SIZE as usize;
-    // let refcount: Rc<RefCell<Vec<u8>>> = Rc::new(RefCell::new(vec.clone()));
     let mut ins_counter: VertexId = 0;
-    // let mut cnt: VertexId = 0;
-    // let mut inserted = false;
     let mut index_counter = reads.borrow().len() as VertexId;
     let mut current: ReadSlice;
-    // let mut previous: ReadSlice = ReadSlice::new(reads.clone(), index_counter);
     let mut insert = false;
     let mut prev_val_old: *mut Edges = 0 as *mut Edges;
     let mut prev_val_new: *mut Edges = 0 as *mut Edges;
-    let mut is_in_node = false;
-    let mut is_out_node = false;
-    // let mut new_edge = false;
     for (cnt, window) in vec.borrow().windows(K_SIZE as usize).enumerate(){
         let from_tmp = ReadSlice::new(vec.clone(), cnt as VertexId);
         current = { // get a proper key to the hashmap
             match graph.entry(from_tmp) {
-                Occupied(mut oe) => {
+                Entry::Occupied(mut oe) => {
                     if ins_counter > 0 {
                         ins_counter += 1;
-                    }
-                    if cnt == 0 {
-                        if oe.get().in_num == 0 {
-                            is_in_node = true;
-                        }
-                    }
-                    else if cnt == iterations && oe.get().outgoing.len() == 0 {
-                        is_out_node = true;
                     }
                     prev_val_new = oe.get_mut() as *mut Edges;
                     oe.key().clone()
                 }
-                Vacant(_) => { // we cant use that VE because it is keyed with a temporary value
+                Entry::Vacant(_) => { // we cant use that VE because it is keyed with a temporary value
                     // push to vector
                     if ins_counter == 0 {
                         // append window to vector
@@ -103,12 +78,6 @@ pub fn add_sequence_to_graph(
                         reads.borrow_mut().extend_from_slice(&window[(K_SIZE - ins_counter ) as usize ..]);
                         index_counter += ins_counter;
                         *saved += ins_counter;
-                    }
-                    if cnt == 0 {
-                        is_in_node = true;
-                    }
-                    if cnt == iterations {
-                        is_out_node = true;
                     }
                     ins_counter = 1;
                     insert = true;
@@ -135,18 +104,6 @@ pub fn add_sequence_to_graph(
             }
             prev_val_new = val_new as *mut Edges;
             insert = false;
-        }
-        if is_in_node { // add as input node
-            in_nodes.insert(current.offset);
-            is_in_node = false;
-        }
-        else if is_out_node { // add as output node
-            out_nodes.insert(current.offset);
-            is_out_node = false;
-        }
-        else { // remove from both input and output
-            in_nodes.remove(&current.offset);
-            out_nodes.remove(&current.offset);
         }
         prev_val_old = prev_val_new;
     }
