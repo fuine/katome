@@ -1,5 +1,4 @@
 use data::types::{VertexId, K_SIZE, VecArc};
-// use asm::assembler::{VECTOR_RC};
 use std::cmp;
 use std::hash;
 use std::str;
