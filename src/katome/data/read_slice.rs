@@ -21,6 +21,10 @@ impl ReadSlice {
     pub fn name(&self) -> String {
         str::from_utf8(&self.vec.borrow()[self.offset as usize..(self.offset+K_SIZE) as usize]).unwrap().to_string()
     }
+
+    pub fn get_slice(&self) -> Vec<u8> {
+        self.vec.borrow()[self.offset as usize..(self.offset+K_SIZE) as usize].to_vec().clone()
+    }
 }
 
 impl hash::Hash for ReadSlice {

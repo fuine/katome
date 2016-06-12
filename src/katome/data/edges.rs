@@ -1,9 +1,12 @@
 use data::types::{VertexId, Weight};
 
+pub type Edge = (VertexId, Weight);
+pub type Outgoing = Box<[Edge]>;
+
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct Edges{
-    pub outgoing: Box<[(VertexId, Weight)]>,
+    pub outgoing: Outgoing,
     pub in_num: usize,                        // data is aligned to 8 bytes in this struct
 }
 
