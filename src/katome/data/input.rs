@@ -47,7 +47,8 @@ pub fn add_sequence_to_graph(
     let mut index_counter = reads.borrow().len() as VertexId;
     let mut current: ReadSlice;
     let mut insert = false;
-    let mut prev_val_old: *mut Edges = 0 as *mut Edges;
+    let mut previous_node: ReadSlice = ReadSlice::new(vec.clone(), 0);
+    // let mut prev_val_old: *mut Edges = 0 as *mut Edges;
     let mut prev_val_new: *mut Edges = 0 as *mut Edges;
     for (cnt, window) in vec.borrow().windows(K_SIZE as usize).enumerate(){
         let from_tmp = ReadSlice::new(vec.clone(), cnt as VertexId);
@@ -86,10 +87,12 @@ pub fn add_sequence_to_graph(
             }
         };
         if cnt > 0 { // insert current sequence as a member of the previous
-            let e: &mut Edges = unsafe {
-                &mut *prev_val_old as &mut Edges
-            };
-            if modify_edge(e, current.offset) && !insert { // modify previous edge
+            let modified: bool;
+            {
+                let e: &mut Edges = graph.get_mut(&previous_node).unwrap();
+                modified = modify_edge(e, current.offset);
+            }
+            if modified && !insert { // modify previous edge
                 // new edge
                 let cur: &mut Edges = unsafe {
                     &mut *prev_val_new as &mut Edges
@@ -98,19 +101,18 @@ pub fn add_sequence_to_graph(
             }
         }
         if insert {
-            let val_new = graph.entry(current.clone()).or_insert_with(Edges::empty);
+            let val_new: &mut Edges = graph.entry(current.clone()).or_insert_with(Edges::empty);
             if cnt > 0 {
                 val_new.in_num += 1;
             }
-            prev_val_new = val_new as *mut Edges;
             insert = false;
         }
-        prev_val_old = prev_val_new;
+        previous_node = current;
     }
 }
 
 
-fn modify_edge(edges: &mut Edges, to: VertexId) -> bool{
+fn modify_edge(edges: &mut Edges, to: VertexId) -> bool {
     for i in edges.outgoing.iter_mut(){
         if i.0 == to {
             i.1 += 1;

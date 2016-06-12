@@ -15,6 +15,7 @@ path = "src/katome/lib.rs"
 [dependencies]
 pbr = "0.1.1"
 fnv = "*"
+log = "*"
 
 # The development profile, used for `cargo build`.
 [profile.dev]

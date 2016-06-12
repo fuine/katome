@@ -1,13 +1,22 @@
 use ::data::types::{Graph, VertexId, K_SIZE, VecArc};
 use ::data::read_slice::ReadSlice;
-use ::data::edges::Edges;
+use ::data::edges::{Edges, Edge};
+use std::sync::Arc;
+use std::cell::RefCell;
+use std::collections::hash_map::Entry;
 
 pub struct Pruner<'a> {
     graph: &'a mut Graph,
     vec: VecArc,
 }
 
+enum VertexType<T> {
+    Input(T),
+    Output(T),
+}
+
 impl<'a> Pruner<'a> {
+    /// Constructor for Pruner.
     pub fn new(graph_: &'a mut Graph, vec_: VecArc) -> Pruner {
         Pruner {
             graph: graph_,
@@ -15,61 +24,208 @@ impl<'a> Pruner<'a> {
         }
     }
 
+    /// Remove all input and output dead paths
     pub fn prune_graph(&mut self) {
-        self.prune_input();
-    }
-
-    fn prune_input(&mut self) {
+        info!("Starting graph pruning");
         loop {
+            // grab all input and output vertices
             let inputs = self.graph.iter()
-                .filter(|&(_, val)| val.in_num == 0)
-                .map(|(key, _)| key.offset)
+                .filter(|&(_, val)| val.in_num == 0 || val.outgoing.is_empty())
+                .map(|(key, val)| {
+                    if val.in_num == 0 {
+                        VertexType::Input(key.offset)
+                    }
+                    else {
+                        VertexType::Output(key.offset)
+                    }
+                })
                 // FIXME change VertexId to ReadSlice
-                .collect::<Vec<VertexId>>();
-            println!("Num in: {}", inputs.len());
-            let mut to_remove: Vec<ReadSlice> = vec![];
+                .collect::<Vec<VertexType<VertexId>>>();
+            debug!("Detected {} input/output vertices", inputs.len());
+            let mut to_remove_in: Vec<ReadSlice> = vec![];
+            let mut to_remove_out: Vec<ReadSlice> = vec![];
+            // analyze found input/output vertices
             for v in inputs {
-                if let Some(dead_path) = check_input_vertex(self.graph, &v, self.vec.clone()) {
-                    to_remove.extend(dead_path);
+                // sort into output and input paths
+                match v {
+                    VertexType::Input(v_) => {
+                        // decide whether or not vertex is in the dead path
+                        if let Some(dead_path) = check_input_dead_path(self.graph, &v_, self.vec.clone()) {
+                            to_remove_in.extend(dead_path);
+                        }
+                    }
+                    VertexType::Output(v_) => {
+                        // decide whether or not vertex is in the dead path
+                        if let Some(dead_path) = check_output_dead_path(self.graph, &v_, self.vec.clone()) {
+                            to_remove_out.extend(dead_path);
+                        }
+                    }
                 }
             }
-            if to_remove.is_empty() {
+            // if there are no dead paths left pruning is done
+            if to_remove_in.is_empty() && to_remove_out.is_empty() {
+                info!("Graph is pruned");
                 return;
             }
-            self.remove_in_path(to_remove.as_slice());
+            if !to_remove_in.is_empty() {
+                // remove dead input paths
+                self.remove_in_path(to_remove_in.as_slice());
+            }
+            if !to_remove_out.is_empty() {
+                // remove dead output paths
+                self.remove_out_path(to_remove_out.as_slice());
+            }
         }
     }
 
+    /// Remove dead input path.
     fn remove_in_path(&mut self,  to_remove: &[ReadSlice]) {
+        debug!("Removing {} dead input paths", to_remove.len());
         for v in to_remove.iter() {
-            let val: Edges = self.graph.remove(v).unwrap();
-            for o in val.outgoing.iter() {
+            // Remove the vertex and catch it's Edges
+            let removed: Edges = match self.graph.remove(v) {
+                Some(val_) => val_,
+                None => panic!("Remove called on value which doesn't exist!"),
+            };
+            // decrement input edges counter for each vertex in the outgoing set
+            for o in removed.outgoing.iter() {
                 self.graph.get_mut(&ReadSlice::new(self.vec.clone(), o.0)).unwrap().in_num -= 1;
             }
         }
     }
+
+    /// Remove dead outgoing path.
+    fn remove_out_path(&mut self, to_remove: &[ReadSlice]) {
+        debug!("Removing {} dead output paths", to_remove.len());
+        for v in to_remove.iter() {
+            // get all edges that are incoming to the vertex to be removed
+            let outgoing = get_input_vertices(self.graph, v, false);
+            // for each edge remove it from outgoing set in the starting vertex
+            for o in outgoing {
+                // find outgoing set for the starting vertex
+                let edges: &mut Edges = match self.graph.get_mut(&o){
+                    Some(val_) => val_,
+                    None => panic!("Vertex from get_input_vertices doesn't exist!"),
+                };
+                let mut out_ = Vec::new();
+                out_.extend_from_slice(&edges.outgoing);
+                // filter out the vertex we are about to remove
+                let out: Vec<Edge> = out_.into_iter().filter(|&x| x.0 != v.offset).collect();
+                // save filtered outgoing set
+                edges.outgoing = out.into_boxed_slice();
+            }
+            // finally remove the vertex itself
+            self.graph.remove(v);
+        }
+    }
+
+}
+/// Utility function which gets us every possible incoming edge.
+/// because of memory savings we do not hold an array of incoming edges,
+/// instead we will exploit the idea behind sequencing genome, namely
+/// common bytes for each sequence.
+/// WARNING: this may or may not be optimal if we follow the fasta standard
+/// but should be sufficiently faster for just 5 characters we use at the moment
+fn get_input_vertices(graph: &mut Graph, vertex: &ReadSlice, one_vertex: bool) -> Vec<ReadSlice> {
+    // create register
+    let mut output: Vec<ReadSlice> = vec![];
+    let register: VecArc = Arc::new(RefCell::new(Vec::with_capacity(K_SIZE))); // register for a single line
+    {
+        let mut vec = register.borrow_mut();
+        // copy current sequence to register
+        vec.extend(vertex.get_slice());
+        // shift the register one character to the right
+        vec.truncate(K_SIZE - 1);
+        vec.insert(0, 0);
+    }
+    // try to bruteforce by inserting all possible characters: ACTGN
+    for chr in &['A', 'C', 'T', 'G', 'N'] {
+    // for chr in 65..90 {
+        register.borrow_mut()[0] = *chr as u8;
+        // dummy read slice used to check if we can find it in the graph
+        let tmp_rs = ReadSlice::new(register.clone(), 0);
+        if let Entry::Occupied(e) = graph.entry(tmp_rs) {
+            // if we got any hits check if our vertex is in the outgoing
+            if let Some(_) = e.get().outgoing.iter().find(|&x| x.0 == vertex.offset) {
+                // if so, then add to output array
+                trace!("Found input vertex: {}", e.key().name());
+                output.push(e.key().clone());
+                if one_vertex {
+                    return output;
+                }
+            }
+        }
+    }
+    output
 }
 
-fn check_input_vertex(graph: &Graph, vertex: &VertexId, vec: VecArc) -> Option<Vec<ReadSlice>> {
+/// Check if vertex initializes a dead input path.
+fn check_input_dead_path(graph: &Graph, vertex: &VertexId, vec: VecArc) -> Option<Vec<ReadSlice>> {
     let mut output_vec = vec![];
     let mut current_vertex: ReadSlice = ReadSlice::new(vec.clone(), *vertex);
     let mut cnt = 0;
     loop {
-        let current_value = graph.get(&current_vertex).unwrap();
+        // get Edges for the current vertex
+        let current_value = match graph.get(&current_vertex) {
+            Some(val_) => val_,
+            None => panic!("Vertex doesn't exist even though someone has it in outgoing!"),
+        };
+        // if vertex has more than 1 input edge
         if current_value.in_num > 1 {
             return Some(output_vec);
         }
-        else if current_value.outgoing.len() == 0 {
+        // if vertex has no outgoing edges
+        else if current_value.outgoing.is_empty() {
             output_vec.push(current_vertex.clone());
             return Some(output_vec);
         }
         else {
             if cnt >= 2 * K_SIZE {
+                // this path is not dead
                 return None;
             }
             cnt += 1;
+            // add vertex to path
             output_vec.push(current_vertex.clone());
+            // move to the next vertex in path
             current_vertex = ReadSlice::new(vec.clone(), current_value.outgoing[0].0);
+        }
+    }
+}
+
+/// Check if vertex initializes a dead input path.
+fn check_output_dead_path(graph: &mut Graph, vertex: &VertexId, vec: VecArc) -> Option<Vec<ReadSlice>> {
+    let mut output_vec = vec![];
+    let mut current_vertex: ReadSlice = ReadSlice::new(vec.clone(), *vertex);
+    let mut cnt = 0;
+    loop {
+        // get Edges for the current vertex
+        let current_value  = match graph.get(&current_vertex) {
+            Some(val_) => val_.clone(),
+            None => panic!("Couldn't find vertex which supposedly is in the graph!"),
+        };
+        // if vertex has more than 1 outgoing edges
+        if current_value.outgoing.len() > 1 {
+            return Some(output_vec);
+        }
+        // if vertex has no input edges
+        else if current_value.in_num == 0 {
+            output_vec.push(current_vertex.clone());
+            return Some(output_vec);
+        }
+        else {
+            if cnt >= 2 * K_SIZE {
+                // this path is not dead
+                return None;
+            }
+            cnt += 1;
+            // add vertex to the path
+            output_vec.push(current_vertex.clone());
+            // backtrack through the path to the previous vertex
+            current_vertex = match get_input_vertices(graph, &current_vertex, true).pop() {
+                Some(val) => val,
+                None => panic!("Didn't find predecessor despite having {} in_nums for slice: {}", current_value.in_num, current_vertex.name()),
+            }
         }
     }
 }
