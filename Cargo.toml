@@ -7,6 +7,7 @@ authors = ["Łukasz Neumann <fuine@riseup.net>"]
 [[bin]]
 name = "katome"
 path = "src/client.rs"
+doc = false
 
 [lib]
 name = "katome"
@@ -16,6 +17,9 @@ path = "src/katome/lib.rs"
 pbr = "0.1.1"
 fnv = "*"
 log = "*"
+rand = "*"
+toml = "*"
+rustc-serialize = "*"
 
 # The development profile, used for `cargo build`.
 [profile.dev]

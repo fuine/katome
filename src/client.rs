@@ -1,44 +1,56 @@
 extern crate katome;
-// use katome::data::sequences::{sequence_to_u64, u64_to_sequence};
-// use katome::data::input::{read_sequences, as_u8_slice, add_sequence_to_graph};
-// use katome::data::types::{Graph, Sequences, memy};
-use katome::asm::assembler::{make_it_happen};
+extern crate toml;
+extern crate rustc_serialize;
+use katome::asm::assembler::{assemble};
+use toml::{Parser, Value};
+use std::fs::File;
+use std::io::Read;
 
-// use pbr::{ProgressBar};
-
-fn main(){
-    make_it_happen();
-    // let v = read_sequences("***REMOVED***".to_string());
-    // let v = read_sequences("***REMOVED***".to_string());
-    // let mut sequences: Sequences = Vec::new();
-    // let mut graph: Graph = Graph::new();
-    // read_sequences("***REMOVED***".to_string(),
-    // read_sequences("***REMOVED***".to_string(),
-    // read_sequences("***REMOVED***".to_string(),
-    // read_sequences("***REMOVED***".to_string(),
-                   // &mut sequences, &mut graph);
-    // let v = read_sequences("./test2.txt".to_string());
-    // println!("{}G", memy(v.len(), v[0].len()));
-    // let mut pb = ProgressBar::new(v.len() as u64);
-    // let mut counter = 0;
-    // pb.format("╢▌▌░╟");
-    // for i in 0..v.len() {
-        // add_sequence_to_graph(&v[i], &mut graph, K_SIZE, &mut counter);
-        // if i % 10000 == 0 {
-            // println!("{}: {}G", graph.len(), memy(graph.len()));
-        // }
-        // pb.inc();
-    // }
-    // println!("\nMap has {} unique keys for {} sequences", graph.len(), counter);
-    // for (key, val) in graph.iter() {
-    // for val in graph.values() {
-        // println!("{}: {:?}", key.name(), val.weights);
-        // println!("{:?}", val.outgoing);
-    // }
-
+fn main() {
+    let config = parse_config("./src/settings.toml".to_string());
+    println!("{:?}", config);
+    assemble(config.input_path, config.output_path, config.original_genome_length);
 }
 
+#[derive(Debug)]
+#[derive(RustcDecodable)]
+pub struct GenomeConfig {
+    input_path: String,
+    output_path: String,
+    original_genome_length: usize,
+}
 
-// create whole vector with multiple workers
-// map hashset slices to raw pointers
+/// Attempt to load and parse the config file into our Config struct.
+/// If a file cannot be found, return a default Config.
+/// If we find a file but cannot parse it, panic
+pub fn parse_config(path: String) -> GenomeConfig {
+    let mut config_toml = String::new();
+    let mut file = match File::open(&path) {
+        Ok(file) => file,
+        Err(_)  => {
+            panic!("Could not find config file!");
+        }
+    };
 
+    file.read_to_string(&mut config_toml)
+            .unwrap_or_else(|err| panic!("Error while reading config: [{}]", err));
+
+    let mut parser = Parser::new(&config_toml);
+    let toml = parser.parse();
+
+    if toml.is_none() {
+        for err in &parser.errors {
+            let (loline, locol) = parser.to_linecol(err.lo);
+            let (hiline, hicol) = parser.to_linecol(err.hi);
+            println!("{}:{}:{}-{}:{} error: {}",
+                     path, loline, locol, hiline, hicol, err.desc);
+        }
+        panic!("Exiting!");
+    }
+
+    let config = Value::Table(toml.unwrap());
+    match toml::decode(config) {
+        Some(t) => t,
+        None => panic!("Error while deserializing config")
+    }
+}

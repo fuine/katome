@@ -1,0 +1,8 @@
+# input file path
+input_path = "/path/to/input/file"
+
+# output file path
+output_path = "/path/to/output/file"
+
+# original genome length
+original_genome_length = 100

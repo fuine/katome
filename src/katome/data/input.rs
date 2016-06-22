@@ -9,14 +9,14 @@ use std::sync::Arc;
 use std::cell::RefCell;
 use data::edges::{Edges};
 use std::collections::hash_map::{Entry};
-use data::read_slice::{ReadSlice};
+use data::read_slice::ReadSlice;
 use data::types::{Graph, VecArc,
                   VertexId, K_SIZE};
 // use ::pbr::{ProgressBar};
 
 // creates graph
 pub fn read_sequences(path: String, sequences: VecArc, graph: &mut Graph,
-                      saved: &mut VertexId, total: &mut VertexId) {
+                      saved: &mut VertexId, total: &mut usize, number_of_reads: &mut usize) {
     // let mut pb = ProgressBar::new(24294983 as u64);
     // let mut pb = ProgressBar::new(14214324 as u64);
     // pb.format("╢▌▌░╟");
@@ -36,6 +36,7 @@ pub fn read_sequences(path: String, sequences: VecArc, graph: &mut Graph,
         add_sequence_to_graph(register.clone(), graph, sequences.clone(), saved);
         lines.next(); // read +
         lines.next(); // read quality
+        *number_of_reads += 1;
         // pb.inc();
     }
 }
@@ -47,11 +48,11 @@ pub fn add_sequence_to_graph(
     let mut index_counter = reads.borrow().len() as VertexId;
     let mut current: ReadSlice;
     let mut insert = false;
-    let mut previous_node: ReadSlice = ReadSlice::new(vec.clone(), 0);
+    let mut previous_node: ReadSlice = RS!(vec, 0);
     // let mut prev_val_old: *mut Edges = 0 as *mut Edges;
     let mut prev_val_new: *mut Edges = 0 as *mut Edges;
     for (cnt, window) in vec.borrow().windows(K_SIZE as usize).enumerate(){
-        let from_tmp = ReadSlice::new(vec.clone(), cnt as VertexId);
+        let from_tmp = RS!(vec, cnt as VertexId);
         current = { // get a proper key to the hashmap
             match graph.entry(from_tmp) {
                 Entry::Occupied(mut oe) => {
@@ -82,7 +83,7 @@ pub fn add_sequence_to_graph(
                     }
                     ins_counter = 1;
                     insert = true;
-                    ReadSlice::new(reads.clone(), index_counter)
+                    RS!(reads, index_counter)
                 }
             }
         };
