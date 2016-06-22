@@ -12,6 +12,7 @@ use self::fnv::FnvHasher;
 pub type VertexId = usize;
 pub type Weight = u16;
 pub const K_SIZE: VertexId = 40;
+pub const WEAK_EDGE_THRESHOLD: Weight = 4;
 
 pub type MyHasher = BuildHasherDefault<FnvHasher>;
 pub type Graph = HM<ReadSlice, Edges, MyHasher>;

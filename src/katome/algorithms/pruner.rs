@@ -83,13 +83,11 @@ impl<'a> Pruner<'a> {
         debug!("Removing {} dead input paths", to_remove.len());
         for v in to_remove.iter() {
             // Remove the vertex and catch it's Edges
-            let removed: Edges = match self.graph.remove(v) {
-                Some(val_) => val_,
-                None => panic!("Remove called on value which doesn't exist!"),
-            };
+            let removed: Edges = self.graph.remove(v)
+                .expect("Remove called on value which doesn't exist!");
             // decrement input edges counter for each vertex in the outgoing set
             for o in removed.outgoing.iter() {
-                self.graph.get_mut(&ReadSlice::new(self.vec.clone(), o.0)).unwrap().in_num -= 1;
+                self.graph.get_mut(&RS!(self.vec, o.0)).unwrap().in_num -= 1;
             }
         }
     }
@@ -103,10 +101,8 @@ impl<'a> Pruner<'a> {
             // for each edge remove it from outgoing set in the starting vertex
             for o in outgoing {
                 // find outgoing set for the starting vertex
-                let edges: &mut Edges = match self.graph.get_mut(&o){
-                    Some(val_) => val_,
-                    None => panic!("Vertex from get_input_vertices doesn't exist!"),
-                };
+                let edges: &mut Edges = self.graph.get_mut(&o)
+                    .expect("Vertex from get_input_vertices doesn't exist!");
                 let mut out_ = Vec::new();
                 out_.extend_from_slice(&edges.outgoing);
                 // filter out the vertex we are about to remove
@@ -143,7 +139,8 @@ fn get_input_vertices(graph: &mut Graph, vertex: &ReadSlice, one_vertex: bool) -
     // for chr in 65..90 {
         register.borrow_mut()[0] = *chr as u8;
         // dummy read slice used to check if we can find it in the graph
-        let tmp_rs = ReadSlice::new(register.clone(), 0);
+        // let tmp_rs = ReadSlice::new(register.clone(), 0);
+        let tmp_rs = RS!(register, 0);
         if let Entry::Occupied(e) = graph.entry(tmp_rs) {
             // if we got any hits check if our vertex is in the outgoing
             if let Some(_) = e.get().outgoing.iter().find(|&x| x.0 == vertex.offset) {
@@ -162,14 +159,12 @@ fn get_input_vertices(graph: &mut Graph, vertex: &ReadSlice, one_vertex: bool) -
 /// Check if vertex initializes a dead input path.
 fn check_input_dead_path(graph: &Graph, vertex: &VertexId, vec: VecArc) -> Option<Vec<ReadSlice>> {
     let mut output_vec = vec![];
-    let mut current_vertex: ReadSlice = ReadSlice::new(vec.clone(), *vertex);
+    let mut current_vertex: ReadSlice = RS!(vec, *vertex);
     let mut cnt = 0;
     loop {
         // get Edges for the current vertex
-        let current_value = match graph.get(&current_vertex) {
-            Some(val_) => val_,
-            None => panic!("Vertex doesn't exist even though someone has it in outgoing!"),
-        };
+        let current_value = graph.get(&current_vertex)
+            .expect("Vertex doesn't exist even though someone has it in outgoing!");
         // if vertex has more than 1 input edge
         if current_value.in_num > 1 {
             return Some(output_vec);
@@ -188,7 +183,7 @@ fn check_input_dead_path(graph: &Graph, vertex: &VertexId, vec: VecArc) -> Optio
             // add vertex to path
             output_vec.push(current_vertex.clone());
             // move to the next vertex in path
-            current_vertex = ReadSlice::new(vec.clone(), current_value.outgoing[0].0);
+            current_vertex = RS!(vec, current_value.outgoing[0].0);
         }
     }
 }
@@ -196,14 +191,13 @@ fn check_input_dead_path(graph: &Graph, vertex: &VertexId, vec: VecArc) -> Optio
 /// Check if vertex initializes a dead input path.
 fn check_output_dead_path(graph: &mut Graph, vertex: &VertexId, vec: VecArc) -> Option<Vec<ReadSlice>> {
     let mut output_vec = vec![];
-    let mut current_vertex: ReadSlice = ReadSlice::new(vec.clone(), *vertex);
+    let mut current_vertex: ReadSlice = RS!(vec, *vertex);
     let mut cnt = 0;
     loop {
         // get Edges for the current vertex
-        let current_value  = match graph.get(&current_vertex) {
-            Some(val_) => val_.clone(),
-            None => panic!("Couldn't find vertex which supposedly is in the graph!"),
-        };
+        let current_value  = graph.get(&current_vertex)
+            .expect("Couldn't find vertex which supposedly is in the graph!")
+            .clone();
         // if vertex has more than 1 outgoing edges
         if current_value.outgoing.len() > 1 {
             return Some(output_vec);
@@ -222,10 +216,9 @@ fn check_output_dead_path(graph: &mut Graph, vertex: &VertexId, vec: VecArc) -> 
             // add vertex to the path
             output_vec.push(current_vertex.clone());
             // backtrack through the path to the previous vertex
-            current_vertex = match get_input_vertices(graph, &current_vertex, true).pop() {
-                Some(val) => val,
-                None => panic!("Didn't find predecessor despite having {} in_nums for slice: {}", current_value.in_num, current_vertex.name()),
-            }
+            current_vertex = get_input_vertices(graph, &current_vertex, true)
+                .pop()
+                .expect(format!("Didn't find predecessor despite having {} in_nums for slice: {}", current_value.in_num, current_vertex.name()).as_str());
         }
     }
 }
