@@ -145,7 +145,7 @@ fn get_input_vertices(graph: &mut Graph, vertex: &ReadSlice, one_vertex: bool) -
             // if we got any hits check if our vertex is in the outgoing
             if let Some(_) = e.get().outgoing.iter().find(|&x| x.0 == vertex.offset) {
                 // if so, then add to output array
-                trace!("Found input vertex: {}", e.key().name());
+                // trace!("Found input vertex: {}", e.key().name());
                 output.push(e.key().clone());
                 if one_vertex {
                     return output;

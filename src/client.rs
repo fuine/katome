@@ -1,13 +1,15 @@
 extern crate katome;
 extern crate toml;
 extern crate rustc_serialize;
+extern crate log4rs;
 use katome::asm::assembler::{assemble};
 use toml::{Parser, Value};
 use std::fs::File;
 use std::io::Read;
 
 fn main() {
-    let config = parse_config("./src/settings.toml".to_string());
+    log4rs::init_file("./config/log4rs.yaml", Default::default()).unwrap();
+    let config = parse_config("./config/settings.toml".to_string());
     println!("{:?}", config);
     assemble(config.input_path, config.output_path, config.original_genome_length);
 }

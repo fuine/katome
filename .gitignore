@@ -1,4 +1,6 @@
 target
 Cargo.lock
 /data
-/src/settings.toml
+/config/settings.toml
+/config/log4rs.yaml
+log

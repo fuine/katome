@@ -12,14 +12,18 @@ use std::collections::hash_map::{Entry};
 use data::read_slice::ReadSlice;
 use data::types::{Graph, VecArc,
                   VertexId, K_SIZE};
-// use ::pbr::{ProgressBar};
+use std::io::BufReader;
+use ::pbr::{ProgressBar};
 
 // creates graph
 pub fn read_sequences(path: String, sequences: VecArc, graph: &mut Graph,
                       saved: &mut VertexId, total: &mut usize, number_of_reads: &mut usize) {
+    let line_count = count_lines(&path) / 4;
+    let chunk = line_count / 100;
+    let mut cnt = 0;
     // let mut pb = ProgressBar::new(24294983 as u64);
-    // let mut pb = ProgressBar::new(14214324 as u64);
-    // pb.format("╢▌▌░╟");
+    let mut pb = ProgressBar::new(100 as u64);
+    pb.format("╢▌▌░╟");
     let mut lines = match lines_from_file(&path) {
         Err(why) => panic!("Couldn't open {}: {}", path,
                                                    Error::description(&why)),
@@ -37,7 +41,11 @@ pub fn read_sequences(path: String, sequences: VecArc, graph: &mut Graph,
         lines.next(); // read +
         lines.next(); // read quality
         *number_of_reads += 1;
-        // pb.inc();
+        cnt += 1;
+        if cnt >= chunk {
+            cnt = 0;
+            pb.inc();
+        }
     }
 }
 
@@ -112,6 +120,13 @@ pub fn add_sequence_to_graph(
     }
 }
 
+fn count_lines(filename: &str) -> usize {
+    let file = File::open(filename).expect("I couldn't open that file, sorry :(");
+
+    let reader = BufReader::new(file);
+
+    reader.split(b'\n').count()
+}
 
 fn modify_edge(edges: &mut Edges, to: VertexId) -> bool {
     for i in edges.outgoing.iter_mut(){

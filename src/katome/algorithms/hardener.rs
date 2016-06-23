@@ -55,17 +55,19 @@ use ::rand::Rng;
         // initialize with random data
         sequences.borrow_mut().extend(rand::thread_rng().gen_ascii_chars().take(K_SIZE+2).collect::<String>().into_bytes().into_iter());
         // add 3 vertices with 2 edges (one weak)
+        let rs1 = RS!(sequences, 1);
+        let rs2 = RS!(sequences, 2);
         graph.insert(RS!(sequences, 0), Edges::new(1));
         graph.insert(RS!(sequences, 1), Edges::new(2));
         graph.insert(RS!(sequences, 2), Edges::empty());
 
         {
-            let e: &mut Edges = graph.get_mut(&RS!(sequences, 1)).unwrap();
+            let e: &mut Edges = graph.get_mut(&rs1).unwrap();
             e.in_num += 1;
             e.outgoing[0].1 = 100;
         }
         {
-            let e: &mut Edges = graph.get_mut(&RS!(sequences, 2)).unwrap();
+            let e: &mut Edges = graph.get_mut(&rs2).unwrap();
             e.in_num += 1;
         }
         assert_eq!(graph.len(), 3);
@@ -73,6 +75,8 @@ use ::rand::Rng;
         remove_weak_edges(&mut graph, sequences.clone(), 10);
         // chcek if we have 2 vertices and one edge left
         assert_eq!(graph.len(), 2);
+        assert_eq!(graph.get(&rs1).unwrap().in_num, 0);
+        assert_eq!(graph.get(&rs2).unwrap().in_num, 1);
     }
 
     #[test]
