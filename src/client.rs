@@ -2,6 +2,7 @@ extern crate katome;
 extern crate toml;
 extern crate rustc_serialize;
 extern crate log4rs;
+// extern crate flame;
 use katome::asm::assembler::{assemble};
 use toml::{Parser, Value};
 use std::fs::File;
@@ -12,6 +13,7 @@ fn main() {
     let config = parse_config("./config/settings.toml".to_string());
     println!("{:?}", config);
     assemble(config.input_path, config.output_path, config.original_genome_length);
+    // flame::dump_html(&mut File::create("flame-graph.html").unwrap()).unwrap();
 }
 
 #[derive(Debug)]

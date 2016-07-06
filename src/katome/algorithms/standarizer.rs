@@ -1,7 +1,7 @@
-use ::data::types::{Graph, Weight, K_SIZE, VecArc};
+use ::data::types::{Graph, Weight, K_SIZE};
 use ::algorithms::hardener::{remove_weak_edges};
 
-pub fn standarize_edges(graph: &mut Graph, vec: VecArc, g: usize, n: usize, l: f64) {
+pub fn standarize_edges(graph: &mut Graph, g: usize, n: usize, l: f64) {
     let p: f64 = calculate_standarization_ratio(g, n, l, K_SIZE);
     info!("Ratio: {} for G: {} N: {} L: {} k: {}", p, g, n, l, K_SIZE);
     for edges in graph.values_mut(){
@@ -10,7 +10,7 @@ pub fn standarize_edges(graph: &mut Graph, vec: VecArc, g: usize, n: usize, l: f
         }
     }
     // remove edges with weight 0
-    remove_weak_edges(graph, vec, 1);
+    remove_weak_edges(graph, 1);
 }
 
 // p = G / (N * (L−k+1) )

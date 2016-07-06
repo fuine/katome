@@ -2,8 +2,7 @@ extern crate fnv;
 
 use std::collections::HashMap as HM;
 use std::collections::HashSet;
-use std::sync::Arc;
-use std::cell::RefCell;
+use std::sync::{Arc, RwLock};
 use data::read_slice::{ReadSlice};
 use data::edges::{Edges};
 use std::hash::BuildHasherDefault;
@@ -17,7 +16,7 @@ pub const WEAK_EDGE_THRESHOLD: Weight = 4;
 pub type MyHasher = BuildHasherDefault<FnvHasher>;
 pub type Graph = HM<ReadSlice, Edges, MyHasher>;
 pub type Sequences = Vec<u8>;
-pub type VecArc = Arc<RefCell<Sequences>>;
+pub type VecArc = Arc<RwLock<Sequences>>;
 pub type Nodes = HashSet<VertexId, MyHasher>;
 
 pub struct Asm{

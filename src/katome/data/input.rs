@@ -5,65 +5,71 @@ use std::io::prelude::*;
 use std::io;
 use std::path::Path;
 use std::slice;
-use std::sync::Arc;
-use std::cell::RefCell;
 use data::edges::{Edges};
 use std::collections::hash_map::{Entry};
 use data::read_slice::ReadSlice;
-use data::types::{Graph, VecArc,
+use data::types::{Graph,
                   VertexId, K_SIZE};
+use asm::assembler::{SEQUENCES};
 use std::io::BufReader;
 use ::pbr::{ProgressBar};
 
 // creates graph
-pub fn read_sequences(path: String, sequences: VecArc, graph: &mut Graph,
+pub fn read_sequences(path: String, graph: &mut Graph,
                       saved: &mut VertexId, total: &mut usize, number_of_reads: &mut usize) {
-    let line_count = count_lines(&path) / 4;
-    let chunk = line_count / 100;
-    let mut cnt = 0;
+    // let line_count = count_lines(&path) / 4;
+    // let chunk = line_count / 100;
+    // let mut cnt = 0;
     // let mut pb = ProgressBar::new(24294983 as u64);
-    let mut pb = ProgressBar::new(100 as u64);
-    pb.format("╢▌▌░╟");
+    // let mut pb = ProgressBar::new(100 as u64);
+    // pb.format("╢▌▌░╟");
     let mut lines = match lines_from_file(&path) {
         Err(why) => panic!("Couldn't open {}: {}", path,
                                                    Error::description(&why)),
         Ok(lines) => lines,
     };
-    let register: VecArc = Arc::new(RefCell::new(Vec::with_capacity(100))); // register for a single line
+    let mut register = vec![];
     loop {
         if let None = lines.next() { break }  // read line -- id
         // TODO exit gracefully if format is wrong
-        register.borrow_mut().clear(); // remove last line
+        register.clear(); // remove last line
         // XXX consider using append
-        register.borrow_mut().extend_from_slice(lines.next().unwrap().unwrap().into_bytes().as_slice());
-        *total += register.borrow().len() as VertexId;
-        add_sequence_to_graph(register.clone(), graph, sequences.clone(), saved);
+        register = lines.next().unwrap().unwrap().into_bytes();
+        *total += register.len() as VertexId;
+        add_sequence_to_graph(&register, graph, saved);
         lines.next(); // read +
         lines.next(); // read quality
         *number_of_reads += 1;
-        cnt += 1;
-        if cnt >= chunk {
-            cnt = 0;
-            pb.inc();
-        }
+        // cnt += 1;
+        // if cnt >= chunk {
+            // cnt = 0;
+            // pb.inc();
+        // }
     }
 }
 
 pub fn add_sequence_to_graph(
-        vec: VecArc, graph: &mut Graph, reads: VecArc, saved: &mut VertexId) {
-    assert!(vec.borrow().len() as VertexId >= K_SIZE + 1, "Read is too short!");
+        read: &[u8], graph: &mut Graph, saved: &mut VertexId) {
+    assert!(read.len() as VertexId >= K_SIZE + 1, "Read is too short!");
     let mut ins_counter: VertexId = 0;
-    let mut index_counter = reads.borrow().len() as VertexId;
+    let mut index_counter = SEQUENCES.read().unwrap().len() as VertexId;
     let mut current: ReadSlice;
     let mut insert = false;
-    let mut previous_node: ReadSlice = RS!(vec, 0);
+    let mut previous_node: ReadSlice = RS!(0);
+    let mut offset;
     // let mut prev_val_old: *mut Edges = 0 as *mut Edges;
     let mut prev_val_new: *mut Edges = 0 as *mut Edges;
-    for (cnt, window) in vec.borrow().windows(K_SIZE as usize).enumerate(){
-        let from_tmp = RS!(vec, cnt as VertexId);
+    for (cnt, window) in read.windows(K_SIZE as usize).enumerate(){
+        let from_tmp = {
+            let mut s = SEQUENCES.write().unwrap();
+            offset = s.len();
+            s.extend_from_slice(window);
+            RS!(offset as VertexId)
+        };
         current = { // get a proper key to the hashmap
             match graph.entry(from_tmp) {
                 Entry::Occupied(mut oe) => {
+                    SEQUENCES.write().unwrap().truncate(offset);
                     if ins_counter > 0 {
                         ins_counter += 1;
                     }
@@ -71,27 +77,28 @@ pub fn add_sequence_to_graph(
                     oe.key().clone()
                 }
                 Entry::Vacant(_) => { // we cant use that VE because it is keyed with a temporary value
+                    SEQUENCES.write().unwrap().truncate(offset);
                     // push to vector
                     if ins_counter == 0 {
                         // append window to vector
-                        reads.borrow_mut().extend_from_slice(window);
+                        SEQUENCES.write().unwrap().extend_from_slice(window);
                         *saved += K_SIZE;
                     }
                     else if ins_counter > K_SIZE {
                         // append window to vector
-                        reads.borrow_mut().extend_from_slice(window);
+                        SEQUENCES.write().unwrap().extend_from_slice(window);
                         index_counter += K_SIZE;
                         *saved += K_SIZE;
                     }
                     else {
                         // append only ins_counter last bytes of window
-                        reads.borrow_mut().extend_from_slice(&window[(K_SIZE - ins_counter ) as usize ..]);
+                        SEQUENCES.write().unwrap().extend_from_slice(&window[(K_SIZE - ins_counter ) as usize ..]);
                         index_counter += ins_counter;
                         *saved += ins_counter;
                     }
                     ins_counter = 1;
                     insert = true;
-                    RS!(reads, index_counter)
+                    RS!(index_counter)
                 }
             }
         };

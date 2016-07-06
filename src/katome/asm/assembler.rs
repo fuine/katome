@@ -4,40 +4,43 @@ use ::algorithms::pruner::{Pruner};
 use ::algorithms::hardener::remove_weak_edges;
 use ::algorithms::standarizer::standarize_edges;
 use ::algorithms::collapser::collapse;
-use std::sync::Arc;
+use std::sync::{Arc, RwLock};
 use std::iter::repeat;
-use std::cell::RefCell;
 use std::cmp::max;
 use std::collections::BTreeSet;
+
+lazy_static! {
+    pub static ref SEQUENCES: VecArc = Arc::new(RwLock::new(Vec::new()));
+}
 
 pub fn assemble(input: String, output: String, original_genome_length: usize) {
     info!("Starting assembler!");
     warn!("test");
     error!("test2");
-    let sequences: VecArc = Arc::new(RefCell::new(Vec::new()));
+    // let sequences: VecArc = Arc::new(RefCell::new(Vec::new()));
     // let mut graph: Graph = Graph::with_capacity_and_hasher(91008059, MyHasher::default());
     let mut graph: Graph = Graph::default();
     let mut saved_counter = 0;
     let mut number_of_reads: usize = 0;
     let mut number_of_read_bytes = 0;
-    read_sequences(input, sequences.clone(), &mut graph,
+    read_sequences(input, &mut graph,
                    &mut saved_counter, &mut number_of_read_bytes,
                    &mut number_of_reads);
     print_stats_with_savings(&graph, saved_counter, number_of_read_bytes);
-    sequences.borrow_mut().shrink_to_fit();
-    remove_weak_edges(&mut graph, sequences.clone(), WEAK_EDGE_THRESHOLD);
+    // sequences.borrow_mut().shrink_to_fit();
+    remove_weak_edges(&mut graph, WEAK_EDGE_THRESHOLD);
     print_stats_with_savings(&graph, saved_counter, number_of_read_bytes);
     {
-        Pruner::new(&mut graph, sequences.clone()).prune_graph();
+        Pruner::new(&mut graph, ).prune_graph();
     }
     print_stats_with_savings(&graph, saved_counter, number_of_read_bytes);
     graph.shrink_to_fit();
     let average_read_length: f64 = number_of_read_bytes as f64 / number_of_reads as f64;
     println!("Standarizing!");
-    standarize_edges(&mut graph, sequences.clone(), original_genome_length, number_of_reads, average_read_length);
+    standarize_edges(&mut graph, original_genome_length, number_of_reads, average_read_length);
     print_stats_with_savings(&graph, saved_counter, number_of_read_bytes);
     println!("Collapsing!");
-    collapse(&mut graph, sequences.clone(), output);
+    collapse(&mut graph, output);
     info!("All done!");
 }
 
