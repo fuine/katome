@@ -15,15 +15,16 @@ path = "src/katome/lib.rs"
 
 [dependencies]
 pbr = "0.1.1"
-fnv = "*"
-log = "*"
-rand = "*"
-toml = "*"
-rustc-serialize = "*"
-lazy_static = "*"
+fnv = "1.0.2"
+log = "^0"
+rand = "^0"
+toml = "^0"
+rustc-serialize = "^0"
+lazy_static = "^0.2"
+petgraph = "^0.2"
 
 [dependencies.log4rs]
-version = "*"
+version = "^0"
 features = ["yaml"]
 
 # The development profile, used for `cargo build`.

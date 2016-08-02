@@ -1,33 +1,17 @@
 use ::data::types::{Graph, Weight};
-use ::data::read_slice::ReadSlice;
-use ::data::edges::Edge;
+// use ::data::read_slice::ReadSlice;
+// use ::data::edges::Edge;
 // use asm::assembler::{SEQUENCES};
-use std::collections::hash_map::Entry;
+// use std::collections::hash_map::Entry;
+use ::algorithms::pruner::remove_single_vertices;
 
 pub fn remove_weak_edges(graph: &mut Graph, threshold: Weight) {
-    let mut to_remove: Vec<ReadSlice> = vec![];
-    for vertex in graph.values_mut() {
-        // if edge's weight is lower than threshold
-        to_remove.extend(vertex.outgoing
-            .iter()
-            .filter(|&x| x.1 < threshold)
-            .map(|&x| RS!(x.0))
-            .collect::<Vec<ReadSlice>>());
-        vertex.outgoing = vertex.outgoing
-            .iter()
-            .cloned()
-            .filter(|&x| x.1 >= threshold)
-            .collect::<Vec<Edge>>()
-            .into_boxed_slice();
-    }
-    for vertex in to_remove {
-        if let Entry::Occupied(mut entry) = graph.entry(vertex) {
-            entry.get_mut().in_num -= 1;
-        }
-    }
-    remove_not_connected_vertices(graph);
+    graph.retain_edges(|g, e| {
+        !(*g.edge_weight(e).unwrap() < threshold)
+    });
+    remove_single_vertices(graph);
 }
-
+/*
 pub fn remove_not_connected_vertices(graph: &mut Graph) {
     let keys_to_remove: Vec<ReadSlice> = graph.iter()
         .filter(|&(_, ref val)| val.outgoing.is_empty() && val.in_num == 0)
@@ -36,7 +20,7 @@ pub fn remove_not_connected_vertices(graph: &mut Graph) {
     for key in keys_to_remove {
         graph.remove(&key);
     }
-}
+} */
 
 #[cfg(test)]
 mod tests {

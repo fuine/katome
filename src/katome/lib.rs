@@ -5,6 +5,8 @@ extern crate rand;
 #[macro_use]
 extern crate lazy_static;
 
+extern crate petgraph;
+
 
 #[macro_use]
 pub mod data;

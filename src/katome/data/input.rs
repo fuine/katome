@@ -5,14 +5,19 @@ use std::io::prelude::*;
 use std::io;
 use std::path::Path;
 use std::slice;
-use data::edges::{Edges};
+// use data::edges::{Edges};
+use std::collections::HashMap;
 use std::collections::hash_map::{Entry};
 use data::read_slice::ReadSlice;
-use data::types::{Graph,
+use data::types::{Graph, MyHasher,
                   VertexId, K_SIZE};
 use asm::assembler::{SEQUENCES};
 use std::io::BufReader;
-use ::pbr::{ProgressBar};
+// use ::pbr::{ProgressBar};
+use ::petgraph::graph::NodeIndex;
+
+type ReadsToNodes = HashMap<ReadSlice, NodeIndex<VertexId>, MyHasher>;
+
 
 // creates graph
 pub fn read_sequences(path: String, graph: &mut Graph,
@@ -29,36 +34,29 @@ pub fn read_sequences(path: String, graph: &mut Graph,
         Ok(lines) => lines,
     };
     let mut register = vec![];
+    let mut reads_to_nodes: ReadsToNodes = HashMap::default();
     loop {
         if let None = lines.next() { break }  // read line -- id
-        // TODO exit gracefully if format is wrong
         register.clear(); // remove last line
-        // XXX consider using append
         register = lines.next().unwrap().unwrap().into_bytes();
         *total += register.len() as VertexId;
-        add_sequence_to_graph(&register, graph, saved);
+        add_sequence_to_graph(&register, graph, &mut reads_to_nodes, saved);
         lines.next(); // read +
         lines.next(); // read quality
         *number_of_reads += 1;
-        // cnt += 1;
-        // if cnt >= chunk {
-            // cnt = 0;
-            // pb.inc();
-        // }
     }
 }
 
-pub fn add_sequence_to_graph(
-        read: &[u8], graph: &mut Graph, saved: &mut VertexId) {
+fn add_sequence_to_graph(
+        read: &[u8], graph: &mut Graph, reads_to_nodes: &mut ReadsToNodes, saved: &mut VertexId) {
     assert!(read.len() as VertexId >= K_SIZE + 1, "Read is too short!");
     let mut ins_counter: VertexId = 0;
     let mut index_counter = SEQUENCES.read().unwrap().len() as VertexId;
-    let mut current: ReadSlice;
-    let mut insert = false;
-    let mut previous_node: ReadSlice = RS!(0);
+    let mut current_node: NodeIndex<VertexId>;
+    let mut previous_node: NodeIndex<VertexId> = NodeIndex::new(0);
     let mut offset;
+    let mut insert = false;
     // let mut prev_val_old: *mut Edges = 0 as *mut Edges;
-    let mut prev_val_new: *mut Edges = 0 as *mut Edges;
     for (cnt, window) in read.windows(K_SIZE as usize).enumerate(){
         let from_tmp = {
             let mut s = SEQUENCES.write().unwrap();
@@ -66,15 +64,14 @@ pub fn add_sequence_to_graph(
             s.extend_from_slice(window);
             RS!(offset as VertexId)
         };
-        current = { // get a proper key to the hashmap
-            match graph.entry(from_tmp) {
-                Entry::Occupied(mut oe) => {
+        current_node = { // get a proper key to the hashmap
+            match reads_to_nodes.entry(from_tmp) {
+                Entry::Occupied(oe) => {
                     SEQUENCES.write().unwrap().truncate(offset);
                     if ins_counter > 0 {
                         ins_counter += 1;
                     }
-                    prev_val_new = oe.get_mut() as *mut Edges;
-                    oe.key().clone()
+                    *oe.get()
                 }
                 Entry::Vacant(_) => { // we cant use that VE because it is keyed with a temporary value
                     SEQUENCES.write().unwrap().truncate(offset);
@@ -98,55 +95,38 @@ pub fn add_sequence_to_graph(
                     }
                     ins_counter = 1;
                     insert = true;
-                    RS!(index_counter)
+                    graph.add_node(RS!(index_counter))
                 }
             }
         };
-        if cnt > 0 { // insert current sequence as a member of the previous
-            let modified: bool;
-            {
-                let e: &mut Edges = graph.get_mut(&previous_node).unwrap();
-                modified = modify_edge(e, current.offset);
-            }
-            if modified && !insert { // modify previous edge
-                // new edge
-                let cur: &mut Edges = unsafe {
-                    &mut *prev_val_new as &mut Edges
-                };
-                cur.in_num += 1;
-            }
-        }
         if insert {
-            let val_new: &mut Edges = graph.entry(current.clone()).or_insert_with(Edges::empty);
-            if cnt > 0 {
-                val_new.in_num += 1;
-            }
+            reads_to_nodes.insert(RS!(index_counter), current_node);
             insert = false;
         }
-        previous_node = current;
+        if cnt > 0 { // insert current sequence as a member of the previous
+            update_edge(graph, previous_node, current_node);
+        }
+        previous_node = current_node;
     }
 }
 
+fn update_edge(graph: &mut Graph, a: NodeIndex<VertexId>, b: NodeIndex<VertexId>) {
+    if let Some(ix) = graph.find_edge(a, b) {
+        if let Some(ed) = graph.edge_weight_mut(ix) {
+            *ed += 1;
+            return;
+        }
+    }
+    graph.add_edge(a, b, 1);
+}
+
+#[allow(dead_code)]
 fn count_lines(filename: &str) -> usize {
     let file = File::open(filename).expect("I couldn't open that file, sorry :(");
 
     let reader = BufReader::new(file);
 
     reader.split(b'\n').count()
-}
-
-fn modify_edge(edges: &mut Edges, to: VertexId) -> bool {
-    for i in edges.outgoing.iter_mut(){
-        if i.0 == to {
-            i.1 += 1;
-            return false;
-        }
-    }
-    let mut out_ = Vec::new();
-    out_.extend_from_slice(&edges.outgoing);
-    out_.push((to, 1));
-    edges.outgoing = out_.into_boxed_slice();
-    true
 }
 
 fn lines_from_file<P>(filename: P) -> Result<io::Lines<io::BufReader<File>>, io::Error>
