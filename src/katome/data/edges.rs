@@ -60,7 +60,8 @@ mod tests {
 
     #[test]
     fn adding_edge() {
-        let mut e: Edges = Edges::empty();
+        let mut e: Edges = Edges::empty(0);
+        assert_eq!(e.idx, 0);
         assert_eq!(e.outgoing.len(), 0);
         e.add_edge(0);
         assert_eq!(e.outgoing.len(), 1);
@@ -68,7 +69,8 @@ mod tests {
 
     #[test]
     fn remove_weak_edges() {
-        let mut e: Edges = Edges::empty();
+        let mut e: Edges = Edges::empty(1);
+        assert_eq!(e.idx, 1);
         assert_eq!(e.outgoing.len(), 0);
         e.add_edge(0);
         e.add_edge(1);
@@ -81,7 +83,8 @@ mod tests {
 
     #[test]
     fn remove_no_edges() {
-        let mut e: Edges = Edges::empty();
+        let mut e: Edges = Edges::empty(2);
+        assert_eq!(e.idx, 2);
         assert_eq!(e.outgoing.len(), 0);
         e.remove_weak_edges(2);
         assert_eq!(e.outgoing.len(), 0);
