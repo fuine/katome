@@ -15,11 +15,15 @@ path = "src/katome/lib.rs"
 
 [dependencies]
 pbr = "0.1.1"
-fnv = "*"
+twox-hash = "^1"
 log = "*"
 rand = "*"
 toml = "*"
 rustc-serialize = "*"
+lazy_static = "^0.2"
+petgraph = "^0.2.6"
+metrohash = "*"
+
 
 [dependencies.log4rs]
 version = "*"
@@ -38,7 +42,7 @@ codegen-units = 1  # controls whether the compiler passes `-C codegen-units`
 # The release profile, used for `cargo build --release`.
 [profile.release]
 opt-level = 3
-debug = false
+debug = true
 rpath = false
 lto = false
 debug-assertions = false
