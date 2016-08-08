@@ -37,7 +37,7 @@ type Bridges = HashSet<EdgeIndex<VertexId>>;
 
 pub fn get_contigs(mut graph: Graph) -> Contigs {
     let mut contigs: Contigs = vec![];
-    let mut bridges = find_bridges(&mut graph);
+    let mut bridges = find_bridges(&graph);
     loop {
         let starting_vertices: Vec<NodeIndex<VertexId>> = graph.externals(EdgeDirection::Incoming).collect();
         if starting_vertices.is_empty() {

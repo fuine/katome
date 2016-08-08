@@ -53,7 +53,7 @@ impl cmp::PartialOrd for ReadSlice {
             .unwrap()[self.offset as usize..(self.offset + K_SIZE) as usize];
         let other_slice_ =
             &SEQUENCES.read().unwrap()[other.offset as usize..(other.offset + K_SIZE) as usize];
-        slice_.partial_cmp(&other_slice_)
+        slice_.partial_cmp(other_slice_)
     }
 }
 
@@ -63,7 +63,7 @@ impl cmp::Ord for ReadSlice {
             .unwrap()[self.offset as usize..(self.offset + K_SIZE) as usize];
         let other_slice_ =
             &SEQUENCES.read().unwrap()[other.offset as usize..(other.offset + K_SIZE) as usize];
-        slice_.cmp(&other_slice_)
+        slice_.cmp(other_slice_)
     }
 }
 

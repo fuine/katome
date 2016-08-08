@@ -1,76 +1,78 @@
-// Graph intermediate representation
-// extern crate twox_hash;
-// use self::twox_hash::XxHash;
-use std::hash::BuildHasherDefault;
-extern crate metrohash;
-// use std::collections::hash_state::DefaultState;
-use self::metrohash::MetroHash;
-use std::collections::HashMap as HM;
+//! Graph's Intermediate Representation
+use asm::assembler::SEQUENCES;
 use data::edges::Edges;
 use data::read_slice::ReadSlice;
+use data::types::{Graph, K_SIZE, VertexId};
 
+use std::collections::HashMap as HM;
+use std::collections::hash_map::Entry;
 use std::error::Error;
 use std::fs::File;
+use std::hash::BuildHasherDefault;
+use std::io::BufReader;
 use std::io::prelude::*;
 use std::io;
 use std::path::Path;
-use std::collections::hash_map::{Entry};
-use data::types::{VertexId, K_SIZE, Graph};
-use asm::assembler::{SEQUENCES};
-use std::io::BufReader;
-use ::petgraph::graph::{NodeIndex};
-// use ::pbr::{ProgressBar};
 
-// pub type MyHasher = BuildHasherDefault<XxHash>;
-pub type MyHasher = BuildHasherDefault<MetroHash>;
+extern crate metrohash;
+use self::metrohash::MetroHash;
+// use ::pbr::{ProgressBar};
+use ::petgraph::graph::NodeIndex;
+
 /// Graph's Intermediate Representation (GIR) is used as a middle step during creation of the
 /// graph. It deals with data of unknown size better, because it uses only one underlying
 /// collection, namely hashmap, as opposed to petgraph's two vectors and additional collection to
 /// track already seen sequences.
-pub type GIR = HM<ReadSlice, Edges, MyHasher>;
+pub type GIR = HM<ReadSlice, Edges, BuildHasherDefault<MetroHash>>;
 
+/// Create `GIR` from the supplied fastaq file.
 pub fn create_gir(path: String) -> (GIR, usize, usize) {
-    /* let line_count = count_lines(&path) / 4;
+    /*
+    let line_count = count_lines(&path) / 4;
     let chunk = line_count / 100;
     let mut cnt = 0;
     let mut pb = ProgressBar::new(24294983 as u64);
     let mut pb = ProgressBar::new(100 as u64);
-    pb.format("╢▌▌░╟"); */
+    pb.format("╢▌▌░╟");
+    */
     let mut saved = 0usize;
     let mut total = 0usize;
     let mut gir: GIR = GIR::default();
     let mut lines = match lines_from_file(&path) {
-        Err(why) => panic!("Couldn't open {}: {}", path,
-                                                   Error::description(&why)),
+        Err(why) => panic!("Couldn't open {}: {}", path, Error::description(&why)),
         Ok(lines) => lines,
     };
     let mut register = vec![];
     info!("Starting to build GIR");
     loop {
-        if let None = lines.next() { break }  // read line -- id
+        if let None = lines.next() { break; }  // read line -- id
         // TODO exit gracefully if format is wrong
         register.clear(); // remove last line
         // XXX consider using append
         register = lines.next().unwrap().unwrap().into_bytes();
         total += register.len() as VertexId;
-        saved += add_sequence_to_gir(&register, &mut gir);
+        saved += add_read_to_gir(&register, &mut gir);
         lines.next(); // read +
         lines.next(); // read quality
-        /* cnt += 1;
+        /*
+        cnt += 1;
         if cnt >= chunk {
             cnt = 0;
             pb.inc();
-        } */
+        }
+        */
     }
     info!("GIR built");
     (gir, saved, total)
 }
 
-pub fn add_sequence_to_gir(
-        read: &[u8], gir: &mut GIR) -> usize {
+/// Add new reads to `GIR`, modify weights of existing edges.
+fn add_read_to_gir(read: &[u8], gir: &mut GIR) -> usize {
     assert!(read.len() as VertexId >= K_SIZE + 1, "Read is too short!");
     let mut ins_counter: VertexId = 0;
     let mut index_counter = SEQUENCES.read().unwrap().len() as VertexId;
+    let mut tmp_index_counter;
+    let mut tmp_saved;
     let mut current: ReadSlice;
     let mut insert = false;
     let mut previous_node: ReadSlice = RS!(0);
@@ -78,16 +80,38 @@ pub fn add_sequence_to_gir(
     let mut idx = gir.len();
     let mut current_idx;
     let mut saved = 0;
-    for (cnt, window) in read.windows(K_SIZE as usize).enumerate(){
+    for (cnt, window) in read.windows(K_SIZE as usize).enumerate() {
         let from_tmp = {
             let mut s = SEQUENCES.write().unwrap();
             offset = s.len();
-            s.extend_from_slice(window);
-            RS!(offset as VertexId)
+            // push to vector
+            if ins_counter == 0 {
+                // append window to vector
+                s.extend_from_slice(window);
+                tmp_index_counter = 0;
+                tmp_saved = K_SIZE;
+                RS!(offset as VertexId)
+            }
+            else if ins_counter > K_SIZE {
+                // append window to vector
+                s.extend_from_slice(window);
+                tmp_index_counter = K_SIZE;
+                tmp_saved = K_SIZE;
+                RS!(offset as VertexId)
+            }
+            else {
+                // append only ins_counter last bytes of window
+                s.extend_from_slice(&window[(K_SIZE - ins_counter) as usize..]);
+                tmp_index_counter = ins_counter;
+                tmp_saved = ins_counter;
+                RS!(offset - (K_SIZE - ins_counter) as VertexId)
+            }
         };
-        current = { // get a proper key to the hashmap
+        current = {
+            // get a proper key to the hashmap
             match gir.entry(from_tmp) {
                 Entry::Occupied(oe) => {
+                    // remove added window from SEQUENCES
                     SEQUENCES.write().unwrap().truncate(offset);
                     if ins_counter > 0 {
                         ins_counter += 1;
@@ -95,26 +119,10 @@ pub fn add_sequence_to_gir(
                     current_idx = oe.get().idx;
                     oe.key().clone()
                 }
-                Entry::Vacant(_) => { // we cant use that VE because it is keyed with a temporary value
-                    SEQUENCES.write().unwrap().truncate(offset);
-                    // push to vector
-                    if ins_counter == 0 {
-                        // append window to vector
-                        SEQUENCES.write().unwrap().extend_from_slice(window);
-                        saved += K_SIZE;
-                    }
-                    else if ins_counter > K_SIZE {
-                        // append window to vector
-                        SEQUENCES.write().unwrap().extend_from_slice(window);
-                        index_counter += K_SIZE;
-                        saved += K_SIZE;
-                    }
-                    else {
-                        // append only ins_counter last bytes of window
-                        SEQUENCES.write().unwrap().extend_from_slice(&window[(K_SIZE - ins_counter ) as usize ..]);
-                        index_counter += ins_counter;
-                        saved += ins_counter;
-                    }
+                Entry::Vacant(_) => {
+                    // we cant use that VE because it is keyed with a temporary value
+                    index_counter += tmp_index_counter;
+                    saved += tmp_saved;
                     ins_counter = 1;
                     current_idx = idx;
                     insert = true;
@@ -122,11 +130,13 @@ pub fn add_sequence_to_gir(
                 }
             }
         };
-        if cnt > 0 { // insert current sequence as a member of the previous
+        if cnt > 0 {
+            // insert current sequence as a member of the previous
             let e: &mut Edges = gir.get_mut(&previous_node).unwrap();
-            modify_edge(e, current_idx);
+            create_or_modify_edge(e, current_idx);
         }
         if insert {
+            // insert new vertex
             gir.entry(current.clone()).or_insert_with(|| Edges::empty(current_idx));
             idx += 1;
             insert = false;
@@ -136,8 +146,9 @@ pub fn add_sequence_to_gir(
     saved
 }
 
-fn modify_edge(edges: &mut Edges, to: VertexId) {
-    for i in edges.outgoing.iter_mut(){
+/// Create edge if it previously haven't existed, otherwise increase it's weight.
+fn create_or_modify_edge(edges: &mut Edges, to: VertexId) {
+    for i in edges.outgoing.iter_mut() {
         if i.0 == to {
             i.1 += 1;
             return;
@@ -149,6 +160,7 @@ fn modify_edge(edges: &mut Edges, to: VertexId) {
     edges.outgoing = out_.into_boxed_slice();
 }
 
+/// Count lines in the supplied file.
 #[allow(dead_code)]
 fn count_lines(filename: &str) -> usize {
     let file = File::open(filename).expect("I couldn't open that file, sorry :(");
@@ -159,7 +171,7 @@ fn count_lines(filename: &str) -> usize {
 }
 
 fn lines_from_file<P>(filename: P) -> Result<io::Lines<io::BufReader<File>>, io::Error>
-where P: AsRef<Path> {
+    where P: AsRef<Path> {
     let file = try!(File::open(filename));
     Ok(io::BufReader::new(file).lines())
 }

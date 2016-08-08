@@ -9,6 +9,12 @@ use ::petgraph::EdgeDirection;
 
 
 lazy_static! {
+    /// Global mutable vector of bytes. Contains unique sequences, most of which
+    /// have common parts amongst themselves.
+    ///
+    /// `ReadSlice` uses offsets on this structure to efficiently store
+    /// information about sequence. Global container allows to save 8 bytes in
+    /// ReadSlice (it doesn't have to store `Arc` to the container).
     pub static ref SEQUENCES: VecArc = Arc::new(RwLock::new(Vec::new()));
 }
 
