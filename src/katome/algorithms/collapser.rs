@@ -1,211 +1,142 @@
-use ::data::types::{Graph, VecArc, VertexId};
-use ::data::read_slice::ReadSlice;
-use ::algorithms::hardener::{remove_not_connected_vertices};
-use std::fs::File;
-use std::error::Error;
-use std::io::Write;
+use ::data::types::{Graph, VertexId};
+use ::petgraph::graph::{NodeIndex, EdgeIndex};
+use ::petgraph::EdgeDirection;
+use ::petgraph::algo::scc;
+use ::algorithms::pruner::remove_single_vertices;
+use std::iter;
+use std::collections::HashSet;
 
-pub fn collapse(graph: &mut Graph, vec: VecArc, filename: String) {
-    // open file to writing
-    let mut fh = match File::create(&filename) {
-        Err(why) => panic!("Couldn't create output file {}: {}",
-                           filename,
-                           why.description()),
-        Ok(file) => file,
-    };
-    info!("Starting graph collapse");
-    // find input indices
-    while !graph.is_empty() {
-        let starting_vertices = get_starting_vertices(graph);
-        if starting_vertices.is_empty() && !graph.is_empty() { // cycle
-            info!("Found a cycle");
-            // randomly choose one vertex from the graph
-            let vertex = find_weakest_edge(graph, vec.clone());
-            // let vertex = graph.keys().next().unwrap().clone();
-            let contig = create_contig(&vertex, graph, vec.clone(), true);
-            write_contig(contig, &mut fh);
-        }
-        // for each input index
-        for starting_vertex in starting_vertices {
-            let contig = create_contig(&starting_vertex, graph, vec.clone(), false);
-            write_contig(contig, &mut fh);
-        }
-    }
-}
+/* contigs <- 0 // {output of assembler}
+v <- v0 // current vertex
+c <- 0  // current contig
+loop
+    if |v.out| == 0 then
+        contigs.insert(c)
+        return contigs // end of algorithm
+    end if
+    e <- v.out[0] // current edge
+    if|v:out| > 1 then
+        f <- v.out[1] // second current edge
+        if|v.out| == 2 and (isBridge(e) or isBridge(f)) then
+            if isBridge(e)then
+                e <- f
+            end if
+        else
+            contigs.insert(c) // v is ambiguous
+            c <- 0 // new contig
+        end if
+    end if
+    c.insert(e)
+    v <- e.target
+    G.delete(e) // decreases edge's weight, if it achieves 0, remove e from G
+end loop */
 
-fn write_contig(mut contig: String, fh: &mut File) {
-    contig.push('\n');
-    match fh.write_all(contig.as_bytes()) {
-        Ok(_) => (),
-        Err(e) => error!("Couldn't write contig {} to file: {}", contig, e),
-    }
-}
+pub type Contig = String;
+pub type Contigs = Vec<String>;
+type Bridges = HashSet<EdgeIndex<VertexId>>;
 
-fn create_contig(starting_vertex: &ReadSlice, graph: &mut Graph, vec: VecArc, cycle: bool) -> String {
-    let mut contig: String;
-    // if first -> write whole sequence
-    let mut next_edge: VertexId;
-    let mut vertex: ReadSlice;
-    let mut remove_edge = false;
-    {
-        let mut starting_edges = graph.get_mut(starting_vertex)
-            .expect("Couldn't find vertex which is supposed to be in the graph.");
-        if cycle && starting_edges.in_num != 1 {
-            panic!("Cycle starting vertex has weird number of in_num: {}", starting_edges.in_num);
-        }
-        contig = starting_vertex.name();
-        if starting_edges.outgoing.is_empty() {
-            panic!("Empty outgoing on starting edge with {} in_num!", starting_edges.in_num);
-        }
-        next_edge = starting_edges.outgoing[0].0;
-        vertex = RS!(vec, next_edge);
-        // delete this edge
-        starting_edges.outgoing[0].1 -= 1;
-        if starting_edges.outgoing[0].1 == 0 { // end vertex
-            // remove empty outgoing edges
-            remove_edge = true;
-            starting_edges.remove_edge(0);
-        }
-    }
+pub fn get_contigs(mut graph: Graph) -> Contigs {
+    let mut contigs: Contigs = vec![];
+    let mut bridges = find_bridges(&mut graph);
     loop {
-        let mut edges = graph.get_mut(&vertex)
-            .expect("Couldn't find vertex which is supposed to be in the graph.");
-        if remove_edge && cycle && vertex == *starting_vertex { // we arrived at the beggining - time to end
-            edges.in_num -= 1;
-            trace!("End of cycle!");
+        let starting_vertices: Vec<NodeIndex<VertexId>> = graph.externals(EdgeDirection::Incoming).collect();
+        if starting_vertices.is_empty() {
             break;
         }
-        if edges.in_num == 0 {
-            error!("Something's raelly bad");
-            panic!("WOT TEH SHIT");
+        for v in starting_vertices {
+            contigs.extend(contigs_from_vertex(&mut graph, v, &mut bridges));
         }
-        contig.push(vertex.last_char());
-        if !((edges.outgoing.len() == 1  && edges.in_num == 0)
-            || (edges.outgoing.len() == 1 && edges.in_num == 1))
-            || edges.outgoing.is_empty() {
-            if remove_edge {
-                edges.in_num -= 1;
+        // this invalidates NodeIndices so we need to call it after the loop is done
+        remove_single_vertices(&mut graph);
+    }
+    contigs
+}
+
+fn find_bridges(graph: &Graph) -> Bridges {
+    info!("Start finding bridges");
+    let sccs = scc(graph);
+    let mut vec = iter::repeat(0).take(graph.node_count()).collect::<Vec<usize>>();
+    let count: usize = sccs.iter().map(|x| x.iter().count()).sum();
+    debug!("Nodes: {} sccs: {} vec: {}", graph.node_count(), count, vec.len());
+    // flatten sccs representation from petgraph
+    for (i, scc) in sccs.into_iter().enumerate() {
+        for node in scc.into_iter() {
+            vec[node.index()] = i;
+        }
+    }
+    let mut bridges = Bridges::new();
+    for (id, edge) in graph.raw_edges().iter().enumerate() {
+        if vec[edge.source().index()] != vec[edge.target().index()] {
+            bridges.insert(EdgeIndex::new(id));
+        }
+    }
+    info!("{} bridges found", bridges.len());
+    bridges
+}
+
+fn contigs_from_vertex(graph: &mut Graph, v: NodeIndex<VertexId>, bridges: &mut Bridges) -> Contigs {
+    let mut contigs: Contigs = vec![];
+    let mut contig: Contig = String::new();
+    let mut current_vertex = v;
+    let mut current_edge_index;
+    loop {
+        let number_of_edges = graph.neighbors_directed(current_vertex, EdgeDirection::Outgoing).take(3).count();
+        if number_of_edges == 0 {
+            contigs.push(contig.clone());
+            return contigs;
+        }
+        current_edge_index = graph.first_edge(current_vertex, EdgeDirection::Outgoing).expect("No edge, despite count being higher than 0");
+        if number_of_edges > 1 {
+            let second_edge_index = graph.next_edge(current_edge_index, EdgeDirection::Outgoing).expect("No second edge, despite count being higher than 1");
+            let first_bridge = bridges.contains(&current_edge_index);
+            if number_of_edges == 2 && (first_bridge || bridges.contains(&second_edge_index)) {
+                if first_bridge {
+                    current_edge_index = second_edge_index;
+                }
             }
-            break;
+            else {
+                contigs.push(contig.clone());
+                contig.clear();
+            }
         }
-        else if remove_edge {
-            edges.in_num -= 1;
-            remove_edge = false;
+        if contig.is_empty() {
+            let (source, target) = graph.edge_endpoints(current_edge_index).expect("This should never fail");
+            contig = graph.node_weight(source).unwrap().name();
+            contig.push(graph.node_weight(target).unwrap().last_char());
         }
-        // remove edge
-        edges.outgoing[0].1 -= 1;
-        next_edge = edges.outgoing[0].0;
-        if edges.outgoing[0].1 == 0 { // end vertex
-            // remove empty outgoing
-            edges.remove_edge(0);
-            remove_edge = true;
+        else {
+            let (_, target) = graph.edge_endpoints(current_edge_index).expect("This should never fail");
+            contig.push(graph.node_weight(target).unwrap().last_char());
         }
-        vertex = RS!(vec, next_edge);
+        let (_, target) = graph.edge_endpoints(current_edge_index).expect("Trying to read non-existent edge");
+        decrease_weight(graph, current_edge_index, bridges);
+        current_vertex = target;
     }
-    // remove dead indices
-    remove_not_connected_vertices(graph);
-    contig
 }
 
-fn get_starting_vertices(graph: &Graph) -> Vec<ReadSlice>{
-    graph.iter()
-         .filter(|&(_, val)| val.in_num == 0)
-         .map(|(key, _)| key.clone())
-         .collect::<Vec<ReadSlice>>()
-}
-
-fn find_weakest_edge(graph: &Graph, vec: VecArc) -> ReadSlice {
-    //FIXME
-    // let weakest_id = graph.values()
-         // .filter(|&val| !val.outgoing.is_empty())
-         // .fold((0, 0), |weakest, val| {
-             // for
-         // });
-    // RS!(vec, weakest_id)
-    graph.iter()
-         .skip_while(|&(_, val)| val.outgoing.is_empty())
-         .map(|(key, _)| key.clone())
-         .next()
-         .expect("There are no edges in the graph, despite in_num being > 1 for some vertices!")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::create_contig;
-use ::data::types::{Graph, VecArc, K_SIZE};
-use ::data::read_slice::ReadSlice;
-use ::data::edges::Edges;
-use std::sync::Arc;
-use std::cell::RefCell;
-use ::rand;
-use ::rand::Rng;
-
-    #[test]
-    fn simple_straight_contig() {
-        let sequences: VecArc = Arc::new(RefCell::new(Vec::new()));
-        let mut graph: Graph = Graph::default();
-        let output = rand::thread_rng().gen_ascii_chars().take(K_SIZE+2).collect::<String>();
-        sequences.borrow_mut().extend(output.clone().into_bytes().into_iter());
-        let rs0 = RS!(sequences, 0);
-        let rs1 = RS!(sequences, 1);
-        let rs2 = RS!(sequences, 2);
-        graph.insert(RS!(sequences, 0), Edges::new(1));
-        graph.insert(RS!(sequences, 1), Edges::new(2));
-        graph.insert(RS!(sequences, 2), Edges::empty());
-        {
-            let e: &mut Edges = graph.get_mut(&rs1).unwrap();
-            e.in_num += 1;
+fn decrease_weight(graph: &mut Graph, edge: EdgeIndex<VertexId>, bridges: &mut Bridges) {
+    {
+        let edge_mut = graph.edge_weight_mut(edge).expect("Trying to decrease weight of non-existent edge");
+        *edge_mut -= 1;
+        if *edge_mut > 0 {
+            return;
         }
-        {
-            let e: &mut Edges = graph.get_mut(&rs2).unwrap();
-            e.in_num += 1;
-        }
-        assert_eq!(graph.len(), 3);
-        let contig = create_contig(&rs0, &mut graph, sequences.clone(), false);
-        assert_eq!(graph.len(), 0);
-        assert_eq!(output, contig);
     }
-
-    #[test]
-    fn simple_cycle() {
-        let sequences: VecArc = Arc::new(RefCell::new(Vec::new()));
-        let mut graph: Graph = Graph::default();
-        let output = rand::thread_rng().gen_ascii_chars().take(K_SIZE+4).collect::<String>();
-        sequences.borrow_mut().extend(output.clone().into_bytes().into_iter());
-        let rs0 = RS!(sequences, 0);
-        let rs1 = RS!(sequences, 1);
-        let rs2 = RS!(sequences, 2);
-        let rs3 = RS!(sequences, 3);
-        let rs4 = RS!(sequences, 4);
-        graph.insert(RS!(sequences, 0), Edges::new(1));
-        graph.insert(RS!(sequences, 1), Edges::new(2));
-        graph.insert(RS!(sequences, 2), Edges::new(3));
-        graph.insert(RS!(sequences, 3), Edges::new(4));
-        graph.insert(RS!(sequences, 4), Edges::new(3));
-        {
-            let e: &mut Edges = graph.get_mut(&rs1).unwrap();
-            e.in_num += 1;
-        }
-        {
-            let e: &mut Edges = graph.get_mut(&rs2).unwrap();
-            e.in_num += 1;
-        }
-        {
-            let e: &mut Edges = graph.get_mut(&rs3).unwrap();
-            e.in_num += 2;
-        }
-        {
-            let e: &mut Edges = graph.get_mut(&rs4).unwrap();
-            e.in_num += 1;
-        }
-        assert_eq!(graph.len(), 5);
-        let mut contig = create_contig(&rs0, &mut graph, sequences.clone(), false);
-        assert_eq!(graph.len(), 2);
-        assert_eq!(output[0..K_SIZE + 3].to_string(), contig);
-        assert_eq!(graph.get(&rs3).unwrap().in_num, 1);
-        assert_eq!(graph.get(&rs4).unwrap().in_num, 1);
-        let mut contig = create_contig(&rs3, &mut graph, sequences.clone(), true);
-        assert_eq!(graph.len(), 0);
-        assert_eq!(output[3..K_SIZE + 4].to_string(), contig);
+    // weight is equal to zero - edge should be removed
+    let last_edge = EdgeIndex::new(graph.edge_count()-1);
+    let last_contains = bridges.contains(&last_edge);
+    let current_contains = bridges.contains(&edge);
+    // keep track of the possibly switched EdgeId
+    // as last edge index will become current index
+    if last_contains && current_contains {
+        bridges.remove(&last_edge);
     }
+    else if last_contains {
+        bridges.insert(edge);
+        bridges.remove(&last_edge);
+    }
+    else if current_contains {
+        bridges.remove(&edge);
+    }
+    graph.remove_edge(edge);
 }
