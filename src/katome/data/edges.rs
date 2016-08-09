@@ -1,4 +1,4 @@
-use data::types::{VertexId, EdgeWeight};
+use data::types::{EdgeWeight, VertexId};
 
 /// Edges representation in GIR. It saves information about outgoing edges, in which tuples
 /// of id and weight indicate a single edge.
@@ -10,7 +10,7 @@ pub type Outgoing = Box<[Edge]>;
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
-pub struct Edges{
+pub struct Edges {
     pub outgoing: Outgoing,
     pub idx: VertexId,
 }

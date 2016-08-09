@@ -1,7 +1,7 @@
 use ::petgraph;
 
 use std::sync::{Arc, RwLock};
-use data::read_slice::{ReadSlice};
+use data::read_slice::ReadSlice;
 
 pub type VertexId = usize;
 pub type EdgeWeight = u16;
