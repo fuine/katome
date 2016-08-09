@@ -1,5 +1,5 @@
 use ::data::types::{Graph, VertexId};
-use ::petgraph::graph::{NodeIndex, EdgeIndex};
+use ::petgraph::graph::{EdgeIndex, NodeIndex};
 use ::petgraph::EdgeDirection;
 use ::petgraph::algo::scc;
 use ::algorithms::pruner::remove_single_vertices;
@@ -39,7 +39,8 @@ pub fn get_contigs(mut graph: Graph) -> Contigs {
     let mut contigs: Contigs = vec![];
     let mut bridges = find_bridges(&graph);
     loop {
-        let starting_vertices: Vec<NodeIndex<VertexId>> = graph.externals(EdgeDirection::Incoming).collect();
+        let starting_vertices: Vec<NodeIndex<VertexId>> = graph.externals(EdgeDirection::Incoming)
+            .collect();
         if starting_vertices.is_empty() {
             break;
         }
@@ -80,14 +81,17 @@ fn contigs_from_vertex(graph: &mut Graph, v: NodeIndex<VertexId>, bridges: &mut 
     let mut current_vertex = v;
     let mut current_edge_index;
     loop {
-        let number_of_edges = graph.neighbors_directed(current_vertex, EdgeDirection::Outgoing).take(3).count();
+        let number_of_edges = graph.neighbors_directed(current_vertex, EdgeDirection::Outgoing)
+            .take(3).count();
         if number_of_edges == 0 {
             contigs.push(contig.clone());
             return contigs;
         }
-        current_edge_index = graph.first_edge(current_vertex, EdgeDirection::Outgoing).expect("No edge, despite count being higher than 0");
+        current_edge_index = graph.first_edge(current_vertex, EdgeDirection::Outgoing)
+            .expect("No edge, despite count being higher than 0");
         if number_of_edges > 1 {
-            let second_edge_index = graph.next_edge(current_edge_index, EdgeDirection::Outgoing).expect("No second edge, despite count being higher than 1");
+            let second_edge_index = graph.next_edge(current_edge_index, EdgeDirection::Outgoing)
+                .expect("No second edge, despite count being higher than 1");
             let first_bridge = bridges.contains(&current_edge_index);
             if number_of_edges == 2 && (first_bridge || bridges.contains(&second_edge_index)) {
                 if first_bridge {
@@ -100,15 +104,18 @@ fn contigs_from_vertex(graph: &mut Graph, v: NodeIndex<VertexId>, bridges: &mut 
             }
         }
         if contig.is_empty() {
-            let (source, target) = graph.edge_endpoints(current_edge_index).expect("This should never fail");
+            let (source, target) = graph.edge_endpoints(current_edge_index)
+                .expect("This should never fail");
             contig = graph.node_weight(source).unwrap().name();
             contig.push(graph.node_weight(target).unwrap().last_char());
         }
         else {
-            let (_, target) = graph.edge_endpoints(current_edge_index).expect("This should never fail");
+            let (_, target) = graph.edge_endpoints(current_edge_index)
+                .expect("This should never fail");
             contig.push(graph.node_weight(target).unwrap().last_char());
         }
-        let (_, target) = graph.edge_endpoints(current_edge_index).expect("Trying to read non-existent edge");
+        let (_, target) = graph.edge_endpoints(current_edge_index)
+            .expect("Trying to read non-existent edge");
         decrease_weight(graph, current_edge_index, bridges);
         current_vertex = target;
     }
@@ -116,14 +123,15 @@ fn contigs_from_vertex(graph: &mut Graph, v: NodeIndex<VertexId>, bridges: &mut 
 
 fn decrease_weight(graph: &mut Graph, edge: EdgeIndex<VertexId>, bridges: &mut Bridges) {
     {
-        let edge_mut = graph.edge_weight_mut(edge).expect("Trying to decrease weight of non-existent edge");
+        let edge_mut = graph.edge_weight_mut(edge)
+            .expect("Trying to decrease weight of non-existent edge");
         *edge_mut -= 1;
         if *edge_mut > 0 {
             return;
         }
     }
     // weight is equal to zero - edge should be removed
-    let last_edge = EdgeIndex::new(graph.edge_count()-1);
+    let last_edge = EdgeIndex::new(graph.edge_count() - 1);
     let last_contains = bridges.contains(&last_edge);
     let current_contains = bridges.contains(&edge);
     // keep track of the possibly switched EdgeId
