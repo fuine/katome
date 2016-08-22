@@ -2,7 +2,7 @@
 use asm::assembler::SEQUENCES;
 use data::edges::Edges;
 use data::read_slice::ReadSlice;
-use data::types::{Graph, K_SIZE, VertexId};
+use data::graph::{Graph, K_SIZE, Idx, NodeIndex};
 
 use std::collections::HashMap as HM;
 use std::collections::hash_map::Entry;
@@ -17,7 +17,6 @@ use std::path::Path;
 extern crate metrohash;
 use self::metrohash::MetroHash;
 // use ::pbr::{ProgressBar};
-use ::petgraph::graph::NodeIndex;
 
 /// Graph's Intermediate Representation (GIR) is used as a middle step during creation of the
 /// graph. It deals with data of unknown size better, because it uses only one underlying
@@ -26,7 +25,7 @@ use ::petgraph::graph::NodeIndex;
 pub type GIR = HM<ReadSlice, Edges, BuildHasherDefault<MetroHash>>;
 
 /// Create `GIR` from the supplied fastaq file.
-pub fn create_gir(path: String) -> (GIR, usize, usize) {
+pub fn create_gir(path: String) -> (GIR, usize) {
     /*
     let line_count = count_lines(&path) / 4;
     let chunk = line_count / 100;
@@ -35,7 +34,6 @@ pub fn create_gir(path: String) -> (GIR, usize, usize) {
     let mut pb = ProgressBar::new(100 as u64);
     pb.format("╢▌▌░╟");
     */
-    let mut saved = 0usize;
     let mut total = 0usize;
     let mut gir: GIR = GIR::default();
     let mut lines = match lines_from_file(&path) {
@@ -50,8 +48,8 @@ pub fn create_gir(path: String) -> (GIR, usize, usize) {
         register.clear(); // remove last line
         // XXX consider using append
         register = lines.next().unwrap().unwrap().into_bytes();
-        total += register.len() as VertexId;
-        saved += add_read_to_gir(&register, &mut gir);
+        total += register.len() as Idx;
+        add_read_to_gir(&register, &mut gir);
         lines.next(); // read +
         lines.next(); // read quality
         /*
@@ -63,23 +61,21 @@ pub fn create_gir(path: String) -> (GIR, usize, usize) {
         */
     }
     info!("GIR built");
-    (gir, saved, total)
+    (gir, total)
 }
 
 /// Add new reads to `GIR`, modify weights of existing edges.
-fn add_read_to_gir(read: &[u8], gir: &mut GIR) -> usize {
-    assert!(read.len() as VertexId >= K_SIZE + 1, "Read is too short!");
-    let mut ins_counter: VertexId = 0;
-    let mut index_counter = SEQUENCES.read().unwrap().len() as VertexId;
+fn add_read_to_gir(read: &[u8], gir: &mut GIR) {
+    assert!(read.len() as Idx >= K_SIZE + 1, "Read is too short!");
+    let mut ins_counter: Idx = 0;
+    let mut index_counter = SEQUENCES.read().unwrap().len() as Idx;
     let mut tmp_index_counter;
-    let mut tmp_saved;
     let mut current: ReadSlice;
     let mut insert = false;
     let mut previous_node: ReadSlice = RS!(0);
     let mut offset;
     let mut idx = gir.len();
     let mut current_idx;
-    let mut saved = 0;
     for (cnt, window) in read.windows(K_SIZE as usize).enumerate() {
         let from_tmp = {
             let mut s = SEQUENCES.write().unwrap();
@@ -89,22 +85,19 @@ fn add_read_to_gir(read: &[u8], gir: &mut GIR) -> usize {
                 // append window to vector
                 s.extend_from_slice(window);
                 tmp_index_counter = 0;
-                tmp_saved = K_SIZE;
-                RS!(offset as VertexId)
+                RS!(offset as Idx)
             }
             else if ins_counter > K_SIZE {
                 // append window to vector
                 s.extend_from_slice(window);
                 tmp_index_counter = K_SIZE;
-                tmp_saved = K_SIZE;
-                RS!(offset as VertexId)
+                RS!(offset as Idx)
             }
             else {
                 // append only ins_counter last bytes of window
                 s.extend_from_slice(&window[(K_SIZE - ins_counter) as usize..]);
                 tmp_index_counter = ins_counter;
-                tmp_saved = ins_counter;
-                RS!(offset - (K_SIZE - ins_counter) as VertexId)
+                RS!(offset - (K_SIZE - ins_counter) as Idx)
             }
         };
         current = {
@@ -122,7 +115,6 @@ fn add_read_to_gir(read: &[u8], gir: &mut GIR) -> usize {
                 Entry::Vacant(_) => {
                     // we cant use that VE because it is keyed with a temporary value
                     index_counter += tmp_index_counter;
-                    saved += tmp_saved;
                     ins_counter = 1;
                     current_idx = idx;
                     insert = true;
@@ -143,11 +135,10 @@ fn add_read_to_gir(read: &[u8], gir: &mut GIR) -> usize {
         }
         previous_node = current;
     }
-    saved
 }
 
 /// Create edge if it previously haven't existed, otherwise increase it's weight.
-fn create_or_modify_edge(edges: &mut Edges, to: VertexId) {
+fn create_or_modify_edge(edges: &mut Edges, to: Idx) {
     for i in edges.outgoing.iter_mut() {
         if i.0 == to {
             i.1 += 1;

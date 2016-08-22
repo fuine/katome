@@ -1,4 +1,4 @@
-use data::types::{K_SIZE, VertexId};
+use data::graph::{K_SIZE, Idx};
 use asm::assembler::SEQUENCES;
 use std::cmp;
 use std::hash;
@@ -9,12 +9,12 @@ use std::option::Option;
 /// Works on the global, static `Vec<u8>`.
 #[derive(Eq, Clone)]
 pub struct ReadSlice {
-    pub offset: VertexId,
+    pub offset: Idx,
 }
 
 impl ReadSlice {
     /// Create new slice with the given offset.
-    pub fn new(offset_: VertexId) -> ReadSlice {
+    pub fn new(offset_: Idx) -> ReadSlice {
         ReadSlice { offset: offset_ }
     }
 
@@ -78,7 +78,7 @@ mod tests {
     extern crate rand;
     use rand::Rng;
     use super::*;
-    use ::data::types::K_SIZE;
+    use ::data::graph::K_SIZE;
     use ::asm::assembler::SEQUENCES;
     use std::hash::SipHasher;
     use std::hash::Hash;
