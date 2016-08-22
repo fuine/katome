@@ -1,7 +1,7 @@
-use ::data::types::{Graph, VecArc, EdgeWeight};
+use ::data::graph::{Graph, VecArc, EdgeWeight};
 use ::data::gir::{create_gir, gir_to_graph};
 use ::algorithms::pruner::{remove_dead_paths};
-use ::algorithms::standardizer::standardize_edges;
+use ::algorithms::standardizer::{standardize_edges, standardize_contigs};
 use ::algorithms::collapser::get_contigs;
 use std::sync::{Arc, RwLock};
 use std::iter::repeat;
@@ -18,18 +18,20 @@ lazy_static! {
     pub static ref SEQUENCES: VecArc = Arc::new(RwLock::new(Vec::new()));
 }
 
-#[allow(unused_variables)]
 pub fn assemble(input: String, output: String, original_genome_length: usize, minimal_weight_threshold: usize) {
     info!("Starting assembler!");
-    let (mut gir, number_of_read_bytes, number_of_reads) = create_gir(input);
+    let (mut gir, number_of_read_bytes) = create_gir(input);
     gir.shrink_to_fit();
     let mut graph = gir_to_graph(gir);
     print_stats_with_savings(&graph, number_of_read_bytes);
     println!("First pruning.");
     remove_dead_paths(&mut graph);
     print_stats_with_savings(&graph, number_of_read_bytes);
+    println!("Standardizing contigs.");
+    standardize_contigs(&mut graph);
+    print_stats_with_savings(&graph, number_of_read_bytes);
     // graph.shrink_to_fit();
-    println!("Standardizing");
+    println!("Standardizing edges");
     standardize_edges(&mut graph, original_genome_length, minimal_weight_threshold as EdgeWeight);
     print_stats_with_savings(&graph, number_of_read_bytes);
     println!("Second pruning");

@@ -1,8 +1,6 @@
-use ::data::types::{EdgeWeight, Graph, K_SIZE, VertexId};
-use ::data::read_slice::ReadSlice;
+use ::data::graph::{EdgeWeight, Graph, K_SIZE, EdgeIndex, Node, NodeIndex};
 use std::iter;
 use std::slice;
-use ::petgraph::graph::{EdgeIndex, Node, NodeIndex};
 use ::petgraph::EdgeDirection;
 
 
@@ -15,18 +13,18 @@ enum VertexType<T> {
 
 /// Iterator yielding vertices which either have no incoming or outgoing edges.
 struct Externals<'a> {
-    iter: iter::Enumerate<slice::Iter<'a, Node<ReadSlice, VertexId>>>,
+    iter: iter::Enumerate<slice::Iter<'a, Node>>,
 }
 
 impl<'a> Externals<'a> {
-    fn new(iter_: iter::Enumerate<slice::Iter<'a, Node<ReadSlice, VertexId>>>) -> Externals {
+    fn new(iter_: iter::Enumerate<slice::Iter<'a, Node>>) -> Externals {
         Externals { iter: iter_ }
     }
 }
 
 impl<'a> Iterator for Externals<'a> {
-    type Item = VertexType<NodeIndex<VertexId>>;
-    fn next(&mut self) -> Option<VertexType<NodeIndex<VertexId>>> {
+    type Item = VertexType<NodeIndex>;
+    fn next(&mut self) -> Option<VertexType<NodeIndex>> {
         loop {
             match self.iter.next() {
                 None => return None,
@@ -52,7 +50,7 @@ pub fn remove_dead_paths(graph: &mut Graph) {
     loop {
         debug!("Detected {} input/output vertices",
                Externals::new(graph.raw_nodes().iter().enumerate()).count());
-        let mut to_remove: Vec<EdgeIndex<VertexId>> = vec![];
+        let mut to_remove: Vec<EdgeIndex> = vec![];
         // analyze found input/output vertices
         for v in Externals::new(graph.raw_nodes().iter().enumerate()) {
             // sort into output and input paths
@@ -90,7 +88,7 @@ pub fn remove_dead_paths(graph: &mut Graph) {
 }
 
 /// Remove dead input path.
-fn remove_paths(graph: &mut Graph, to_remove: &[EdgeIndex<VertexId>]) {
+fn remove_paths(graph: &mut Graph, to_remove: &[EdgeIndex]) {
     debug!("Removing {} dead paths", to_remove.len());
     for e in to_remove.iter() {
         graph.remove_edge(*e);
@@ -100,7 +98,7 @@ fn remove_paths(graph: &mut Graph, to_remove: &[EdgeIndex<VertexId>]) {
 
 /// Remove vertives without any edges.
 pub fn remove_single_vertices(graph: &mut Graph) {
-    graph.retain_nodes(|ref g, n| {
+    graph.retain_nodes(|g, n| {
         if let None = g.neighbors_undirected(n).next() {
             false
         }
@@ -111,9 +109,9 @@ pub fn remove_single_vertices(graph: &mut Graph) {
 }
 
 /// Check if vertex initializes a dead input path.
-fn check_dead_path(graph: &Graph, vertex: NodeIndex<VertexId>, first_direction: EdgeDirection,
+fn check_dead_path(graph: &Graph, vertex: NodeIndex, first_direction: EdgeDirection,
     second_direction: EdgeDirection)
-                   -> Option<Vec<EdgeIndex<VertexId>>> {
+                   -> Option<Vec<EdgeIndex>> {
     let mut output_vec = vec![];
     let mut current_vertex = vertex;
     let mut cnt = 0;
@@ -160,7 +158,7 @@ pub fn remove_weak_edges(graph: &mut Graph, threshold: EdgeWeight) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ::data::types::Graph;
+    use ::data::graph::Graph;
     use ::data::read_slice::ReadSlice;
 
     #[test]

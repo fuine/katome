@@ -1,5 +1,4 @@
-use ::data::types::{Graph, VertexId};
-use ::petgraph::graph::{EdgeIndex, NodeIndex};
+use ::data::graph::{Graph, EdgeIndex, NodeIndex, out_degree};
 use ::petgraph::EdgeDirection;
 use ::petgraph::algo::scc;
 use ::algorithms::pruner::remove_single_vertices;
@@ -31,15 +30,15 @@ loop
     G.delete(e) // decreases edge's weight, if it achieves 0, remove e from G
 end loop */
 
-pub type Contig = String;
-pub type Contigs = Vec<String>;
-type Bridges = HashSet<EdgeIndex<VertexId>>;
+pub type SerializedContig = String;
+pub type SerializedContigs = Vec<String>;
+type Bridges = HashSet<EdgeIndex>;
 
-pub fn get_contigs(mut graph: Graph) -> Contigs {
-    let mut contigs: Contigs = vec![];
+pub fn get_contigs(mut graph: Graph) -> SerializedContigs {
+    let mut contigs: SerializedContigs = vec![];
     let mut bridges = find_bridges(&graph);
     loop {
-        let starting_vertices: Vec<NodeIndex<VertexId>> = graph.externals(EdgeDirection::Incoming)
+        let starting_vertices: Vec<NodeIndex> = graph.externals(EdgeDirection::Incoming)
             .collect();
         if starting_vertices.is_empty() {
             break;
@@ -75,14 +74,13 @@ fn find_bridges(graph: &Graph) -> Bridges {
     bridges
 }
 
-fn contigs_from_vertex(graph: &mut Graph, v: NodeIndex<VertexId>, bridges: &mut Bridges) -> Contigs {
-    let mut contigs: Contigs = vec![];
-    let mut contig: Contig = String::new();
+fn contigs_from_vertex(graph: &mut Graph, v: NodeIndex, bridges: &mut Bridges) -> SerializedContigs {
+    let mut contigs: SerializedContigs = vec![];
+    let mut contig: SerializedContig = String::new();
     let mut current_vertex = v;
     let mut current_edge_index;
     loop {
-        let number_of_edges = graph.neighbors_directed(current_vertex, EdgeDirection::Outgoing)
-            .take(3).count();
+        let number_of_edges = out_degree(graph, current_vertex);
         if number_of_edges == 0 {
             contigs.push(contig.clone());
             return contigs;
@@ -121,7 +119,7 @@ fn contigs_from_vertex(graph: &mut Graph, v: NodeIndex<VertexId>, bridges: &mut 
     }
 }
 
-fn decrease_weight(graph: &mut Graph, edge: EdgeIndex<VertexId>, bridges: &mut Bridges) {
+fn decrease_weight(graph: &mut Graph, edge: EdgeIndex, bridges: &mut Bridges) {
     {
         let edge_mut = graph.edge_weight_mut(edge)
             .expect("Trying to decrease weight of non-existent edge");

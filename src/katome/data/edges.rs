@@ -1,35 +1,35 @@
-use data::types::{EdgeWeight, VertexId};
+use data::graph::{EdgeWeight, Idx};
 
 /// Edges representation in GIR. It saves information about outgoing edges, in which tuples
 /// of id and weight indicate a single edge.
 
-/// `VertexId` indicates unique id of the endpoint node of the edge, assigned based on the
+/// `Idx` indicates unique id of the endpoint node of the edge, assigned based on the
 /// GIR creation order.
-pub type Edge = (VertexId, EdgeWeight);
+pub type Edge = (Idx, EdgeWeight);
 pub type Outgoing = Box<[Edge]>;
 
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct Edges {
     pub outgoing: Outgoing,
-    pub idx: VertexId,
+    pub idx: Idx,
 }
 
 impl Edges {
-    pub fn new(to: VertexId, idx_: VertexId) -> Edges {
+    pub fn new(to: Idx, idx_: Idx) -> Edges {
         Edges {
             outgoing: (vec![(to, 1)]).into_boxed_slice(),
             idx: idx_,
         }
     }
-    pub fn empty(idx_: VertexId) -> Edges {
+    pub fn empty(idx_: Idx) -> Edges {
         Edges {
             outgoing: Box::new([]),
             idx: idx_,
         }
     }
 
-    pub fn add_edge(&mut self, to: VertexId) {
+    pub fn add_edge(&mut self, to: Idx) {
         let mut out_ = Vec::new();
         out_.extend_from_slice(&self.outgoing);
         out_.push((to, 1));
