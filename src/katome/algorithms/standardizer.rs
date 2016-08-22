@@ -1,8 +1,8 @@
 use ::data::types::{EdgeWeight, Graph, K_SIZE};
 use ::algorithms::pruner::remove_weak_edges;
 
-/// Standarize edges of the graph.
-pub fn standarize_edges(graph: &mut Graph, g: usize, threshold: EdgeWeight) {
+/// Standardize edges of the graph.
+pub fn standardize_edges(graph: &mut Graph, g: usize, threshold: EdgeWeight) {
     // calculate sum of all weights of edges (s) and sum of weights lower than threshold (l)
     let (s, l) = graph.raw_edges()
         .iter()
@@ -14,7 +14,7 @@ pub fn standarize_edges(graph: &mut Graph, g: usize, threshold: EdgeWeight) {
                 (acc.0 + e.weight as usize, acc.1)
             }
         });
-    let p: f64 = calculate_standarization_ratio(g, K_SIZE, s as usize, l as usize);
+    let p: f64 = calculate_standardization_ratio(g, K_SIZE, s as usize, l as usize);
     info!("Ratio: {} for g: {} k: {} s: {} l: {}", p, g, K_SIZE, s, l);
     // normalize edges across the graph
     for weight in graph.edge_weights_mut() {
@@ -32,7 +32,7 @@ pub fn standarize_edges(graph: &mut Graph, g: usize, threshold: EdgeWeight) {
 }
 
 #[inline]
-fn calculate_standarization_ratio(original_genome_length: usize, k: usize,
+fn calculate_standardization_ratio(original_genome_length: usize, k: usize,
     sum_of_all_weights: usize, weights_lower_than_threshold: usize)
                                   -> f64 {
     (original_genome_length - k) as f64 / (sum_of_all_weights - weights_lower_than_threshold) as f64
@@ -40,11 +40,11 @@ fn calculate_standarization_ratio(original_genome_length: usize, k: usize,
 
 #[cfg(test)]
 mod tests {
-    use super::calculate_standarization_ratio;
+    use super::calculate_standardization_ratio;
 
     #[test]
-    fn standarization_ratio() {
-        let p = calculate_standarization_ratio(10, 0, 10, 0);
+    fn standardization_ratio() {
+        let p = calculate_standardization_ratio(10, 0, 10, 0);
         assert_eq!(p, 1.0);
     }
 }
