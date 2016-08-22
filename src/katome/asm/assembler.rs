@@ -1,7 +1,7 @@
 use ::data::types::{Graph, VecArc, EdgeWeight};
 use ::data::gir::{create_gir, gir_to_graph};
 use ::algorithms::pruner::{remove_dead_paths};
-use ::algorithms::standarizer::standarize_edges;
+use ::algorithms::standardizer::standardize_edges;
 use ::algorithms::collapser::get_contigs;
 use std::sync::{Arc, RwLock};
 use std::iter::repeat;
@@ -25,12 +25,12 @@ pub fn assemble(input: String, output: String, original_genome_length: usize, mi
     gir.shrink_to_fit();
     let mut graph = gir_to_graph(gir);
     print_stats_with_savings(&graph, number_of_read_bytes);
-    remove_dead_paths(&mut graph);
     println!("First pruning.");
+    remove_dead_paths(&mut graph);
     print_stats_with_savings(&graph, number_of_read_bytes);
     // graph.shrink_to_fit();
-    println!("Standarizing");
-    standarize_edges(&mut graph, original_genome_length, minimal_weight_threshold as EdgeWeight);
+    println!("Standardizing");
+    standardize_edges(&mut graph, original_genome_length, minimal_weight_threshold as EdgeWeight);
     print_stats_with_savings(&graph, number_of_read_bytes);
     println!("Second pruning");
     remove_dead_paths(&mut graph);

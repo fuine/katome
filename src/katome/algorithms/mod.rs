@@ -1,3 +1,3 @@
 pub mod pruner;
-pub mod standarizer;
+pub mod standardizer;
 pub mod collapser;
