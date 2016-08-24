@@ -40,6 +40,7 @@ pub type Contigs = Vec<Contig>;
 pub fn standardize_contigs(graph: &mut Graph) {
     // find all ambiguous nodes
     let ambiguous_nodes = get_ambiguous_nodes(graph);
+    debug!("I found {} ambiguous nodes", ambiguous_nodes.len());
     for node in &ambiguous_nodes {
         // get all contigs for the given node
         let contigs = get_contigs_from_node(graph, *node, &ambiguous_nodes);
@@ -50,7 +51,7 @@ pub fn standardize_contigs(graph: &mut Graph) {
     }
 }
 
-pub fn get_contigs_from_node(graph: &Graph, starting_node: NodeIndex,
+fn get_contigs_from_node(graph: &Graph, starting_node: NodeIndex,
     ambiguous_nodes: &AmbiguousNodes)
                              -> Contigs {
     let mut contigs = vec![];
@@ -61,10 +62,10 @@ pub fn get_contigs_from_node(graph: &Graph, starting_node: NodeIndex,
             .expect("This should never fail");
         loop {
             let out_degree = out_degree(graph, current_node);
+            contig.push(current_edge);
             if out_degree != 1 || ambiguous_nodes.contains(&current_node) {
                 break;
             }
-            contig.push(current_edge);
             current_edge = graph.first_edge(current_node, EdgeDirection::Outgoing).unwrap();
             current_node = graph.edge_endpoints(current_edge).unwrap().1;
         }
@@ -74,7 +75,7 @@ pub fn get_contigs_from_node(graph: &Graph, starting_node: NodeIndex,
 }
 
 /// Set weights of consecutive `Edge`s in the `Contig` to the mean value
-pub fn standardize_contig(graph: &mut Graph, contig: Contig) {
+fn standardize_contig(graph: &mut Graph, contig: Contig) {
     // sum all weights in the contig
     let sum: usize = contig.iter()
         .map(|&e| *graph.edge_weight(e).expect("Contig disappeared from Graph!") as usize)
@@ -97,11 +98,109 @@ fn calculate_standardization_ratio(original_genome_length: usize, k: usize,
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use super::calculate_standardization_ratio;
+    use ::data::graph::{Graph, EdgeIndex};
+    use ::data::read_slice::ReadSlice;
 
     #[test]
     fn standardization_ratio() {
         let p = calculate_standardization_ratio(10, 0, 10, 0);
         assert_eq!(p, 1.0);
+    }
+
+    #[test]
+    fn standardize_contigs_empty_graph() {
+        let mut g = Graph::default();
+        assert_eq!(g.node_count(), 0);
+        assert_eq!(g.edge_count(), 0);
+        standardize_contigs(&mut g);
+        assert_eq!(g.node_count(), 0);
+        assert_eq!(g.edge_count(), 0);
+    }
+
+    #[test]
+    fn standardize_contigs_single_contig() {
+        let mut graph = Graph::default();
+        let x = graph.add_node(RS!(0));
+        let y = graph.add_node(RS!(1));
+        let z = graph.add_node(RS!(2));
+        let e1 = graph.add_edge(x, y, 100);
+        let e2 = graph.add_edge(y, z, 1);
+
+        assert_eq!(*graph.edge_weight(e1).unwrap(), 100);
+        assert_eq!(*graph.edge_weight(e2).unwrap(), 1);
+        standardize_contigs(&mut graph);
+        assert_eq!(graph.edge_count(), 2);
+        assert_eq!(*graph.edge_weight(e1).unwrap(), 50);
+        assert_eq!(*graph.edge_weight(e2).unwrap(), 50);
+    }
+
+    #[test]
+    fn standardize_contigs_one_in_two_out() {
+        let mut graph = Graph::from_edges(&[
+            (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 4, 1),
+            (2, 5, 2), (5, 6, 4), (6, 7, 9)
+        ]);
+        standardize_contigs(&mut graph);
+        assert_eq!(graph.edge_count(), 7);
+        assert_eq!(*graph.edge_weight(EdgeIndex::new(0)).unwrap(), 6);
+        assert_eq!(*graph.edge_weight(EdgeIndex::new(1)).unwrap(), 6);
+        assert_eq!(*graph.edge_weight(EdgeIndex::new(2)).unwrap(), 58);
+        assert_eq!(*graph.edge_weight(EdgeIndex::new(3)).unwrap(), 58);
+        for i in 4..7 {
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 5);
+        }
+    }
+
+    #[test]
+    fn standardize_contigs_two_in_one_out() {
+        let mut graph = Graph::from_edges(&[
+            (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 4, 1),
+            (7, 2, 2), (5, 6, 4), (6, 7, 9)
+        ]);
+        standardize_contigs(&mut graph);
+        assert_eq!(graph.edge_count(), 7);
+        assert_eq!(*graph.edge_weight(EdgeIndex::new(0)).unwrap(), 6);
+        assert_eq!(*graph.edge_weight(EdgeIndex::new(1)).unwrap(), 6);
+        assert_eq!(*graph.edge_weight(EdgeIndex::new(2)).unwrap(), 58);
+        assert_eq!(*graph.edge_weight(EdgeIndex::new(3)).unwrap(), 58);
+        for i in 4..7 {
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 5);
+        }
+    }
+
+    #[test]
+    fn standardize_contigs_two_in_two_out() {
+        let mut graph = Graph::from_edges(&[
+            (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 4, 1),
+            (7, 2, 2), (5, 6, 4), (6, 7, 9),
+            (2, 8, 178), (8, 9, 298), (9, 10, 123), (10, 11, 9128)
+        ]);
+        standardize_contigs(&mut graph);
+        assert_eq!(graph.edge_count(), 11);
+        assert_eq!(*graph.edge_weight(EdgeIndex::new(0)).unwrap(), 6);
+        assert_eq!(*graph.edge_weight(EdgeIndex::new(1)).unwrap(), 6);
+        assert_eq!(*graph.edge_weight(EdgeIndex::new(2)).unwrap(), 58);
+        assert_eq!(*graph.edge_weight(EdgeIndex::new(3)).unwrap(), 58);
+        for i in 4..7 {
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 5);
+        }
+        for i in 7..11 {
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 2431);
+        }
+    }
+
+    #[test]
+    fn standardize_contigs_cycle() {
+        let mut graph = Graph::from_edges(&[
+            (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 1, 1),
+        ]);
+        standardize_contigs(&mut graph);
+        assert_eq!(graph.edge_count(), 4);
+        assert_eq!(*graph.edge_weight(EdgeIndex::new(0)).unwrap(), 8);
+        for i in 1..4 {
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 40);
+        }
     }
 }

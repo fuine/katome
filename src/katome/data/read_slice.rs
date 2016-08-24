@@ -7,7 +7,7 @@ use std::option::Option;
 
 /// Wrapper around slice of read.
 /// Works on the global, static `Vec<u8>`.
-#[derive(Eq, Clone)]
+#[derive(Eq, Clone, Default)]
 pub struct ReadSlice {
     pub offset: Idx,
 }
