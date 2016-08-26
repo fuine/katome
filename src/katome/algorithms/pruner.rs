@@ -127,7 +127,7 @@ fn check_dead_path(graph: &Graph, vertex: NodeIndex, first_direction: EdgeDirect
             // add vertex to path
             output_vec.push(e);
             // move to the next vertex in path
-            current_vertex = graph.edge_endpoints(e).expect("Edge disappeared between lookups").1;
+            current_vertex = unwrap!(graph.edge_endpoints(e)).1;
         }
         // if vertex has no outgoing edges
         else {
@@ -141,7 +141,7 @@ fn check_dead_path(graph: &Graph, vertex: NodeIndex, first_direction: EdgeDirect
 
 /// Remove edges with weight below threshold.
 pub fn remove_weak_edges(graph: &mut Graph, threshold: EdgeWeight) {
-    graph.retain_edges(|g, e| !(*g.edge_weight(e).unwrap() < threshold));
+    graph.retain_edges(|g, e| !(*unwrap!(g.edge_weight(e)) < threshold));
     remove_single_vertices(graph);
 }
 

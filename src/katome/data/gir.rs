@@ -68,7 +68,7 @@ pub fn create_gir(path: String) -> (GIR, usize) {
 fn add_read_to_gir(read: &[u8], gir: &mut GIR) {
     assert!(read.len() as Idx >= K_SIZE + 1, "Read is too short!");
     let mut ins_counter: Idx = 0;
-    let mut index_counter = SEQUENCES.read().unwrap().len() as Idx;
+    let mut index_counter = unwrap!(SEQUENCES.read(), "Global sequences poisoned :(").len() as Idx;
     let mut tmp_index_counter;
     let mut current: ReadSlice;
     let mut insert = false;
@@ -78,7 +78,7 @@ fn add_read_to_gir(read: &[u8], gir: &mut GIR) {
     let mut current_idx;
     for (cnt, window) in read.windows(K_SIZE as usize).enumerate() {
         let from_tmp = {
-            let mut s = SEQUENCES.write().unwrap();
+            let mut s = unwrap!(SEQUENCES.write(), "Global sequences poisoned :(");
             offset = s.len();
             // push to vector
             if ins_counter == 0 {
@@ -105,7 +105,7 @@ fn add_read_to_gir(read: &[u8], gir: &mut GIR) {
             match gir.entry(from_tmp) {
                 Entry::Occupied(oe) => {
                     // remove added window from SEQUENCES
-                    SEQUENCES.write().unwrap().truncate(offset);
+                    unwrap!(SEQUENCES.write()).truncate(offset);
                     if ins_counter > 0 {
                         ins_counter += 1;
                     }
@@ -124,7 +124,7 @@ fn add_read_to_gir(read: &[u8], gir: &mut GIR) {
         };
         if cnt > 0 {
             // insert current sequence as a member of the previous
-            let e: &mut Edges = gir.get_mut(&previous_node).unwrap();
+            let e: &mut Edges = unwrap!(gir.get_mut(&previous_node), "Node disappeared");
             create_or_modify_edge(e, current_idx);
         }
         if insert {
