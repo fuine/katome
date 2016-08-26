@@ -58,16 +58,15 @@ fn get_contigs_from_node(graph: &Graph, starting_node: NodeIndex,
     for node in graph.neighbors_directed(starting_node, EdgeDirection::Outgoing) {
         let mut contig = vec![];
         let mut current_node = node;
-        let mut current_edge = graph.find_edge(starting_node, node)
-            .expect("This should never fail");
+        let mut current_edge = unwrap!(graph.find_edge(starting_node, node));
         loop {
             let out_degree = out_degree(graph, current_node);
             contig.push(current_edge);
             if out_degree != 1 || ambiguous_nodes.contains(&current_node) {
                 break;
             }
-            current_edge = graph.first_edge(current_node, EdgeDirection::Outgoing).unwrap();
-            current_node = graph.edge_endpoints(current_edge).unwrap().1;
+            current_edge = unwrap!(graph.first_edge(current_node, EdgeDirection::Outgoing));
+            current_node = unwrap!(graph.edge_endpoints(current_edge)).1;
         }
         contigs.push(contig);
     }
@@ -78,13 +77,13 @@ fn get_contigs_from_node(graph: &Graph, starting_node: NodeIndex,
 fn standardize_contig(graph: &mut Graph, contig: Contig) {
     // sum all weights in the contig
     let sum: usize = contig.iter()
-        .map(|&e| *graph.edge_weight(e).expect("Contig disappeared from Graph!") as usize)
+        .map(|&e| *unwrap!(graph.edge_weight(e)) as usize)
         .sum();
     // calculate new, standardizes weight
     let standardized_weight = (sum as f64 / contig.len() as f64) as EdgeWeight;
     // modify all edges in the contig with new value
     for edge in contig {
-        *graph.edge_weight_mut(edge).expect("Contig disappeared from Graph!") = standardized_weight;
+        *unwrap!(graph.edge_weight_mut(edge)) = standardized_weight;
     }
 }
 

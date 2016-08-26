@@ -7,6 +7,9 @@ extern crate lazy_static;
 
 extern crate petgraph;
 
+#[macro_use]
+extern crate unwrap;
+
 
 #[macro_use]
 pub mod data;

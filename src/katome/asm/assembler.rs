@@ -45,13 +45,13 @@ pub fn assemble(input: String, output: String, original_genome_length: usize, mi
 }
 
 pub fn print_stats_with_savings(graph: &Graph, number_of_read_bytes: usize) {
-    println!("I saved {} out of {} bytes -- {:.2}%", SEQUENCES.read().unwrap().len(), number_of_read_bytes, (SEQUENCES.read().unwrap().len()*100) as f64/number_of_read_bytes as f64);
+    println!("I saved {} out of {} bytes -- {:.2}%", unwrap!(SEQUENCES.read()).len(), number_of_read_bytes, (unwrap!(SEQUENCES.read()).len()*100) as f64/number_of_read_bytes as f64);
     print_stats(graph);
 }
 
 pub fn print_stats(graph: &Graph) {
     println!("I have the capacity of {:?} for {} nodes and {} edges", graph.capacity(), graph.node_count(), graph.edge_count());
-    println!("Max weight: {}", graph.raw_edges().iter().map(|ref w| w.weight).max().expect("No weights in the graph!"));
+    println!("Max weight: {}", unwrap!(graph.raw_edges().iter().map(|ref w| w.weight).max(), "No weights in the graph!"));
     println!("Avg weight: {:.2}", graph.raw_edges().iter().map(|ref w| w.weight).fold(0usize, |s, w| s + w as usize) as f64 / graph.edge_count() as f64);
     /* println!("Max in: {}", graph.node_indices().map(|n| in_degree(graph, n)).max().unwrap());
     println!("Max out: {}", graph.node_indices().map(|n| out_degree(graph, n)).max().expect("No nodes in the graph!"));

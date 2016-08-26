@@ -23,6 +23,7 @@ rustc-serialize = "*"
 lazy_static = "^0.2"
 petgraph = "^0.2.6"
 metrohash = "*"
+unwrap = "~1.1.0"
 
 
 [dependencies.log4rs]

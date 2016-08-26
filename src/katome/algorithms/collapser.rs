@@ -85,11 +85,9 @@ fn contigs_from_vertex(graph: &mut Graph, v: NodeIndex, bridges: &mut Bridges) -
             contigs.push(contig.clone());
             return contigs;
         }
-        current_edge_index = graph.first_edge(current_vertex, EdgeDirection::Outgoing)
-            .expect("No edge, despite count being higher than 0");
+        current_edge_index = unwrap!(graph.first_edge(current_vertex, EdgeDirection::Outgoing));
         if number_of_edges > 1 {
-            let second_edge_index = graph.next_edge(current_edge_index, EdgeDirection::Outgoing)
-                .expect("No second edge, despite count being higher than 1");
+            let second_edge_index = unwrap!(graph.next_edge(current_edge_index, EdgeDirection::Outgoing));
             let first_bridge = bridges.contains(&current_edge_index);
             if number_of_edges == 2 && (first_bridge || bridges.contains(&second_edge_index)) {
                 if first_bridge {
@@ -102,18 +100,15 @@ fn contigs_from_vertex(graph: &mut Graph, v: NodeIndex, bridges: &mut Bridges) -
             }
         }
         if contig.is_empty() {
-            let (source, target) = graph.edge_endpoints(current_edge_index)
-                .expect("This should never fail");
-            contig = graph.node_weight(source).unwrap().name();
-            contig.push(graph.node_weight(target).unwrap().last_char());
+            let (source, target) = unwrap!(graph.edge_endpoints(current_edge_index));
+            contig = unwrap!(graph.node_weight(source)).name();
+            contig.push(unwrap!(graph.node_weight(target)).last_char());
         }
         else {
-            let (_, target) = graph.edge_endpoints(current_edge_index)
-                .expect("This should never fail");
-            contig.push(graph.node_weight(target).unwrap().last_char());
+            let (_, target) = unwrap!(graph.edge_endpoints(current_edge_index));
+            contig.push(unwrap!(graph.node_weight(target)).last_char());
         }
-        let (_, target) = graph.edge_endpoints(current_edge_index)
-            .expect("Trying to read non-existent edge");
+        let (_, target) = unwrap!(graph.edge_endpoints(current_edge_index));
         decrease_weight(graph, current_edge_index, bridges);
         current_vertex = target;
     }
@@ -121,8 +116,8 @@ fn contigs_from_vertex(graph: &mut Graph, v: NodeIndex, bridges: &mut Bridges) -
 
 fn decrease_weight(graph: &mut Graph, edge: EdgeIndex, bridges: &mut Bridges) {
     {
-        let edge_mut = graph.edge_weight_mut(edge)
-            .expect("Trying to decrease weight of non-existent edge");
+        let edge_mut = unwrap!(graph.edge_weight_mut(edge),
+            "Trying to decrease weight of non-existent edge");
         *edge_mut -= 1;
         if *edge_mut > 0 {
             return;

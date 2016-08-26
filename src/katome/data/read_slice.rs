@@ -20,49 +20,45 @@ impl ReadSlice {
 
     /// Get `String` representation of the slice.
     pub fn name(&self) -> String {
-        str::from_utf8(&SEQUENCES.read().unwrap()[self.offset as usize..(self.offset+K_SIZE) as usize]).unwrap().to_string()
+        unwrap!(str::from_utf8(&unwrap!(SEQUENCES.read())[self.offset as usize..(self.offset+K_SIZE) as usize])).to_string()
     }
 
     /// Get last `char` of the slice.
     pub fn last_char(&self) -> char {
-        SEQUENCES.read().unwrap()[(self.offset + K_SIZE - 1) as usize] as char
+        unwrap!(SEQUENCES.read())[(self.offset + K_SIZE - 1) as usize] as char
     }
 }
 
 impl hash::Hash for ReadSlice {
     fn hash<H>(&self, state: &mut H) where H: hash::Hasher {
-        let slice_ = &SEQUENCES.read()
-            .unwrap()[self.offset as usize..(self.offset + K_SIZE) as usize];
+        let slice_ = &unwrap!(SEQUENCES.read())[self.offset as usize..(self.offset + K_SIZE) as usize];
         slice_.hash(state)
     }
 }
 
 impl cmp::PartialEq for ReadSlice {
     fn eq(&self, other: &ReadSlice) -> bool {
-        let slice_ = &SEQUENCES.read()
-            .unwrap()[self.offset as usize..(self.offset + K_SIZE) as usize];
+        let slice_ = &unwrap!(SEQUENCES.read())[self.offset as usize..(self.offset + K_SIZE) as usize];
         let other_slice_ =
-            &SEQUENCES.read().unwrap()[other.offset as usize..(other.offset + K_SIZE) as usize];
+            &unwrap!(SEQUENCES.read())[other.offset as usize..(other.offset + K_SIZE) as usize];
         slice_ == other_slice_
     }
 }
 
 impl cmp::PartialOrd for ReadSlice {
     fn partial_cmp(&self, other: &ReadSlice) -> Option<cmp::Ordering> {
-        let slice_ = &SEQUENCES.read()
-            .unwrap()[self.offset as usize..(self.offset + K_SIZE) as usize];
+        let slice_ = &unwrap!(SEQUENCES.read())[self.offset as usize..(self.offset + K_SIZE) as usize];
         let other_slice_ =
-            &SEQUENCES.read().unwrap()[other.offset as usize..(other.offset + K_SIZE) as usize];
+            &unwrap!(SEQUENCES.read())[other.offset as usize..(other.offset + K_SIZE) as usize];
         slice_.partial_cmp(other_slice_)
     }
 }
 
 impl cmp::Ord for ReadSlice {
     fn cmp(&self, other: &ReadSlice) -> cmp::Ordering {
-        let slice_ = &SEQUENCES.read()
-            .unwrap()[self.offset as usize..(self.offset + K_SIZE) as usize];
+        let slice_ = &unwrap!(SEQUENCES.read())[self.offset as usize..(self.offset + K_SIZE) as usize];
         let other_slice_ =
-            &SEQUENCES.read().unwrap()[other.offset as usize..(other.offset + K_SIZE) as usize];
+            &unwrap!(SEQUENCES.read())[other.offset as usize..(other.offset + K_SIZE) as usize];
         slice_.cmp(other_slice_)
     }
 }
