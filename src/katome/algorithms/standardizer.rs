@@ -97,109 +97,105 @@ fn calculate_standardization_ratio(original_genome_length: usize, k: usize,
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    pub use super::*;
     use super::calculate_standardization_ratio;
-    use ::data::graph::{Graph, EdgeIndex};
-    use ::data::read_slice::ReadSlice;
+    pub use ::data::graph::{Graph, EdgeIndex};
+    pub use ::data::read_slice::ReadSlice;
 
     #[test]
-    fn standardization_ratio() {
+    fn calculates_standardization_ratio() {
         let p = calculate_standardization_ratio(10, 0, 10, 0);
         assert_eq!(p, 1.0);
     }
 
-    #[test]
-    fn standardize_contigs_empty_graph() {
-        let mut g = Graph::default();
-        assert_eq!(g.node_count(), 0);
-        assert_eq!(g.edge_count(), 0);
-        standardize_contigs(&mut g);
-        assert_eq!(g.node_count(), 0);
-        assert_eq!(g.edge_count(), 0);
-    }
-
-    #[test]
-    fn standardize_contigs_single_contig() {
-        let mut graph = Graph::default();
-        let x = graph.add_node(RS!(0));
-        let y = graph.add_node(RS!(1));
-        let z = graph.add_node(RS!(2));
-        let e1 = graph.add_edge(x, y, 100);
-        let e2 = graph.add_edge(y, z, 1);
-
-        assert_eq!(*graph.edge_weight(e1).unwrap(), 100);
-        assert_eq!(*graph.edge_weight(e2).unwrap(), 1);
-        standardize_contigs(&mut graph);
-        assert_eq!(graph.edge_count(), 2);
-        assert_eq!(*graph.edge_weight(e1).unwrap(), 50);
-        assert_eq!(*graph.edge_weight(e2).unwrap(), 50);
-    }
-
-    #[test]
-    fn standardize_contigs_one_in_two_out() {
-        let mut graph = Graph::from_edges(&[
-            (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 4, 1),
-            (2, 5, 2), (5, 6, 4), (6, 7, 9)
-        ]);
-        standardize_contigs(&mut graph);
-        assert_eq!(graph.edge_count(), 7);
-        assert_eq!(*graph.edge_weight(EdgeIndex::new(0)).unwrap(), 6);
-        assert_eq!(*graph.edge_weight(EdgeIndex::new(1)).unwrap(), 6);
-        assert_eq!(*graph.edge_weight(EdgeIndex::new(2)).unwrap(), 58);
-        assert_eq!(*graph.edge_weight(EdgeIndex::new(3)).unwrap(), 58);
-        for i in 4..7 {
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 5);
+    describe! std {
+        it "standardizes contigs in empty graph" {
+            let mut g = Graph::default();
+            assert_eq!(g.node_count(), 0);
+            assert_eq!(g.edge_count(), 0);
+            standardize_contigs(&mut g);
+            assert_eq!(g.node_count(), 0);
+            assert_eq!(g.edge_count(), 0);
         }
-    }
 
-    #[test]
-    fn standardize_contigs_two_in_one_out() {
-        let mut graph = Graph::from_edges(&[
-            (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 4, 1),
-            (7, 2, 2), (5, 6, 4), (6, 7, 9)
-        ]);
-        standardize_contigs(&mut graph);
-        assert_eq!(graph.edge_count(), 7);
-        assert_eq!(*graph.edge_weight(EdgeIndex::new(0)).unwrap(), 6);
-        assert_eq!(*graph.edge_weight(EdgeIndex::new(1)).unwrap(), 6);
-        assert_eq!(*graph.edge_weight(EdgeIndex::new(2)).unwrap(), 58);
-        assert_eq!(*graph.edge_weight(EdgeIndex::new(3)).unwrap(), 58);
-        for i in 4..7 {
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 5);
-        }
-    }
+        it "standardizes single contig" {
+            let mut graph = Graph::default();
+            let x = graph.add_node(RS!(0));
+            let y = graph.add_node(RS!(1));
+            let z = graph.add_node(RS!(2));
+            let e1 = graph.add_edge(x, y, 100);
+            let e2 = graph.add_edge(y, z, 1);
 
-    #[test]
-    fn standardize_contigs_two_in_two_out() {
-        let mut graph = Graph::from_edges(&[
-            (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 4, 1),
-            (7, 2, 2), (5, 6, 4), (6, 7, 9),
-            (2, 8, 178), (8, 9, 298), (9, 10, 123), (10, 11, 9128)
-        ]);
-        standardize_contigs(&mut graph);
-        assert_eq!(graph.edge_count(), 11);
-        assert_eq!(*graph.edge_weight(EdgeIndex::new(0)).unwrap(), 6);
-        assert_eq!(*graph.edge_weight(EdgeIndex::new(1)).unwrap(), 6);
-        assert_eq!(*graph.edge_weight(EdgeIndex::new(2)).unwrap(), 58);
-        assert_eq!(*graph.edge_weight(EdgeIndex::new(3)).unwrap(), 58);
-        for i in 4..7 {
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 5);
+            assert_eq!(*graph.edge_weight(e1).unwrap(), 100);
+            assert_eq!(*graph.edge_weight(e2).unwrap(), 1);
+            standardize_contigs(&mut graph);
+            assert_eq!(graph.edge_count(), 2);
+            assert_eq!(*graph.edge_weight(e1).unwrap(), 50);
+            assert_eq!(*graph.edge_weight(e2).unwrap(), 50);
         }
-        for i in 7..11 {
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 2431);
-        }
-    }
 
-    #[test]
-    fn standardize_contigs_cycle() {
-        let mut graph = Graph::from_edges(&[
-            (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 1, 1),
-        ]);
-        standardize_contigs(&mut graph);
-        assert_eq!(graph.edge_count(), 4);
-        assert_eq!(*graph.edge_weight(EdgeIndex::new(0)).unwrap(), 8);
-        for i in 1..4 {
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 40);
+        it "standardizes contig one in two out" {
+            let mut graph = Graph::from_edges(&[
+                (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 4, 1),
+                (2, 5, 2), (5, 6, 4), (6, 7, 9)
+            ]);
+            standardize_contigs(&mut graph);
+            assert_eq!(graph.edge_count(), 7);
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(0)).unwrap(), 6);
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(1)).unwrap(), 6);
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(2)).unwrap(), 58);
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(3)).unwrap(), 58);
+            for i in 4..7 {
+                assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 5);
+            }
+        }
+
+        it "standardizes contigs two in one out" {
+            let mut graph = Graph::from_edges(&[
+                (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 4, 1),
+                (7, 2, 2), (5, 6, 4), (6, 7, 9)
+            ]);
+            standardize_contigs(&mut graph);
+            assert_eq!(graph.edge_count(), 7);
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(0)).unwrap(), 6);
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(1)).unwrap(), 6);
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(2)).unwrap(), 58);
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(3)).unwrap(), 58);
+            for i in 4..7 {
+                assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 5);
+            }
+        }
+
+        it "standardizes contigs two in two out" {
+            let mut graph = Graph::from_edges(&[
+                (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 4, 1),
+                (7, 2, 2), (5, 6, 4), (6, 7, 9),
+                (2, 8, 178), (8, 9, 298), (9, 10, 123), (10, 11, 9128)
+            ]);
+            standardize_contigs(&mut graph);
+            assert_eq!(graph.edge_count(), 11);
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(0)).unwrap(), 6);
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(1)).unwrap(), 6);
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(2)).unwrap(), 58);
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(3)).unwrap(), 58);
+            for i in 4..7 {
+                assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 5);
+            }
+            for i in 7..11 {
+                assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 2431);
+            }
+        }
+
+        it "standardizes contigs in cycle" {
+            let mut graph = Graph::from_edges(&[
+                (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 1, 1),
+            ]);
+            standardize_contigs(&mut graph);
+            assert_eq!(graph.edge_count(), 4);
+            assert_eq!(*graph.edge_weight(EdgeIndex::new(0)).unwrap(), 8);
+            for i in 1..4 {
+                assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 40);
+            }
         }
     }
 }

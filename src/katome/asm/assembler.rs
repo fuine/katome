@@ -17,6 +17,14 @@ lazy_static! {
     pub static ref SEQUENCES: VecArc = Arc::new(RwLock::new(Vec::new()));
 }
 
+pub mod lock {
+    use std::sync::Mutex;
+    // mutex over sequences specifically for tests
+    lazy_static! {
+        pub static ref LOCK: Mutex<usize> = Mutex::new(0);
+    }
+}
+
 pub fn assemble(input: String, output: String, original_genome_length: usize,
                 minimal_weight_threshold: usize) {
     info!("Starting assembler!");

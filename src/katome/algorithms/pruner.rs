@@ -157,71 +157,58 @@ pub fn remove_weak_edges(graph: &mut Graph, threshold: EdgeWeight) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use ::data::graph::Graph;
-    use ::data::read_slice::ReadSlice;
+    pub use super::*;
+    pub use ::data::graph::Graph;
+    pub use ::data::read_slice::ReadSlice;
 
-    #[test]
-    fn simple_weak_edge() {
-        let mut graph: Graph = Graph::default();
-        // add 3 vertices with 2 edges (one weak)
-        let x = graph.add_node(RS!(0));
-        let y = graph.add_node(RS!(1));
-        let z = graph.add_node(RS!(2));
-        graph.add_edge(x, y, 100);
-        graph.add_edge(y, z, 1);
+    describe! pr {
+        before_each {
+            let mut graph: Graph = Graph::default();
+        }
 
-        assert_eq!(graph.node_count(), 3);
-        assert_eq!(graph.edge_count(), 2);
-        // call remove_weak_edges
-        remove_weak_edges(&mut graph, 10);
-        // chcek if we have 2 vertices and one edge left
-        assert_eq!(graph.node_count(), 2);
-        assert_eq!(graph.edge_count(), 1);
-    }
+        it "prunes single graph" {
+            assert_eq!(graph.node_count(), 0);
+            assert_eq!(graph.edge_count(), 0);
+            remove_weak_edges(&mut graph, 10);
+            assert_eq!(graph.node_count(), 0);
+            assert_eq!(graph.edge_count(), 0);
+        }
 
-    #[test]
-    fn empty_graph() {
-        let mut graph: Graph = Graph::default();
-        // initialize with random data
-        assert_eq!(graph.node_count(), 0);
-        assert_eq!(graph.edge_count(), 0);
-        // call remove_weak_edges
-        remove_weak_edges(&mut graph, 10);
-        assert_eq!(graph.node_count(), 0);
-        assert_eq!(graph.edge_count(), 0);
-    }
+        describe! with_nodes {
+            before_each {
+                let x = graph.add_node(RS!(0));
+                let y = graph.add_node(RS!(1));
+                let z = graph.add_node(RS!(2));
+                assert_eq!(graph.node_count(), 3);
+            }
 
-    #[test]
-    fn only_strong_edges() {
-        let mut graph: Graph = Graph::default();
-        let x = graph.add_node(RS!(0));
-        let y = graph.add_node(RS!(1));
-        let z = graph.add_node(RS!(2));
-        graph.add_edge(x, y, 100);
-        graph.add_edge(y, z, 100);
+            it "prunes single weak edge" {
+                graph.add_edge(x, y, 100);
+                graph.add_edge(y, z, 1);
+                assert_eq!(graph.edge_count(), 2);
+                remove_weak_edges(&mut graph, 10);
+                assert_eq!(graph.node_count(), 2);
+                assert_eq!(graph.edge_count(), 1);
+            }
 
-        assert_eq!(graph.node_count(), 3);
-        assert_eq!(graph.edge_count(), 2);
-        remove_weak_edges(&mut graph, 10);
-        assert_eq!(graph.node_count(), 3);
-        assert_eq!(graph.edge_count(), 2);
-    }
+            it "prunes strong edges" {
+                graph.add_edge(x, y, 100);
+                graph.add_edge(y, z, 100);
+                assert_eq!(graph.edge_count(), 2);
+                remove_weak_edges(&mut graph, 10);
+                assert_eq!(graph.node_count(), 3);
+                assert_eq!(graph.edge_count(), 2);
+            }
 
-    #[test]
-    fn cycle() {
-        let mut graph: Graph = Graph::default();
-        let x = graph.add_node(RS!(0));
-        let y = graph.add_node(RS!(1));
-        let z = graph.add_node(RS!(2));
-        graph.add_edge(x, y, 1);
-        graph.add_edge(y, z, 1);
-        graph.add_edge(z, x, 1);
-
-        assert_eq!(graph.node_count(), 3);
-        assert_eq!(graph.edge_count(), 3);
-        remove_weak_edges(&mut graph, 10);
-        assert_eq!(graph.node_count(), 0);
-        assert_eq!(graph.edge_count(), 0);
+            it "prunes cycle" {
+                graph.add_edge(x, y, 1);
+                graph.add_edge(y, z, 1);
+                graph.add_edge(z, x, 1);
+                assert_eq!(graph.edge_count(), 3);
+                remove_weak_edges(&mut graph, 10);
+                assert_eq!(graph.node_count(), 0);
+                assert_eq!(graph.edge_count(), 0);
+            }
+        }
     }
 }

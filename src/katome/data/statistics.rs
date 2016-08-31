@@ -5,13 +5,19 @@ use data::gir::GIR;
 use data::graph::{EdgeWeight, Graph, in_degree, out_degree};
 use ::petgraph::EdgeDirection;
 
-// pub type Opt<T> = Option<T>;
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Opt<T> {
     Full(T),
     Empty,
 }
 
+impl<T> Default for Opt<T> {
+    fn default() -> Self {
+        Opt::Empty
+    }
+}
+
+#[derive(Default, Debug)]
 pub struct Stats {
     capacity: (usize, Opt<usize>),
     node_count: usize,
@@ -23,6 +29,30 @@ pub struct Stats {
     avg_out_degree: Opt<f64>,
     incoming_vert_count: Opt<usize>,
     outgoing_vert_count: Opt<usize>,
+}
+
+impl Stats {
+    pub fn with_counts(node_count_: usize, edge_count_: usize) -> Stats {
+        let mut stats = Stats::default();
+        stats.node_count = node_count_;
+        stats.edge_count = edge_count_;
+        stats
+    }
+}
+
+impl PartialEq for Stats {
+    // ignore capacity during comparison
+    fn eq(&self, other: &Stats) -> bool {
+        self.node_count == other.node_count &&
+        self.edge_count == other.edge_count &&
+        self.max_edge_weight == other.max_edge_weight &&
+        self.avg_edge_weight == other.avg_edge_weight &&
+        self.max_in_degree == other.max_in_degree &&
+        self.max_out_degree == other.max_out_degree &&
+        self.avg_out_degree == other.avg_out_degree &&
+        self.incoming_vert_count == other.incoming_vert_count &&
+        self.outgoing_vert_count == other.outgoing_vert_count
+    }
 }
 
 impl<T: Display> Display for Opt<T> {

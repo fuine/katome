@@ -64,37 +64,36 @@ impl Default for Edges {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    pub use super::*;
 
-    #[test]
-    fn adding_edge() {
-        let mut e: Edges = Edges::empty(0);
-        assert_eq!(e.idx, 0);
-        assert_eq!(e.outgoing.len(), 0);
-        e.add_edge(0);
-        assert_eq!(e.outgoing.len(), 1);
-    }
+    describe! e {
+        it "adds edge" {
+            let mut e: Edges = Edges::empty(0);
+            assert_eq!(e.idx, 0);
+            assert_eq!(e.outgoing.len(), 0);
+            e.add_edge(0);
+            assert_eq!(e.outgoing.len(), 1);
+        }
 
-    #[test]
-    fn remove_weak_edges() {
-        let mut e: Edges = Edges::empty(1);
-        assert_eq!(e.idx, 1);
-        assert_eq!(e.outgoing.len(), 0);
-        e.add_edge(0);
-        e.add_edge(1);
-        e.add_edge(2);
-        e.outgoing[0].1 += 3;
-        assert_eq!(e.outgoing.len(), 3);
-        e.remove_weak_edges(2);
-        assert_eq!(e.outgoing.len(), 1);
-    }
+        it "removes weak edges" {
+            let mut e: Edges = Edges::empty(1);
+            assert_eq!(e.idx, 1);
+            assert_eq!(e.outgoing.len(), 0);
+            e.add_edge(0);
+            e.add_edge(1);
+            e.add_edge(2);
+            e.outgoing[0].1 += 3;
+            assert_eq!(e.outgoing.len(), 3);
+            e.remove_weak_edges(2);
+            assert_eq!(e.outgoing.len(), 1);
+        }
 
-    #[test]
-    fn remove_no_edges() {
-        let mut e: Edges = Edges::empty(2);
-        assert_eq!(e.idx, 2);
-        assert_eq!(e.outgoing.len(), 0);
-        e.remove_weak_edges(2);
-        assert_eq!(e.outgoing.len(), 0);
+        it "removes no edge" {
+            let mut e: Edges = Edges::empty(2);
+            assert_eq!(e.idx, 2);
+            assert_eq!(e.outgoing.len(), 0);
+            e.remove_weak_edges(2);
+            assert_eq!(e.outgoing.len(), 0);
+        }
     }
 }

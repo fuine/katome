@@ -7,7 +7,7 @@ use std::option::Option;
 
 /// Wrapper around slice of read.
 /// Works on the global, static `Vec<u8>`.
-#[derive(Eq, Clone, Default)]
+#[derive(Eq, Clone, Default, Debug)]
 pub struct ReadSlice {
     pub offset: Idx,
 }
@@ -72,79 +72,53 @@ macro_rules! RS {
 #[cfg(test)]
 mod tests {
     extern crate rand;
-    use rand::Rng;
-    use super::*;
-    use ::data::graph::K_SIZE;
-    use ::asm::assembler::SEQUENCES;
-    use std::hash::SipHasher;
-    use std::hash::Hash;
+    pub use super::*;
+    pub use rand::Rng;
+    pub use rand::thread_rng;
+    pub use ::data::graph::K_SIZE;
+    pub use ::asm::assembler::SEQUENCES;
+    pub use std::hash::SipHasher;
+    pub use std::hash::Hash;
+    pub use ::asm::assembler::lock::LOCK;
 
-    #[test]
-    fn new_read_slice() {
-        // initialize with random data
-        let name = rand::thread_rng()
-            .gen_ascii_chars()
-            .take(K_SIZE)
-            .collect::<String>();
-        {
-            let mut seq = SEQUENCES.write().unwrap();
-            seq.clear();
-            seq.extend(name.clone().into_bytes());
+    describe! rs {
+        before_each {
+            // global lock on sequences for test
+            let _l = LOCK.lock().unwrap();
+            // initialize with random data
+            let name = thread_rng()
+                .gen_ascii_chars()
+                .take(K_SIZE)
+                .collect::<String>();
+            {
+                let mut seq = SEQUENCES.write().unwrap();
+                seq.clear();
+                seq.extend(name.clone().into_bytes());
+                seq.extend(name.clone().into_bytes());
+            }
         }
-        let rs = ReadSlice::new(0);
-        assert_eq!(rs.name(), name);
-    }
 
-    #[test]
-    fn new_read_slice_from_macro() {
-        // initialize with random data
-        let name = rand::thread_rng()
-            .gen_ascii_chars()
-            .take(K_SIZE)
-            .collect::<String>();
-        {
-            let mut seq = SEQUENCES.write().unwrap();
-            seq.clear();
-            seq.extend(name.clone().into_bytes());
+        it "creates new RS" {
+            let rs = ReadSlice::new(0);
+            assert_eq!(rs.name(), name);
         }
-        let rs = RS!(0);
-        assert_eq!(rs.name(), name);
-    }
 
-    #[test]
-    fn compare_similar_read_slices() {
-        // initialize with random data
-        let name = rand::thread_rng()
-            .gen_ascii_chars()
-            .take(K_SIZE)
-            .collect::<String>();
-        {
-            let mut seq = SEQUENCES.write().unwrap();
-            seq.clear();
-            seq.extend(name.clone().into_bytes());
-            seq.extend(name.clone().into_bytes());
+        it "creates new RS with macro" {
+            let rs = RS!(0);
+            assert_eq!(rs.name(), name);
         }
-        let rs1 = RS!(0);
-        let rs2 = RS!(K_SIZE);
-        assert!(rs1 == rs2);
-    }
 
-    #[test]
-    fn compare_hashes() {
-        // initialize with random data
-        let name = rand::thread_rng()
-            .gen_ascii_chars()
-            .take(K_SIZE)
-            .collect::<String>();
-        {
-            let mut seq = SEQUENCES.write().unwrap();
-            seq.clear();
-            seq.extend(name.clone().into_bytes());
-            seq.extend(name.clone().into_bytes());
+        it "compares similar RSes" {
+            let rs1 = RS!(0);
+            let rs2 = RS!(K_SIZE);
+            assert_eq!(rs1, rs2);
         }
-        let rs1 = RS!(0);
-        let rs2 = RS!(K_SIZE);
-        let mut hasher = SipHasher::new();
-        assert!(rs1.hash(&mut hasher) == rs2.hash(&mut hasher));
+
+        it "compares hashes" {
+            let rs1 = RS!(0);
+            let rs2 = RS!(K_SIZE);
+            let mut hasher = SipHasher::new();
+            assert!(rs1.hash(&mut hasher) == rs2.hash(&mut hasher));
+        }
     }
 }
