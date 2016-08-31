@@ -1,5 +1,5 @@
-use ::data::graph::{Graph, VecArc, EdgeWeight, out_degree, in_degree};
-use ::data::gir::{create_gir, gir_to_graph};
+use ::data::graph::{Graph, VecArc, EdgeWeight};
+use ::data::gir::{GIR, create_gir, gir_to_graph};
 use ::algorithms::pruner::{remove_dead_paths};
 use ::algorithms::standardizer::{standardize_edges, standardize_contigs};
 use ::algorithms::collapser::get_contigs;
@@ -20,8 +20,8 @@ lazy_static! {
 
 pub fn assemble(input: String, output: String, original_genome_length: usize, minimal_weight_threshold: usize) {
     info!("Starting assembler!");
-    let (mut gir, number_of_read_bytes) = create_gir(input);
-    gir.shrink_to_fit();
+    let (gir, number_of_read_bytes) = create_gir(input);
+    print_stats_for_gir(&gir, number_of_read_bytes);
     let mut graph = gir_to_graph(gir);
     print_stats_with_savings(&graph, number_of_read_bytes);
     println!("First pruning.");
@@ -42,6 +42,11 @@ pub fn assemble(input: String, output: String, original_genome_length: usize, mi
     println!("I created {} contigs", contigs.len());
     // collapse(&mut graph, output);
     info!("All done!");
+}
+
+pub fn print_stats_for_gir(gir: &GIR, number_of_read_bytes: usize) {
+    println!("I saved {} out of {} bytes -- {:.2}%", unwrap!(SEQUENCES.read()).len(), number_of_read_bytes, (unwrap!(SEQUENCES.read()).len()*100) as f64/number_of_read_bytes as f64);
+    println!("I have the capacity of {:?} for {} nodes and {} edges", gir.capacity(), gir.len(), gir.iter().map(|ref e| e.edges.outgoing.len()).sum::<usize>());
 }
 
 pub fn print_stats_with_savings(graph: &Graph, number_of_read_bytes: usize) {

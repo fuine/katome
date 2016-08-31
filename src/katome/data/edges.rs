@@ -53,6 +53,14 @@ impl Edges {
     }
 }
 
+impl Default for Edges {
+    fn default() -> Edges {
+        Edges {
+            outgoing: Box::new([]),
+            idx: 0,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {

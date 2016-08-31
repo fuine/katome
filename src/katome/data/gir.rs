@@ -1,11 +1,13 @@
 //! Graph's Intermediate Representation
+use alloc::heap::deallocate;
+use std::mem;
 use asm::assembler::SEQUENCES;
 use data::edges::Edges;
 use data::read_slice::ReadSlice;
 use data::graph::{Graph, K_SIZE, Idx, NodeIndex};
+use data::vertex::{Vertex};
 
-use std::collections::HashMap as HM;
-use std::collections::hash_map::Entry;
+use std::collections::HashSet as HS;
 use std::error::Error;
 use std::fs::File;
 use std::hash::BuildHasherDefault;
@@ -22,7 +24,7 @@ use self::metrohash::MetroHash;
 /// graph. It deals with data of unknown size better, because it uses only one underlying
 /// collection, namely hashmap, as opposed to petgraph's two vectors and additional collection to
 /// track already seen sequences.
-pub type GIR = HM<ReadSlice, Edges, BuildHasherDefault<MetroHash>>;
+pub type GIR = HS<Box<Vertex>, BuildHasherDefault<MetroHash>>;
 
 /// Create `GIR` from the supplied fastaq file.
 pub fn create_gir(path: String) -> (GIR, usize) {
@@ -68,70 +70,52 @@ pub fn create_gir(path: String) -> (GIR, usize) {
 fn add_read_to_gir(read: &[u8], gir: &mut GIR) {
     assert!(read.len() as Idx >= K_SIZE + 1, "Read is too short!");
     let mut ins_counter: Idx = 0;
-    let mut index_counter = unwrap!(SEQUENCES.read(), "Global sequences poisoned :(").len() as Idx;
-    let mut tmp_index_counter;
-    let mut current: ReadSlice;
-    let mut insert = false;
-    let mut previous_node: ReadSlice = RS!(0);
+    let mut current: Box<Vertex>;
+    let mut previous_node = Box::new(Vertex::new(RS!(0), Edges::default()));
     let mut offset;
     let mut idx = gir.len();
     let mut current_idx;
+    let mut insert = false;
     for (cnt, window) in read.windows(K_SIZE as usize).enumerate() {
-        let from_tmp = {
+        let rs = {
             let mut s = unwrap!(SEQUENCES.write(), "Global sequences poisoned :(");
             offset = s.len();
-            // push to vector
-            if ins_counter == 0 {
+            // append new data to the global vector of sequences
+            if ins_counter == 0 || ins_counter > K_SIZE {
                 // append window to vector
                 s.extend_from_slice(window);
-                tmp_index_counter = 0;
-                RS!(offset as Idx)
-            }
-            else if ins_counter > K_SIZE {
-                // append window to vector
-                s.extend_from_slice(window);
-                tmp_index_counter = K_SIZE;
                 RS!(offset as Idx)
             }
             else {
                 // append only ins_counter last bytes of window
                 s.extend_from_slice(&window[(K_SIZE - ins_counter) as usize..]);
-                tmp_index_counter = ins_counter;
                 RS!(offset - (K_SIZE - ins_counter) as Idx)
             }
         };
-        current = {
-            // get a proper key to the hashmap
-            match gir.entry(from_tmp) {
-                Entry::Occupied(oe) => {
-                    // remove added window from SEQUENCES
-                    unwrap!(SEQUENCES.write()).truncate(offset);
-                    if ins_counter > 0 {
-                        ins_counter += 1;
-                    }
-                    current_idx = oe.get().idx;
-                    oe.key().clone()
-                }
-                Entry::Vacant(_) => {
-                    // we cant use that VE because it is keyed with a temporary value
-                    index_counter += tmp_index_counter;
-                    ins_counter = 1;
-                    current_idx = idx;
-                    insert = true;
-                    RS!(index_counter)
-                }
+        current = Box::new(Vertex::new(rs, Edges::empty(idx)));
+        if let Some(v) = gir.get(&current) {
+            // sequence already exists, we should remove redundant bytes from
+            // SEQUENCES and update counters
+            if ins_counter > 0 {
+                ins_counter += 1;
             }
-        };
-        if cnt > 0 {
-            // insert current sequence as a member of the previous
-            let e: &mut Edges = unwrap!(gir.get_mut(&previous_node), "Node disappeared");
-            create_or_modify_edge(e, current_idx);
+            unwrap!(SEQUENCES.write()).truncate(offset);
+            current_idx = v.edges.idx;
+            current = v.clone();
+        }
+        else {
+            insert = true;
+            ins_counter = 1;
+            current_idx = idx;
+            idx += 1;
         }
         if insert {
-            // insert new vertex
-            gir.entry(current.clone()).or_insert_with(|| Edges::empty(current_idx));
-            idx += 1;
+            gir.insert(current.clone());
             insert = false;
+        }
+        if cnt > 0 {
+            create_or_modify_edge(&mut previous_node.edges, current_idx);
+            gir.replace(previous_node);
         }
         previous_node = current;
     }
@@ -172,27 +156,25 @@ fn lines_from_file<P>(filename: P) -> Result<io::Lines<io::BufReader<File>>, io:
 /// always use iterator with find, which pessimistically yields complexity of O(n), as opposed to
 /// O(1) for hashmap).
 pub fn gir_to_graph(gir: GIR) -> Graph {
-    info!("Starting conversion from GIR to graph");
-    // get rid of hashes -- we don't need them anymore
-    let mut vec = gir.into_iter().collect::<Vec<(ReadSlice, Edges)>>();
-    // sort this vector according to indicees of nodes, guaranteeing proper node creation (node
-    // indices are created just like we created ours, but iterator over hashmap likely changed the
-    // ordering).
-    vec.sort_by(|a, b| a.1.idx.cmp(&b.1.idx));
-    // create separate representations of nodes and edges
-    let (nodes, edges): (Vec<ReadSlice>, Vec<Edges>) = vec.into_iter().unzip();
     let mut graph = Graph::default();
-    // digest nodes and move them into the Graph
-    for (cnt, node) in nodes.into_iter().enumerate() {
-        let tmp = graph.add_node(node).index();
-        assert_eq!(tmp, cnt);
-    }
-    for edges_ in edges.into_iter() {
-        let idx = edges_.idx;
-        for edge in edges_.outgoing.into_iter() {
-            graph.add_edge(NodeIndex::new(idx), NodeIndex::new(edge.0), edge.1);
+    let size = mem::size_of::<Vertex>();
+    let align = mem::align_of::<Vertex>();
+    for vertex in gir.into_iter() {
+        let source = NodeIndex::new(vertex.edges.idx);
+        while source.index() >= graph.node_count() {
+            graph.add_node(ReadSlice::default());
         }
+        for edge in vertex.edges.outgoing.into_iter() {
+            while edge.0 >= graph.node_count() {
+                graph.add_node(ReadSlice::default());
+            }
+            graph.add_edge(source, NodeIndex::new(edge.0), edge.1);
+        }
+        *unwrap!(graph.node_weight_mut(source)) = vertex.rs.clone();
+
+        // deallocate box such that it does not occupy memory
+        let raw = Box::into_raw(vertex);
+        unsafe { deallocate(raw as *mut _, size, align) };
     }
-    info!("Conversion ended!");
     graph
 }
