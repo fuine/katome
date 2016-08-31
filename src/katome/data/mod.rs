@@ -4,3 +4,4 @@ pub mod graph;
 pub mod edges;
 pub mod gir;
 pub mod vertex;
+pub mod statistics;
