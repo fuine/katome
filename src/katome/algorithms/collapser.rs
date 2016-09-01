@@ -1,4 +1,5 @@
-use ::data::graph::{Graph, EdgeIndex, NodeIndex, out_degree};
+use ::data::collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
+use ::data::collections::graphs::graph::Graph;
 use ::petgraph::EdgeDirection;
 use ::petgraph::algo::scc;
 use ::algorithms::pruner::Clean;
@@ -34,7 +35,7 @@ pub type SerializedContig = String;
 pub type SerializedContigs = Vec<String>;
 type Bridges = HashSet<EdgeIndex>;
 
-pub fn get_contigs(mut graph: Graph) -> SerializedContigs {
+pub fn get_contigs(mut graph: PtGraph) -> SerializedContigs {
     let mut contigs: SerializedContigs = vec![];
     let mut bridges = find_bridges(&graph);
     loop {
@@ -52,7 +53,7 @@ pub fn get_contigs(mut graph: Graph) -> SerializedContigs {
     contigs
 }
 
-fn find_bridges(graph: &Graph) -> Bridges {
+fn find_bridges(graph: &PtGraph) -> Bridges {
     info!("Start finding bridges");
     let sccs = scc(graph);
     let mut vec = iter::repeat(0).take(graph.node_count()).collect::<Vec<usize>>();
@@ -74,20 +75,21 @@ fn find_bridges(graph: &Graph) -> Bridges {
     bridges
 }
 
-fn contigs_from_vertex(graph: &mut Graph, v: NodeIndex, bridges: &mut Bridges) -> SerializedContigs {
+fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex, bridges: &mut Bridges) -> SerializedContigs {
     let mut contigs: SerializedContigs = vec![];
     let mut contig: SerializedContig = String::new();
     let mut current_vertex = v;
     let mut current_edge_index;
     loop {
-        let number_of_edges = out_degree(graph, current_vertex);
+        let number_of_edges = graph.out_degree(&current_vertex);
         if number_of_edges == 0 {
             contigs.push(contig.clone());
             return contigs;
         }
         current_edge_index = unwrap!(graph.first_edge(current_vertex, EdgeDirection::Outgoing));
         if number_of_edges > 1 {
-            let second_edge_index = unwrap!(graph.next_edge(current_edge_index, EdgeDirection::Outgoing));
+            let second_edge_index =
+                unwrap!(graph.next_edge(current_edge_index, EdgeDirection::Outgoing));
             let first_bridge = bridges.contains(&current_edge_index);
             if number_of_edges == 2 && (first_bridge || bridges.contains(&second_edge_index)) {
                 if first_bridge {
@@ -114,10 +116,10 @@ fn contigs_from_vertex(graph: &mut Graph, v: NodeIndex, bridges: &mut Bridges) -
     }
 }
 
-fn decrease_weight(graph: &mut Graph, edge: EdgeIndex, bridges: &mut Bridges) {
+fn decrease_weight(graph: &mut PtGraph, edge: EdgeIndex, bridges: &mut Bridges) {
     {
         let edge_mut = unwrap!(graph.edge_weight_mut(edge),
-            "Trying to decrease weight of non-existent edge");
+                               "Trying to decrease weight of non-existent edge");
         *edge_mut -= 1;
         if *edge_mut > 0 {
             return;

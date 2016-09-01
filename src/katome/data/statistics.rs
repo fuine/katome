@@ -1,8 +1,10 @@
 use std::fmt;
 use std::fmt::Display;
 use std::iter::repeat;
-use data::gir::GIR;
-use data::graph::{EdgeWeight, Graph, in_degree, out_degree};
+use data::collections::girs::hs_gir::HsGIR;
+use data::primitives::EdgeWeight;
+use data::collections::graphs::graph::Graph;
+use data::collections::graphs::pt_graph::PtGraph;
 use ::petgraph::EdgeDirection;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -102,7 +104,7 @@ pub trait HasStats {
     }
 }
 
-impl HasStats for Graph {
+impl HasStats for PtGraph {
     fn stats(&self) -> Stats {
         let max_weight = unwrap!(self.raw_edges().iter().map(|ref w| w.weight).max(),
                                  "No weights in the self!");
@@ -110,9 +112,9 @@ impl HasStats for Graph {
             self.raw_edges().iter().map(|w| w.weight).fold(0usize, |s, w| s + w as usize) as f64 /
             self.edge_count() as f64;
         let max_out_degree_ =
-            self.node_indices().map(|n| out_degree(self, n)).max().expect("No nodes in the self!");
+            self.node_indices().map(|n| self.out_degree(&n)).max().expect("No nodes in the self!");
         let avg_out_degree_ = (self.node_indices()
-            .fold(0usize, |m, n| m + out_degree(self, n))) as f64 /
+            .fold(0usize, |m, n| m + self.out_degree(&n))) as f64 /
                               self.node_count() as f64;
         let (node_cap, edge_cap) = self.capacity();
         Stats {
@@ -122,7 +124,7 @@ impl HasStats for Graph {
             max_edge_weight: Opt::Full(max_weight),
             avg_edge_weight: Opt::Full(avg_edge_weight_),
             max_in_degree: Opt::Full(self.node_indices()
-                .map(|n| in_degree(self, n))
+                .map(|n| self.in_degree(&n))
                 .max()
                 .unwrap()),
             max_out_degree: Opt::Full(max_out_degree_),
@@ -133,9 +135,9 @@ impl HasStats for Graph {
     }
 }
 
-impl HasStats for GIR {
+impl HasStats for HsGIR {
     fn stats(&self) -> Stats {
-        let edge_count_ = self.iter().map(|ref e| e.edges.outgoing.len()).sum::<usize>();
+        let edge_count_ = self.iter().map(|e| e.edges.outgoing.len()).sum::<usize>();
         Stats {
             capacity: (self.capacity(), Opt::Empty),
             node_count: self.len(),

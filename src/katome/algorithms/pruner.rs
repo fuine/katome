@@ -1,5 +1,6 @@
 //! Various algorithms for graph pruning - removing unnecessary vertices/edges
-use ::data::graph::{EdgeIndex, EdgeWeight, Graph, K_SIZE, Node, NodeIndex};
+use ::data::primitives::{EdgeWeight, K_SIZE};
+use ::data::collections::graphs::pt_graph::{PtGraph, EdgeIndex, NodeIndex, Node};
 use std::iter;
 use std::slice;
 use ::petgraph::EdgeDirection;
@@ -20,7 +21,7 @@ pub trait Clean {
     fn remove_weak_edges(&mut self, threshold: EdgeWeight);
 }
 
-impl Prunable for Graph {
+impl Prunable for PtGraph {
     fn remove_dead_paths(&mut self) {
         info!("Starting graph pruning");
         loop {
@@ -61,7 +62,7 @@ impl Prunable for Graph {
     }
 }
 
-impl Clean for Graph {
+impl Clean for PtGraph {
     fn remove_single_vertices(&mut self) {
         self.retain_nodes(|g, n| {
             if let None = g.neighbors_undirected(n).next() {
@@ -118,7 +119,7 @@ impl<'a> Iterator for Externals<'a> {
 }
 
 /// Remove dead input path.
-fn remove_paths(graph: &mut Graph, to_remove: &[EdgeIndex]) {
+fn remove_paths(graph: &mut PtGraph, to_remove: &[EdgeIndex]) {
     debug!("Removing {} dead paths", to_remove.len());
     for e in to_remove.iter() {
         graph.remove_edge(*e);
@@ -128,7 +129,7 @@ fn remove_paths(graph: &mut Graph, to_remove: &[EdgeIndex]) {
 
 
 /// Check if vertex initializes a dead input path.
-fn check_dead_path(graph: &Graph, vertex: NodeIndex, first_direction: EdgeDirection,
+fn check_dead_path(graph: &PtGraph, vertex: NodeIndex, first_direction: EdgeDirection,
                    second_direction: EdgeDirection)
                    -> Option<Vec<EdgeIndex>> {
     let mut output_vec = vec![];
@@ -171,12 +172,12 @@ fn check_dead_path(graph: &Graph, vertex: NodeIndex, first_direction: EdgeDirect
 #[cfg(test)]
 mod tests {
     pub use super::*;
-    pub use ::data::graph::Graph;
+    pub use ::data::collections::graphs::pt_graph::PtGraph;
     pub use ::data::read_slice::ReadSlice;
 
     describe! pr {
         before_each {
-            let mut graph: Graph = Graph::default();
+            let mut graph: PtGraph = PtGraph::default();
         }
 
         it "prunes single graph" {

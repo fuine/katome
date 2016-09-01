@@ -1,4 +1,4 @@
-use data::graph::{K_SIZE, Idx};
+use data::primitives::{K_SIZE, Idx};
 use asm::assembler::SEQUENCES;
 use std::cmp;
 use std::hash;
@@ -75,7 +75,7 @@ mod tests {
     pub use super::*;
     pub use rand::Rng;
     pub use rand::thread_rng;
-    pub use ::data::graph::K_SIZE;
+    pub use ::data::primitives::K_SIZE;
     pub use ::asm::assembler::SEQUENCES;
     pub use std::hash::SipHasher;
     pub use std::hash::Hash;

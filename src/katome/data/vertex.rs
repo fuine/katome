@@ -10,14 +10,14 @@ use std::cmp;
 #[derive(Clone)]
 pub struct Vertex {
     pub rs: ReadSlice,
-    pub edges: Edges
+    pub edges: Edges,
 }
 
 impl Vertex {
     pub fn new(rs_: ReadSlice, edges_: Edges) -> Vertex {
         Vertex {
             rs: rs_,
-            edges: edges_
+            edges: edges_,
         }
     }
 }
@@ -47,5 +47,3 @@ impl cmp::Ord for Vertex {
         self.rs.cmp(&other.rs)
     }
 }
-
-

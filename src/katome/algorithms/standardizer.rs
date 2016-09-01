@@ -1,5 +1,6 @@
-use ::data::graph::{AmbiguousNodes, EdgeIndex, EdgeWeight, Graph, K_SIZE, NodeIndex,
-                    get_ambiguous_nodes, out_degree};
+use ::data::primitives::{EdgeWeight, K_SIZE};
+use ::data::collections::graphs::pt_graph::{EdgeIndex, PtGraph, NodeIndex, PtAmbiguousNodes};
+use ::data::collections::graphs::graph::Graph;
 use ::algorithms::pruner::Clean;
 use ::petgraph::EdgeDirection;
 
@@ -13,7 +14,7 @@ pub trait Standardizable {
     fn standardize_contigs(&mut self);
 }
 
-impl Standardizable for Graph {
+impl Standardizable for PtGraph {
     fn standardize_edges(&mut self, original_genome_length: usize, threshold: EdgeWeight) {
         // calculate sum of all weights of edges (s) and sum of weights lower than threshold (l)
         let (s, l) = self.raw_edges()
@@ -46,7 +47,7 @@ impl Standardizable for Graph {
     }
 
     fn standardize_contigs(&mut self) {
-        let ambiguous_nodes = get_ambiguous_nodes(self);
+        let ambiguous_nodes = self.get_ambiguous_nodes();
         debug!("I found {} ambiguous nodes", ambiguous_nodes.len());
         for node in &ambiguous_nodes {
             let contigs = get_contigs_from_node(self, *node, &ambiguous_nodes);
@@ -57,16 +58,14 @@ impl Standardizable for Graph {
     }
 }
 
-fn get_contigs_from_node(graph: &Graph, starting_node: NodeIndex,
-    ambiguous_nodes: &AmbiguousNodes)
-                             -> Contigs {
+fn get_contigs_from_node(graph: &PtGraph, starting_node: NodeIndex, ambiguous_nodes: &PtAmbiguousNodes) -> Contigs {
     let mut contigs = vec![];
     for node in graph.neighbors_directed(starting_node, EdgeDirection::Outgoing) {
         let mut contig = vec![];
         let mut current_node = node;
         let mut current_edge = unwrap!(graph.find_edge(starting_node, node));
         loop {
-            let out_degree = out_degree(graph, current_node);
+            let out_degree = graph.out_degree(&current_node);
             contig.push(current_edge);
             if out_degree != 1 || ambiguous_nodes.contains(&current_node) {
                 break;
@@ -80,7 +79,7 @@ fn get_contigs_from_node(graph: &Graph, starting_node: NodeIndex,
 }
 
 // Set weights of consecutive `Edge`s in the `Contig` to the mean value
-fn standardize_contig(graph: &mut Graph, contig: Contig) {
+fn standardize_contig(graph: &mut PtGraph, contig: Contig) {
     // sum all weights in the contig
     let sum: usize = contig.iter()
         .map(|&e| *unwrap!(graph.edge_weight(e)) as usize)
@@ -105,7 +104,7 @@ fn calculate_standardization_ratio(original_genome_length: usize, k: usize,
 mod tests {
     pub use super::*;
     use super::calculate_standardization_ratio;
-    pub use ::data::graph::{Graph, EdgeIndex};
+    pub use ::data::collections::graphs::pt_graph::{PtGraph, EdgeIndex};
     pub use ::data::read_slice::ReadSlice;
 
     #[test]
@@ -116,7 +115,7 @@ mod tests {
 
     describe! std {
         it "standardizes contigs in empty graph" {
-            let mut g = Graph::default();
+            let mut g = PtGraph::default();
             assert_eq!(g.node_count(), 0);
             assert_eq!(g.edge_count(), 0);
             g.standardize_contigs();
@@ -125,7 +124,7 @@ mod tests {
         }
 
         it "standardizes single contig" {
-            let mut graph = Graph::default();
+            let mut graph = PtGraph::default();
             let x = graph.add_node(RS!(0));
             let y = graph.add_node(RS!(1));
             let z = graph.add_node(RS!(2));
@@ -141,7 +140,7 @@ mod tests {
         }
 
         it "standardizes contig one in two out" {
-            let mut graph = Graph::from_edges(&[
+            let mut graph = PtGraph::from_edges(&[
                 (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 4, 1),
                 (2, 5, 2), (5, 6, 4), (6, 7, 9)
             ]);
@@ -157,7 +156,7 @@ mod tests {
         }
 
         it "standardizes contigs two in one out" {
-            let mut graph = Graph::from_edges(&[
+            let mut graph = PtGraph::from_edges(&[
                 (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 4, 1),
                 (7, 2, 2), (5, 6, 4), (6, 7, 9)
             ]);
@@ -173,7 +172,7 @@ mod tests {
         }
 
         it "standardizes contigs two in two out" {
-            let mut graph = Graph::from_edges(&[
+            let mut graph = PtGraph::from_edges(&[
                 (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 4, 1),
                 (7, 2, 2), (5, 6, 4), (6, 7, 9),
                 (2, 8, 178), (8, 9, 298), (9, 10, 123), (10, 11, 9128)
@@ -193,7 +192,7 @@ mod tests {
         }
 
         it "standardizes contigs in cycle" {
-            let mut graph = Graph::from_edges(&[
+            let mut graph = PtGraph::from_edges(&[
                 (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 1, 1),
             ]);
             graph.standardize_contigs();

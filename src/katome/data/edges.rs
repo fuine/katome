@@ -1,4 +1,4 @@
-use data::graph::{EdgeWeight, Idx};
+use data::primitives::{EdgeWeight, Idx};
 
 /// Edges representation in GIR. It saves information about outgoing edges, in which tuples
 /// of id and weight indicate a single edge.

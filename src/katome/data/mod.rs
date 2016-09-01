@@ -1,7 +1,7 @@
 #[macro_use]
 pub mod read_slice;
-pub mod graph;
+pub mod collections;
 pub mod edges;
-pub mod gir;
 pub mod vertex;
 pub mod statistics;
+pub mod primitives;
