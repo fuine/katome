@@ -15,9 +15,7 @@ path = "src/katome/lib.rs"
 
 [dependencies]
 pbr = "0.1.1"
-twox-hash = "^1"
 log = "*"
-rand = "*"
 toml = "*"
 rustc-serialize = "*"
 lazy_static = "^0.2"
@@ -27,6 +25,7 @@ unwrap = "~1.1.0"
 
 [dev-dependencies]
 stainless = "*"
+rand = "*"
 
 [dependencies.log4rs]
 version = "*"

@@ -2,6 +2,7 @@ use std::fmt;
 use std::fmt::Display;
 use std::iter::repeat;
 use data::collections::girs::hs_gir::HsGIR;
+use data::collections::girs::hm_gir::HmGIR;
 use data::primitives::EdgeWeight;
 use data::collections::graphs::graph::Graph;
 use data::collections::graphs::pt_graph::PtGraph;
@@ -138,6 +139,24 @@ impl HasStats for PtGraph {
 impl HasStats for HsGIR {
     fn stats(&self) -> Stats {
         let edge_count_ = self.iter().map(|e| e.edges.outgoing.len()).sum::<usize>();
+        Stats {
+            capacity: (self.capacity(), Opt::Empty),
+            node_count: self.len(),
+            edge_count: edge_count_,
+            max_edge_weight: Opt::Empty,
+            avg_edge_weight: Opt::Empty,
+            max_in_degree: Opt::Empty,
+            max_out_degree: Opt::Empty,
+            avg_out_degree: Opt::Empty,
+            incoming_vert_count: Opt::Empty,
+            outgoing_vert_count: Opt::Empty,
+        }
+    }
+}
+
+impl HasStats for HmGIR {
+    fn stats(&self) -> Stats {
+        let edge_count_ = self.values().map(|e| e.outgoing.len()).sum::<usize>();
         Stats {
             capacity: (self.capacity(), Opt::Empty),
             node_count: self.len(),

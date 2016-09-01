@@ -10,7 +10,6 @@ use algorithms::builder::Build;
 use data::collections::girs::gir::{GIR, Convert};
 use data::collections::graphs::pt_graph::{PtGraph, NodeIndex};
 
-use std::error::Error;
 use std::collections::HashSet as HS;
 use std::hash::BuildHasherDefault;
 
@@ -24,104 +23,65 @@ pub type HsGIR = HS<Box<Vertex>, BuildHasherDefault<MetroHash>>;
 impl GIR for HsGIR {}
 
 impl Build for HsGIR {
-    fn create(path: String) -> (Self, usize) {
-        /*
-        let line_count = count_lines(&path) / 4;
-        let chunk = line_count / 100;
-        let mut cnt = 0;
-        let mut pb = ProgressBar::new(24294983 as u64);
-        let mut pb = ProgressBar::new(100 as u64);
-        pb.format("╢▌▌░╟");
-        */
 
-        let mut total = 0usize;
-        let mut gir: Self = Self::default();
-        let mut lines = match <Self as Build>::lines_from_file(&path) {
-            Err(why) => panic!("Couldn't open {}: {}", path, Error::description(&why)),
-            Ok(lines) => lines,
-        };
-        let mut register = vec![];
-        info!("Starting to build GIR");
-        loop {
-            if let None = lines.next() { break; }  // read line -- id
-            // TODO exit gracefully if format is wrong
-            register.clear(); // remove last line
-            // XXX consider using append
-            register = lines.next().unwrap().unwrap().into_bytes();
-            total += register.len() as Idx;
-            add_read_to_gir(&register, &mut gir);
-            lines.next(); // read +
-            lines.next(); // read quality
-            /*
-            cnt += 1;
-            if cnt >= chunk {
-                cnt = 0;
-                pb.inc();
-            }
-            */
-        }
-        info!("GIR built");
-        (gir, total)
-    }
-}
-
-/// Add new reads to `GIR`, modify weights of existing edges.
-fn add_read_to_gir(read: &[u8], gir: &mut HsGIR) {
-    assert!(read.len() as Idx >= K_SIZE + 1, "Read is too short!");
-    let mut ins_counter: Idx = 0;
-    let mut current: Box<Vertex>;
-    let mut previous_node = Box::new(Vertex::new(RS!(0), Edges::default()));
-    let mut offset;
-    let mut idx = gir.len();
-    let mut current_idx;
-    let mut insert = false;
-    for (cnt, window) in read.windows(K_SIZE as usize).enumerate() {
-        let rs = {
-            let mut s = unwrap!(SEQUENCES.write(), "Global sequences poisoned :(");
-            offset = s.len();
-            // append new data to the global vector of sequences
-            if ins_counter == 0 || ins_counter > K_SIZE {
-                // append window to vector
-                s.extend_from_slice(window);
-                RS!(offset as Idx)
+    /// Add new reads to `HmGIR`, modify weights of existing edges.
+    fn add_read(&mut self, read: &[u8]) {
+        assert!(read.len() as Idx >= K_SIZE + 1, "Read is too short!");
+        let mut ins_counter: Idx = 0;
+        let mut current: Box<Vertex>;
+        let mut previous_node = Box::new(Vertex::new(RS!(0), Edges::default()));
+        let mut offset;
+        let mut idx = self.len();
+        let mut current_idx;
+        let mut insert = false;
+        for (cnt, window) in read.windows(K_SIZE as usize).enumerate() {
+            let rs = {
+                let mut s = unwrap!(SEQUENCES.write(), "Global sequences poisoned :(");
+                offset = s.len();
+                // append new data to the global vector of sequences
+                if ins_counter == 0 || ins_counter > K_SIZE {
+                    // append window to vector
+                    s.extend_from_slice(window);
+                    RS!(offset as Idx)
+                }
+                else {
+                    // append only ins_counter last bytes of window
+                    s.extend_from_slice(&window[(K_SIZE - ins_counter) as usize..]);
+                    RS!(offset - (K_SIZE - ins_counter) as Idx)
+                }
+            };
+            current = Box::new(Vertex::new(rs, Edges::empty(idx)));
+            if let Some(v) = self.get(&current) {
+                // sequence already exists, we should remove redundant bytes from
+                // SEQUENCES and update counters
+                if ins_counter > 0 {
+                    ins_counter += 1;
+                }
+                unwrap!(SEQUENCES.write()).truncate(offset);
+                current_idx = v.edges.idx;
+                current = v.clone();
             }
             else {
-                // append only ins_counter last bytes of window
-                s.extend_from_slice(&window[(K_SIZE - ins_counter) as usize..]);
-                RS!(offset - (K_SIZE - ins_counter) as Idx)
+                insert = true;
+                ins_counter = 1;
+                current_idx = idx;
+                idx += 1;
             }
-        };
-        current = Box::new(Vertex::new(rs, Edges::empty(idx)));
-        if let Some(v) = gir.get(&current) {
-            // sequence already exists, we should remove redundant bytes from
-            // SEQUENCES and update counters
-            if ins_counter > 0 {
-                ins_counter += 1;
+            if insert {
+                self.insert(current.clone());
+                insert = false;
             }
-            unwrap!(SEQUENCES.write()).truncate(offset);
-            current_idx = v.edges.idx;
-            current = v.clone();
+            if cnt > 0 {
+                create_or_modify_edge(&mut previous_node.edges, current_idx);
+                self.replace(previous_node);
+            }
+            previous_node = current;
         }
-        else {
-            insert = true;
-            ins_counter = 1;
-            current_idx = idx;
-            idx += 1;
-        }
-        if insert {
-            gir.insert(current.clone());
-            insert = false;
-        }
-        if cnt > 0 {
-            create_or_modify_edge(&mut previous_node.edges, current_idx);
-            gir.replace(previous_node);
-        }
-        previous_node = current;
     }
 }
 
 /// Create edge if it previously haven't existed, otherwise increase it's weight.
-fn create_or_modify_edge(edges: &mut Edges, to: Idx) {
+pub fn create_or_modify_edge(edges: &mut Edges, to: Idx) {
     for i in edges.outgoing.iter_mut() {
         if i.0 == to {
             i.1 += 1;

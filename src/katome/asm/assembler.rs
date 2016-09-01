@@ -3,12 +3,10 @@ use data::collections::girs::gir::Convert;
 use data::collections::girs::hs_gir::HsGIR;
 use data::collections::graphs::pt_graph::PtGraph;
 use algorithms::builder::Build;
-// use ::data::gir::{create_gir, gir_to_graph};
 use ::data::statistics::HasStats;
 use ::algorithms::pruner::Prunable;
 use ::algorithms::standardizer::Standardizable;
 use algorithms::collapser::get_contigs;
-use std::sync::{Arc, RwLock};
 
 
 lazy_static! {
@@ -18,7 +16,7 @@ lazy_static! {
     /// `ReadSlice` uses offsets on this structure to efficiently store
     /// information about sequence. Global container allows to save 8 bytes in
     /// ReadSlice (it doesn't have to store `Arc` to the container).
-    pub static ref SEQUENCES: VecArc = Arc::new(RwLock::new(Vec::new()));
+    pub static ref SEQUENCES: VecArc = VecArc::default();
 }
 
 pub mod lock {
@@ -32,7 +30,7 @@ pub mod lock {
 pub fn assemble(input: String, output: String, original_genome_length: usize,
                 minimal_weight_threshold: usize) {
     info!("Starting assembler!");
-    let (gir, number_of_read_bytes) = HsGIR::create(input);
+    let (gir, number_of_read_bytes) = HsGIR::create(input, false);
     println!("I saved {} out of {} bytes -- {:.2}%",
              unwrap!(SEQUENCES.read()).len(),
              number_of_read_bytes,
