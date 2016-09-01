@@ -73,8 +73,8 @@ macro_rules! RS {
 mod tests {
     extern crate rand;
     pub use super::*;
-    pub use rand::Rng;
-    pub use rand::thread_rng;
+    pub use self::rand::Rng;
+    pub use self::rand::thread_rng;
     pub use ::data::primitives::K_SIZE;
     pub use ::asm::assembler::SEQUENCES;
     pub use std::hash::SipHasher;

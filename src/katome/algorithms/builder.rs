@@ -1,10 +1,10 @@
+use ::pbr::ProgressBar;
+use data::primitives::Idx;
+use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::prelude::*;
 use std::io;
-use std::error::Error;
-use data::primitives::Idx;
-use ::pbr::{ProgressBar};
 
 pub trait Build : Default {
     fn add_read(&mut self, read: &[u8]);

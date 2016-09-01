@@ -26,7 +26,7 @@ mod tests {
         }
 
         it "builds simplest gir" {
-            let (gir, number_of_read_bytes) = HsGIR::create("./tests/test_files/simplest_gir_creation.txt".to_string());
+            let (gir, number_of_read_bytes) = HsGIR::create("./tests/test_files/simplest_gir_creation.txt".to_string(), false);
             let stats = gir.stats();
             let correct_stats = Stats::with_counts(26, 26);
             assert_eq!(number_of_read_bytes, 200);
@@ -34,7 +34,7 @@ mod tests {
         }
 
         it "builds simple gir" {
-            let (gir, number_of_read_bytes) = HsGIR::create("./tests/test_files/simple_gir_creation.txt".to_string());
+            let (gir, number_of_read_bytes) = HsGIR::create("./tests/test_files/simple_gir_creation.txt".to_string(), false);
             let stats = gir.stats();
             let correct_stats = Stats::with_counts(650, 650);
             assert_eq!(number_of_read_bytes, 2500);

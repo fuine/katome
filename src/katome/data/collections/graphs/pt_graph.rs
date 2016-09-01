@@ -1,9 +1,14 @@
 use ::petgraph;
 
-use data::read_slice::ReadSlice;
-use std::collections::HashSet;
+use algorithms::builder::Build;
+use asm::assembler::SEQUENCES;
 use data::collections::graphs::graph::Graph;
-use data::primitives::{EdgeWeight, Idx};
+use data::primitives::{K_SIZE, EdgeWeight, Idx};
+use data::read_slice::ReadSlice;
+use std::collections::HashMap;
+use std::collections::HashSet;
+use std::collections::hash_map::Entry;
+
 
 pub type EdgeIndex = petgraph::graph::EdgeIndex<Idx>;
 pub type NodeIndex = petgraph::graph::NodeIndex<Idx>;
@@ -36,4 +41,96 @@ impl Graph for PtGraph {
         self.neighbors_directed(*node, petgraph::EdgeDirection::Incoming)
             .count()
     }
+}
+
+type ReadsToNodes = HashMap<ReadSlice, NodeIndex>;
+
+// Graph builder which stores information about already seen vertices
+#[derive(Default)]
+struct PtGraphBuilder {
+    graph: PtGraph,
+    reads_to_nodes: ReadsToNodes,
+}
+
+impl Build for PtGraphBuilder {
+    fn add_read(&mut self, read: &[u8]) {
+        assert!(read.len() as Idx >= K_SIZE + 1, "Read is too short!");
+        let mut ins_counter: Idx = 0;
+        let mut index_counter = SEQUENCES.read().unwrap().len() as Idx;
+        let mut current_node: NodeIndex;
+        let mut previous_node: NodeIndex = NodeIndex::new(0);
+        let mut offset;
+        let mut insert = false;
+        // let mut prev_val_old: *mut Edges = 0 as *mut Edges;
+        for (cnt, window) in read.windows(K_SIZE as usize).enumerate(){
+            let from_tmp = {
+                let mut s = SEQUENCES.write().unwrap();
+                offset = s.len();
+                s.extend_from_slice(window);
+                RS!(offset as Idx)
+            };
+            current_node = { // get a proper key to the hashmap
+                match self.reads_to_nodes.entry(from_tmp) {
+                    Entry::Occupied(oe) => {
+                        SEQUENCES.write().unwrap().truncate(offset);
+                        if ins_counter > 0 {
+                            ins_counter += 1;
+                        }
+                        *oe.get()
+                    }
+                    Entry::Vacant(_) => { // we cant use that VE because it is keyed with a temporary value
+                        SEQUENCES.write().unwrap().truncate(offset);
+                        // push to vector
+                        if ins_counter == 0 {
+                            // append window to vector
+                            SEQUENCES.write().unwrap().extend_from_slice(window);
+                        }
+                        else if ins_counter > K_SIZE {
+                            // append window to vector
+                            SEQUENCES.write().unwrap().extend_from_slice(window);
+                            index_counter += K_SIZE;
+                        }
+                        else {
+                            // append only ins_counter last bytes of window
+                            SEQUENCES.write().unwrap().extend_from_slice(&window[(K_SIZE - ins_counter ) as usize ..]);
+                            index_counter += ins_counter;
+                        }
+                        ins_counter = 1;
+                        insert = true;
+                        self.graph.add_node(RS!(index_counter))
+                    }
+                }
+            };
+            if insert {
+                self.reads_to_nodes.insert(RS!(index_counter), current_node);
+                insert = false;
+            }
+            if cnt > 0 { // insert current sequence as a member of the previous
+                update_edge(&mut self.graph, previous_node, current_node);
+            }
+            previous_node = current_node;
+        }
+    }
+}
+
+impl Build for PtGraph {
+    fn create(path: String, progress: bool) -> (Self, usize) where Self: Sized {
+        let (builder, number_of_read_bytes) = PtGraphBuilder::create(path, progress);
+        (builder.graph, number_of_read_bytes)
+    }
+
+    #[allow(unused_variables)]
+    fn add_read(&mut self, read: &[u8]) {
+        unimplemented!();
+    }
+}
+
+fn update_edge(graph: &mut PtGraph, a: NodeIndex, b: NodeIndex) {
+    if let Some(ix) = graph.find_edge(a, b) {
+        if let Some(ed) = graph.edge_weight_mut(ix) {
+            *ed += 1;
+            return;
+        }
+    }
+    graph.add_edge(a, b, 1);
 }
