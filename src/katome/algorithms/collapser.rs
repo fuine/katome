@@ -1,7 +1,7 @@
 use ::data::graph::{Graph, EdgeIndex, NodeIndex, out_degree};
 use ::petgraph::EdgeDirection;
 use ::petgraph::algo::scc;
-use ::algorithms::pruner::remove_single_vertices;
+use ::algorithms::pruner::Clean;
 use std::iter;
 use std::collections::HashSet;
 
@@ -47,7 +47,7 @@ pub fn get_contigs(mut graph: Graph) -> SerializedContigs {
             contigs.extend(contigs_from_vertex(&mut graph, v, &mut bridges));
         }
         // this invalidates NodeIndices so we need to call it after the loop is done
-        remove_single_vertices(&mut graph);
+        graph.remove_single_vertices();
     }
     contigs
 }

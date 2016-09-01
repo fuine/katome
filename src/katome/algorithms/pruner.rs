@@ -1,17 +1,90 @@
-use ::data::graph::{EdgeWeight, Graph, K_SIZE, EdgeIndex, Node, NodeIndex};
+//! Various algorithms for graph pruning - removing unnecessary vertices/edges
+use ::data::graph::{EdgeIndex, EdgeWeight, Graph, K_SIZE, Node, NodeIndex};
 use std::iter;
 use std::slice;
 use ::petgraph::EdgeDirection;
 
 
-/// Various algorithms for graph pruning - removing unnecessary vertices/edges
+/// Describes prunable structure in the sense of genome assembly
+pub trait Prunable: Clean {
+    /// Remove all input and output dead paths
+    fn remove_dead_paths(&mut self);
+}
+
+/// A trait for keeping the graph clean.
+/// It keeps simple functions used for basic graph cleanups
+pub trait Clean {
+    /// Remove vertives without any edges.
+    fn remove_single_vertices(&mut self);
+    /// Remove edges with weight below threshold.
+    fn remove_weak_edges(&mut self, threshold: EdgeWeight);
+}
+
+impl Prunable for Graph {
+    fn remove_dead_paths(&mut self) {
+        info!("Starting graph pruning");
+        loop {
+            debug!("Detected {} input/output vertices",
+                   Externals::new(self.raw_nodes().iter().enumerate()).count());
+            let mut to_remove: Vec<EdgeIndex> = vec![];
+            // analyze found input/output vertices
+            for v in Externals::new(self.raw_nodes().iter().enumerate()) {
+                // sort into output and input paths
+                match v {
+                    VertexType::Input(v_) => {
+                        // decide whether or not vertex is in the dead path
+                        if let Some(dead_path) = check_dead_path(self, v_,
+                                                                 EdgeDirection::Incoming,
+                                                                 EdgeDirection::Outgoing) {
+                            to_remove.extend(dead_path);
+                        }
+                    }
+                    VertexType::Output(v_) => {
+                        if let Some(dead_path) = check_dead_path(self, v_,
+                                                                 EdgeDirection::Outgoing,
+                                                                 EdgeDirection::Incoming) {
+                            to_remove.extend(dead_path);
+                        }
+                    }
+                }
+            }
+            // if there are no dead paths left pruning is done
+            if to_remove.is_empty() {
+                info!("Graph is pruned");
+                return;
+            }
+            // reverse sort edge indices such that removal won't cause any troubles with swapped
+            // edge indices (see `petgraph`'s explanation of `remove_edge`)
+            to_remove.sort_by(|a, b| b.cmp(a));
+            remove_paths(self, to_remove.as_slice());
+        }
+    }
+}
+
+impl Clean for Graph {
+    fn remove_single_vertices(&mut self) {
+        self.retain_nodes(|g, n| {
+            if let None = g.neighbors_undirected(n).next() {
+                false
+            }
+            else {
+                true
+            }
+        });
+    }
+
+    fn remove_weak_edges(&mut self, threshold: EdgeWeight) {
+        self.retain_edges(|g, e| !(*unwrap!(g.edge_weight(e)) < threshold));
+        self.remove_single_vertices();
+    }
+}
 
 enum VertexType<T> {
     Input(T),
     Output(T),
 }
 
-/// Iterator yielding vertices which either have no incoming or outgoing edges.
+// Iterator yielding vertices which either have no incoming or outgoing edges.
 struct Externals<'a> {
     iter: iter::Enumerate<slice::Iter<'a, Node>>,
 }
@@ -44,73 +117,19 @@ impl<'a> Iterator for Externals<'a> {
     }
 }
 
-/// Remove all input and output dead paths
-pub fn remove_dead_paths(graph: &mut Graph) {
-    info!("Starting graph pruning");
-    loop {
-        debug!("Detected {} input/output vertices",
-               Externals::new(graph.raw_nodes().iter().enumerate()).count());
-        let mut to_remove: Vec<EdgeIndex> = vec![];
-        // analyze found input/output vertices
-        for v in Externals::new(graph.raw_nodes().iter().enumerate()) {
-            // sort into output and input paths
-            match v {
-                VertexType::Input(v_) => {
-                    // decide whether or not vertex is in the dead path
-                    if let Some(dead_path) = check_dead_path(graph,
-                                                             v_,
-                                                             EdgeDirection::Incoming,
-                                                             EdgeDirection::Outgoing) {
-                        to_remove.extend(dead_path);
-                    }
-                }
-                VertexType::Output(v_) => {
-                    // decide whether or not vertex is in the dead path
-                    if let Some(dead_path) = check_dead_path(graph,
-                                                             v_,
-                                                             EdgeDirection::Outgoing,
-                                                             EdgeDirection::Incoming) {
-                        to_remove.extend(dead_path);
-                    }
-                }
-            }
-        }
-        // if there are no dead paths left pruning is done
-        if to_remove.is_empty() {
-            info!("Graph is pruned");
-            return;
-        }
-        // reverse sort edge indices such that removal won't cause any troubles with swapped
-        // edge indices (see petgraph's explanation of remove_edge())
-        to_remove.sort_by(|a, b| b.cmp(a));
-        remove_paths(graph, to_remove.as_slice());
-    }
-}
-
 /// Remove dead input path.
 fn remove_paths(graph: &mut Graph, to_remove: &[EdgeIndex]) {
     debug!("Removing {} dead paths", to_remove.len());
     for e in to_remove.iter() {
         graph.remove_edge(*e);
     }
-    remove_single_vertices(graph);
+    graph.remove_single_vertices();
 }
 
-/// Remove vertives without any edges.
-pub fn remove_single_vertices(graph: &mut Graph) {
-    graph.retain_nodes(|g, n| {
-        if let None = g.neighbors_undirected(n).next() {
-            false
-        }
-        else {
-            true
-        }
-    });
-}
 
 /// Check if vertex initializes a dead input path.
 fn check_dead_path(graph: &Graph, vertex: NodeIndex, first_direction: EdgeDirection,
-    second_direction: EdgeDirection)
+                   second_direction: EdgeDirection)
                    -> Option<Vec<EdgeIndex>> {
     let mut output_vec = vec![];
     let mut current_vertex = vertex;
@@ -139,12 +158,6 @@ fn check_dead_path(graph: &Graph, vertex: NodeIndex, first_direction: EdgeDirect
     }
 }
 
-/// Remove edges with weight below threshold.
-pub fn remove_weak_edges(graph: &mut Graph, threshold: EdgeWeight) {
-    graph.retain_edges(|g, e| !(*unwrap!(g.edge_weight(e)) < threshold));
-    remove_single_vertices(graph);
-}
-
 // pub fn remove_not_connected_vertices(graph: &mut Graph) {
 // let keys_to_remove: Vec<ReadSlice> = graph.iter()
 // .filter(|&(_, ref val)| val.outgoing.is_empty() && val.in_num == 0)
@@ -169,7 +182,7 @@ mod tests {
         it "prunes single graph" {
             assert_eq!(graph.node_count(), 0);
             assert_eq!(graph.edge_count(), 0);
-            remove_weak_edges(&mut graph, 10);
+            graph.remove_weak_edges(10);
             assert_eq!(graph.node_count(), 0);
             assert_eq!(graph.edge_count(), 0);
         }
@@ -186,7 +199,7 @@ mod tests {
                 graph.add_edge(x, y, 100);
                 graph.add_edge(y, z, 1);
                 assert_eq!(graph.edge_count(), 2);
-                remove_weak_edges(&mut graph, 10);
+                graph.remove_weak_edges(10);
                 assert_eq!(graph.node_count(), 2);
                 assert_eq!(graph.edge_count(), 1);
             }
@@ -195,7 +208,7 @@ mod tests {
                 graph.add_edge(x, y, 100);
                 graph.add_edge(y, z, 100);
                 assert_eq!(graph.edge_count(), 2);
-                remove_weak_edges(&mut graph, 10);
+                graph.remove_weak_edges(10);
                 assert_eq!(graph.node_count(), 3);
                 assert_eq!(graph.edge_count(), 2);
             }
@@ -205,7 +218,7 @@ mod tests {
                 graph.add_edge(y, z, 1);
                 graph.add_edge(z, x, 1);
                 assert_eq!(graph.edge_count(), 3);
-                remove_weak_edges(&mut graph, 10);
+                graph.remove_weak_edges(10);
                 assert_eq!(graph.node_count(), 0);
                 assert_eq!(graph.edge_count(), 0);
             }

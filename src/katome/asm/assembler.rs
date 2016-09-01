@@ -1,8 +1,8 @@
 use ::data::graph::{EdgeWeight, VecArc};
 use ::data::gir::{create_gir, gir_to_graph};
 use ::data::statistics::HasStats;
-use ::algorithms::pruner::remove_dead_paths;
-use ::algorithms::standardizer::{standardize_contigs, standardize_edges};
+use ::algorithms::pruner::Prunable;
+use ::algorithms::standardizer::Standardizable;
 use ::algorithms::collapser::get_contigs;
 use std::sync::{Arc, RwLock};
 
@@ -37,22 +37,20 @@ pub fn assemble(input: String, output: String, original_genome_length: usize,
     let mut graph = gir_to_graph(gir);
     graph.print_stats();
     println!("First pruning.");
-    remove_dead_paths(&mut graph);
+    graph.remove_dead_paths();
     graph.print_stats();
     println!("Standardizing contigs.");
-    standardize_contigs(&mut graph);
+    graph.standardize_contigs();
     graph.print_stats();
     println!("Standardizing edges");
-    standardize_edges(&mut graph,
-                      original_genome_length,
-                      minimal_weight_threshold as EdgeWeight);
+    graph.standardize_edges(original_genome_length,
+                            minimal_weight_threshold as EdgeWeight);
     graph.print_stats();
     println!("Second pruning");
-    remove_dead_paths(&mut graph);
+    graph.remove_dead_paths();
     graph.print_stats();
     println!("Collapsing!");
     let contigs = get_contigs(graph);
     println!("I created {} contigs", contigs.len());
-    // collapse(&mut graph, output);
     info!("All done!");
 }
