@@ -1,5 +1,8 @@
 //! `HashSet` based Graph's Intermediate Representation
 use std::mem;
+// use std::fmt;
+// extern crate itertools;
+// use self::itertools::Itertools;
 
 use asm::assembler::SEQUENCES;
 use data::edges::Edges;
@@ -72,7 +75,14 @@ impl Build for HsGIR {
                 insert = false;
             }
             if cnt > 0 {
+                let mut same_node = false;
+                if current == previous_node {
+                    same_node = true;
+                }
                 create_or_modify_edge(&mut previous_node.edges, current_idx);
+                if same_node {
+                    current = previous_node.clone();
+                }
                 self.replace(previous_node);
             }
             previous_node = current;
@@ -94,10 +104,6 @@ pub fn create_or_modify_edge(edges: &mut Edges, to: Idx) {
     edges.outgoing = out_.into_boxed_slice();
 }
 
-/// Convert GIR to petgraph's Graph implementation. At this stage assembler loses information about
-/// already seen sequences (in the sense of reasonable, efficient and repeatable check - one can
-/// always use iterator with find, which pessimistically yields complexity of O(n), as opposed to
-/// O(1) for hashmap).
 impl Convert<HsGIR> for PtGraph {
     fn create_from(h: HsGIR) -> Self {
         let mut graph = PtGraph::default();
@@ -116,7 +122,7 @@ impl Convert<HsGIR> for PtGraph {
 
             // deallocate box such that it does not occupy memory
             let raw = Box::into_raw(vertex);
-            deallocate(raw)
+            deallocate(raw);
         }
         graph
     }
@@ -127,3 +133,25 @@ impl Convert<HsGIR> for PtGraph {
 fn deallocate<T>(ptr: *mut T) {
     unsafe{ mem::drop(Vec::from_raw_parts(ptr, 0, 1)); }
 }
+/* helper debug, uses itertools, commented out for now
+pub struct DebugHsGIR(pub HsGIR);
+
+fn id<T>(x: T, y: T) -> T { x }
+
+impl fmt::Debug for DebugHsGIR {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        self.0
+            .iter()
+            .map(|ref node| {
+                node.edges.outgoing
+                    .iter()
+                    .map(|&e| {
+                        let mut sequence = node.rs.name();
+                        sequence.push(ReadSlice::new(e.0).last_char());
+                        writeln!(f, "sequence {} weight {}", sequence, e.1)
+                    })
+                    .fold_results((), id)
+            })
+            .fold_results((), id)
+    }
+} */
