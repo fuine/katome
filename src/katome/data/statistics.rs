@@ -20,18 +20,18 @@ impl<T> Default for Opt<T> {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Copy, Clone)]
 pub struct Stats {
-    capacity: (usize, Opt<usize>),
-    node_count: usize,
-    edge_count: usize,
-    max_edge_weight: Opt<EdgeWeight>,
-    avg_edge_weight: Opt<f64>,
-    max_in_degree: Opt<usize>,
-    max_out_degree: Opt<usize>,
-    avg_out_degree: Opt<f64>,
-    incoming_vert_count: Opt<usize>,
-    outgoing_vert_count: Opt<usize>,
+    pub capacity: (usize, Opt<usize>),
+    pub node_count: usize,
+    pub edge_count: usize,
+    pub max_edge_weight: Opt<EdgeWeight>,
+    pub avg_edge_weight: Opt<f64>,
+    pub max_in_degree: Opt<usize>,
+    pub max_out_degree: Opt<usize>,
+    pub avg_out_degree: Opt<f64>,
+    pub incoming_vert_count: Opt<usize>,
+    pub outgoing_vert_count: Opt<usize>,
 }
 
 impl Stats {
@@ -49,12 +49,19 @@ impl PartialEq for Stats {
         self.node_count == other.node_count &&
         self.edge_count == other.edge_count &&
         self.max_edge_weight == other.max_edge_weight &&
-        self.avg_edge_weight == other.avg_edge_weight &&
+        round(self.avg_edge_weight) == round(other.avg_edge_weight) &&
         self.max_in_degree == other.max_in_degree &&
         self.max_out_degree == other.max_out_degree &&
-        self.avg_out_degree == other.avg_out_degree &&
+        round(self.avg_out_degree) == round(other.avg_out_degree) &&
         self.incoming_vert_count == other.incoming_vert_count &&
         self.outgoing_vert_count == other.outgoing_vert_count
+    }
+}
+
+fn round(x: Opt<f64>) -> Opt<f64> {
+    match x {
+        Opt::Full(a) => Opt::Full((a * 100.0).round() / 100.0),
+        Opt::Empty => Opt::Empty
     }
 }
 
@@ -168,6 +175,72 @@ impl HasStats for HmGIR {
             avg_out_degree: Opt::Empty,
             incoming_vert_count: Opt::Empty,
             outgoing_vert_count: Opt::Empty,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    pub use super::*;
+    describe! stats {
+        it "compares two Stats" {
+            let st = Stats {
+                capacity: (1024, Opt::Full(1024)),
+                node_count: 1,
+                edge_count: 1,
+                max_edge_weight: Opt::Full(806),
+                avg_edge_weight: Opt::Full(2.31),
+                max_in_degree: Opt::Full(5),
+                max_out_degree: Opt::Full(1),
+                avg_out_degree: Opt::Full(1.0),
+                incoming_vert_count: Opt::Full(25),
+                outgoing_vert_count: Opt::Full(0),
+            };
+            assert!(st == st);
+        }
+
+        it "detects difference in counts" {
+            let st = Stats {
+                capacity: (1024, Opt::Full(1024)),
+                node_count: 1,
+                edge_count: 1,
+                max_edge_weight: Opt::Full(806),
+                avg_edge_weight: Opt::Full(2.31),
+                max_in_degree: Opt::Full(5),
+                max_out_degree: Opt::Full(1),
+                avg_out_degree: Opt::Full(1.0),
+                incoming_vert_count: Opt::Full(25),
+                outgoing_vert_count: Opt::Full(0),
+            };
+            let mut st1 = st;
+            st1.node_count += 1;
+            assert!(st != st1);
+            st1.node_count -= 1;
+            assert!(st == st1);
+            st1.incoming_vert_count = Opt::Empty;
+            assert!(st != st1);
+        }
+
+        it "rounds floats properly" {
+            let st = Stats {
+                capacity: (1024, Opt::Full(1024)),
+                node_count: 1,
+                edge_count: 1,
+                max_edge_weight: Opt::Full(806),
+                avg_edge_weight: Opt::Full(2.314),
+                max_in_degree: Opt::Full(5),
+                max_out_degree: Opt::Full(1),
+                avg_out_degree: Opt::Full(1.5),
+                incoming_vert_count: Opt::Full(25),
+                outgoing_vert_count: Opt::Full(0),
+            };
+            let mut st1 = st.clone();
+            st1.avg_edge_weight = Opt::Full(2.313);
+            assert!(st == st1);
+            st1.avg_out_degree = Opt::Full(1.51);
+            assert!(st != st1);
+            st1.avg_out_degree = Opt::Full(1.49);
+            assert!(st != st1);
         }
     }
 }

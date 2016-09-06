@@ -5,6 +5,4 @@ rust:
 os:
   - linux
   - osx
-cache:
-  directories:
-    - $HOME/.cargo
+cache: cargo
