@@ -20,11 +20,16 @@ impl<T> Default for Opt<T> {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub struct Counts {
+    pub node_count: usize,
+    pub edge_count: usize,
+}
+
 #[derive(Default, Debug, Copy, Clone)]
 pub struct Stats {
     pub capacity: (usize, Opt<usize>),
-    pub node_count: usize,
-    pub edge_count: usize,
+    pub counts: Counts,
     pub max_edge_weight: Opt<EdgeWeight>,
     pub avg_edge_weight: Opt<f64>,
     pub max_in_degree: Opt<usize>,
@@ -37,8 +42,10 @@ pub struct Stats {
 impl Stats {
     pub fn with_counts(node_count_: usize, edge_count_: usize) -> Stats {
         let mut stats = Stats::default();
-        stats.node_count = node_count_;
-        stats.edge_count = edge_count_;
+        stats.counts = Counts {
+            node_count: node_count_,
+            edge_count: edge_count_,
+        };
         stats
     }
 }
@@ -46,8 +53,7 @@ impl Stats {
 impl PartialEq for Stats {
     // ignore capacity during comparison
     fn eq(&self, other: &Stats) -> bool {
-        self.node_count == other.node_count &&
-        self.edge_count == other.edge_count &&
+        self.counts == other.counts &&
         self.max_edge_weight == other.max_edge_weight &&
         round(self.avg_edge_weight) == round(other.avg_edge_weight) &&
         self.max_in_degree == other.max_in_degree &&
@@ -74,12 +80,16 @@ impl<T: Display> Display for Opt<T> {
     }
 }
 
+impl Display for Counts {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{} nodes and {} edges", self.node_count, self.edge_count)
+    }
+}
+
 impl Display for Stats {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(writeln!(f,
-                      "I have the capacity of {}, {} for {} nodes and {} edges",
-                      self.capacity.0, self.capacity.1, self.node_count,
-                      self.edge_count));
+        try!(writeln!(f, "I have the capacity of {}, {} for {}",
+                      self.capacity.0, self.capacity.1, self.counts));
         try!(writeln!(f, "Max edge weight: {}", self.max_edge_weight));
         try!(writeln!(f, "Avg edge weight: {:.2}", self.avg_edge_weight));
         try!(writeln!(f, "Max in degree: {}", self.max_in_degree));
@@ -87,7 +97,7 @@ impl Display for Stats {
         try!(writeln!(f, "Avg out degree: {}", self.avg_out_degree));
         let percentage = |x| {
             match x {
-                Opt::Full(c) => Opt::Full((c * 100) as f64 / self.node_count as f64),
+                Opt::Full(c) => Opt::Full((c * 100) as f64 / self.counts.node_count as f64),
                 Opt::Empty => Opt::Empty,
             }
         };
@@ -127,8 +137,10 @@ impl HasStats for PtGraph {
         let (node_cap, edge_cap) = self.capacity();
         Stats {
             capacity: (node_cap, Opt::Full(edge_cap)),
-            node_count: self.node_count(),
-            edge_count: self.edge_count(),
+            counts: Counts{
+                node_count: self.node_count(),
+                edge_count: self.edge_count(),
+            },
             max_edge_weight: Opt::Full(max_weight),
             avg_edge_weight: Opt::Full(avg_edge_weight_),
             max_in_degree: Opt::Full(self.node_indices()
@@ -148,8 +160,10 @@ impl HasStats for HsGIR {
         let edge_count_ = self.iter().map(|e| e.edges.outgoing.len()).sum::<usize>();
         Stats {
             capacity: (self.capacity(), Opt::Empty),
-            node_count: self.len(),
-            edge_count: edge_count_,
+            counts: Counts {
+                node_count: self.len(),
+                edge_count: edge_count_,
+            },
             max_edge_weight: Opt::Empty,
             avg_edge_weight: Opt::Empty,
             max_in_degree: Opt::Empty,
@@ -166,8 +180,10 @@ impl HasStats for HmGIR {
         let edge_count_ = self.values().map(|e| e.outgoing.len()).sum::<usize>();
         Stats {
             capacity: (self.capacity(), Opt::Empty),
-            node_count: self.len(),
-            edge_count: edge_count_,
+            counts: Counts {
+                node_count: self.len(),
+                edge_count: edge_count_,
+            },
             max_edge_weight: Opt::Empty,
             avg_edge_weight: Opt::Empty,
             max_in_degree: Opt::Empty,
@@ -186,8 +202,10 @@ mod tests {
         it "compares two Stats" {
             let st = Stats {
                 capacity: (1024, Opt::Full(1024)),
-                node_count: 1,
-                edge_count: 1,
+                counts: Counts {
+                    node_count: 1,
+                    edge_count: 1,
+                },
                 max_edge_weight: Opt::Full(806),
                 avg_edge_weight: Opt::Full(2.31),
                 max_in_degree: Opt::Full(5),
@@ -202,8 +220,10 @@ mod tests {
         it "detects difference in counts" {
             let st = Stats {
                 capacity: (1024, Opt::Full(1024)),
-                node_count: 1,
-                edge_count: 1,
+                counts: Counts {
+                    node_count: 1,
+                    edge_count: 1,
+                },
                 max_edge_weight: Opt::Full(806),
                 avg_edge_weight: Opt::Full(2.31),
                 max_in_degree: Opt::Full(5),
@@ -213,9 +233,9 @@ mod tests {
                 outgoing_vert_count: Opt::Full(0),
             };
             let mut st1 = st;
-            st1.node_count += 1;
+            st1.counts.node_count += 1;
             assert!(st != st1);
-            st1.node_count -= 1;
+            st1.counts.node_count -= 1;
             assert!(st == st1);
             st1.incoming_vert_count = Opt::Empty;
             assert!(st != st1);
@@ -224,8 +244,10 @@ mod tests {
         it "rounds floats properly" {
             let st = Stats {
                 capacity: (1024, Opt::Full(1024)),
-                node_count: 1,
-                edge_count: 1,
+                counts: Counts {
+                    node_count: 1,
+                    edge_count: 1,
+                },
                 max_edge_weight: Opt::Full(806),
                 avg_edge_weight: Opt::Full(2.314),
                 max_in_degree: Opt::Full(5),
