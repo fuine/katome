@@ -1,6 +1,6 @@
 //! `HashSet` based Graph's Intermediate Representation
-use alloc::heap::deallocate;
 use std::mem;
+
 use asm::assembler::SEQUENCES;
 use data::edges::Edges;
 use data::read_slice::ReadSlice;
@@ -101,8 +101,6 @@ pub fn create_or_modify_edge(edges: &mut Edges, to: Idx) {
 impl Convert<HsGIR> for PtGraph {
     fn create_from(h: HsGIR) -> Self {
         let mut graph = PtGraph::default();
-        let size = mem::size_of::<Vertex>();
-        let align = mem::align_of::<Vertex>();
         for vertex in h.into_iter() {
             let source = NodeIndex::new(vertex.edges.idx);
             while source.index() >= graph.node_count() {
@@ -118,8 +116,14 @@ impl Convert<HsGIR> for PtGraph {
 
             // deallocate box such that it does not occupy memory
             let raw = Box::into_raw(vertex);
-            unsafe { deallocate(raw as *mut _, size, align) };
+            deallocate(raw)
         }
         graph
     }
+}
+
+// hack to deallocate `Vertex` (avoids unstable `heap` api)
+// for more information see https://github.com/rust-lang/rust/issues/27700
+fn deallocate<T>(ptr: *mut T) {
+    unsafe{ mem::drop(Vec::from_raw_parts(ptr, 0, 1)); }
 }
