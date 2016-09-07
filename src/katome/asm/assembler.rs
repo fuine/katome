@@ -7,7 +7,7 @@ use algorithms::builder::Build;
 use ::data::statistics::HasStats;
 use ::algorithms::pruner::Prunable;
 use ::algorithms::standardizer::Standardizable;
-use algorithms::collapser::get_contigs;
+use algorithms::collapser::Collapsable;
 
 
 lazy_static! {
@@ -59,7 +59,7 @@ pub fn assemble(input: String, _output: String, original_genome_length: usize,
     graph.remove_dead_paths();
     graph.print_stats();
     println!("Collapsing!");
-    let contigs = get_contigs(graph);
+    let contigs = graph.collapse();
     println!("I created {} contigs", contigs.len());
     info!("All done!");
 }

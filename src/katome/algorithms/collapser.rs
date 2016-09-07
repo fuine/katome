@@ -32,30 +32,37 @@ loop
     G.delete(e) // decreases edge's weight, if it achieves 0, remove e from G
 end loop */
 
+/// Collapse `Graph` into `SerializedContigs`.
+pub trait Collapsable {
+    /// Collapses `Graph` into `SerializedContigs`.
+    fn collapse(mut self) -> SerializedContigs;
+}
+
 /// Representation of serialized contig.
 pub type SerializedContig = String;
 /// Collection of serialized contigs.
 pub type SerializedContigs = Vec<String>;
 type Bridges = HashSet<EdgeIndex>;
 
-/// Collapses `Graph` into `SerializedContigs`.
-pub fn get_contigs(mut graph: PtGraph) -> SerializedContigs {
-    let mut contigs: SerializedContigs = vec![];
-    let mut bridges = find_bridges(&graph);
-    loop {
-        let starting_vertices: Vec<NodeIndex> = graph.externals(EdgeDirection::Incoming)
-            .collect();
-        if starting_vertices.is_empty() {
-            break;
+impl Collapsable for PtGraph {
+    fn collapse(mut self) -> SerializedContigs {
+        let mut contigs: SerializedContigs = vec![];
+        let mut bridges = find_bridges(&self);
+        loop {
+            let starting_vertices: Vec<NodeIndex> = self.externals(EdgeDirection::Incoming)
+                .collect();
+            if starting_vertices.is_empty() {
+                break;
+            }
+            for v in starting_vertices {
+                contigs.extend(contigs_from_vertex(&mut self, v, &mut bridges));
+            }
+            // this invalidates NodeIndices so we need to call it after the loop is done
+            self.remove_single_vertices();
         }
-        for v in starting_vertices {
-            contigs.extend(contigs_from_vertex(&mut graph, v, &mut bridges));
-        }
-        // this invalidates NodeIndices so we need to call it after the loop is done
-        graph.remove_single_vertices();
+        contigs.retain(|x| !x.is_empty());
+        contigs
     }
-    contigs.retain(|x| !x.is_empty());
-    contigs
 }
 
 fn find_bridges(graph: &PtGraph) -> Bridges {
@@ -160,7 +167,7 @@ mod tests {
     pub use std::iter::repeat;
     pub use super::*;
 
-    describe! get_contigs {
+    describe! collapse {
         before_each {
             // global lock on sequences for test
             let _l = LOCK.lock().unwrap();
@@ -183,14 +190,14 @@ mod tests {
 
         it "doesn't create any contig" {
             assert_eq!(graph.edge_count(), 0);
-            let contigs = get_contigs(graph);
+            let contigs = graph.collapse();
             assert_eq!(contigs.len(), 0);
         }
 
         it "creates one small contig" {
             graph.add_edge(_w, _x, 1);
             assert_eq!(graph.edge_count(), 1);
-            let contigs = get_contigs(graph);
+            let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
             assert_eq!(contigs[0].as_str(), &name[..K_SIZE+1]);
         }
@@ -202,7 +209,7 @@ mod tests {
             graph.add_edge(_x, y, 1);
             graph.add_edge(y, z, 1);
             assert_eq!(graph.edge_count(), 3);
-            let contigs = get_contigs(graph);
+            let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
             assert_eq!(contigs[0].as_str(), &name[..K_SIZE+3]);
         }
@@ -213,7 +220,7 @@ mod tests {
             graph.add_edge(_w, _x, 1);
             graph.add_edge(y, z, 1);
             assert_eq!(graph.edge_count(), 2);
-            let contigs = get_contigs(graph);
+            let contigs = graph.collapse();
             assert_eq!(contigs.len(), 2);
             assert_eq!(contigs[0].as_str(), &name[..K_SIZE+1]);
             assert_eq!(contigs[1].as_str(), &name[2..K_SIZE+3]);
@@ -226,7 +233,7 @@ mod tests {
             graph.add_edge(_x, y, 1);
             graph.add_edge(_x, z, 1);
             assert_eq!(graph.edge_count(), 3);
-            let contigs = get_contigs(graph);
+            let contigs = graph.collapse();
             assert_eq!(contigs.len(), 2);
             assert_eq!(contigs[0].as_str(), &name[..K_SIZE+2]);
             let mut n = name[..K_SIZE+1].to_string();
@@ -242,7 +249,7 @@ mod tests {
             graph.add_edge(y, z, 1);
             graph.add_edge(z, _x, 1);
             assert_eq!(graph.edge_count(), 4);
-            let contigs = get_contigs(graph);
+            let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
             let mut n = name[..K_SIZE+3].to_string();
             n.push(name.chars().nth(K_SIZE).unwrap());

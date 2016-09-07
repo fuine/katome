@@ -1,10 +1,10 @@
 //! Graph's interface.
 use algorithms::pruner::Prunable;
 use algorithms::standardizer::Standardizable;
-// use algorithms::collapser::Collapsable;
+use algorithms::collapser::Collapsable;
 
 /// Graph's interface.
-pub trait Graph: Prunable + Standardizable {
+pub trait Graph: Prunable + Standardizable + Collapsable {
     /// Node identifier.
     type NodeIdentifier;
     /// Collection storing nodes which are ambiguous nodes.
