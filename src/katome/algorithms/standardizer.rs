@@ -113,7 +113,7 @@ mod tests {
         assert_eq!(p, 1.0);
     }
 
-    describe! std {
+    describe! standardize_contig {
         it "standardizes contigs in empty graph" {
             let mut g = PtGraph::default();
             assert_eq!(g.node_count(), 0);

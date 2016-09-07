@@ -50,6 +50,7 @@ pub fn get_contigs(mut graph: PtGraph) -> SerializedContigs {
         // this invalidates NodeIndices so we need to call it after the loop is done
         graph.remove_single_vertices();
     }
+    contigs.retain(|ref x| x.len() > 0);
     contigs
 }
 
@@ -142,4 +143,106 @@ fn decrease_weight(graph: &mut PtGraph, edge: EdgeIndex, bridges: &mut Bridges) 
         bridges.remove(&edge);
     }
     graph.remove_edge(edge);
+}
+
+#[cfg(test)]
+mod tests {
+    extern crate rand;
+    pub use ::asm::assembler::SEQUENCES;
+    pub use ::asm::assembler::lock::LOCK;
+    pub use ::data::collections::graphs::pt_graph::PtGraph;
+    pub use ::data::primitives::K_SIZE;
+    pub use ::data::read_slice::ReadSlice;
+    pub use std::iter::repeat;
+    pub use super::*;
+
+    describe! get_contigs {
+        before_each {
+            // global lock on sequences for test
+            let _l = LOCK.lock().unwrap();
+            // initialize with random data
+            let mut name = repeat('A')
+                .take(K_SIZE)
+                .collect::<String>();
+            name.push_str("TGC");
+            {
+                let mut seq = SEQUENCES.write().unwrap();
+                seq.clear();
+                seq.extend(name.clone().into_bytes());
+                seq.extend(name.clone().into_bytes());
+            }
+            let mut graph: PtGraph = PtGraph::default();
+            let _w = graph.add_node(RS!(0));
+            let _x = graph.add_node(RS!(1));
+            assert_eq!(graph.node_count(), 2);
+        }
+
+        it "doesn't create any contig" {
+            assert_eq!(graph.edge_count(), 0);
+            let contigs = get_contigs(graph);
+            assert_eq!(contigs.len(), 0);
+        }
+
+        it "creates one small contig" {
+            graph.add_edge(_w, _x, 1);
+            assert_eq!(graph.edge_count(), 1);
+            let contigs = get_contigs(graph);
+            assert_eq!(contigs.len(), 1);
+            assert_eq!(contigs[0].as_str(), &name[..K_SIZE+1]);
+        }
+
+        it "creates one longer contig" {
+            let y = graph.add_node(RS!(2));
+            let z = graph.add_node(RS!(3));
+            graph.add_edge(_w, _x, 1);
+            graph.add_edge(_x, y, 1);
+            graph.add_edge(y, z, 1);
+            assert_eq!(graph.edge_count(), 3);
+            let contigs = get_contigs(graph);
+            assert_eq!(contigs.len(), 1);
+            assert_eq!(contigs[0].as_str(), &name[..K_SIZE+3]);
+        }
+
+        it "creates two contigs" {
+            let y = graph.add_node(RS!(2));
+            let z = graph.add_node(RS!(3));
+            graph.add_edge(_w, _x, 1);
+            graph.add_edge(y, z, 1);
+            assert_eq!(graph.edge_count(), 2);
+            let contigs = get_contigs(graph);
+            assert_eq!(contigs.len(), 2);
+            assert_eq!(contigs[0].as_str(), &name[..K_SIZE+1]);
+            assert_eq!(contigs[1].as_str(), &name[2..K_SIZE+3]);
+        }
+
+        it "creates two longer contigs" {
+            let y = graph.add_node(RS!(2));
+            let z = graph.add_node(RS!(3));
+            graph.add_edge(_w, _x, 2);
+            graph.add_edge(_x, y, 1);
+            graph.add_edge(_x, z, 1);
+            assert_eq!(graph.edge_count(), 3);
+            let contigs = get_contigs(graph);
+            assert_eq!(contigs.len(), 2);
+            assert_eq!(contigs[0].as_str(), &name[..K_SIZE+2]);
+            let mut n = name[..K_SIZE+1].to_string();
+            n.push(name.chars().nth(K_SIZE+2).unwrap());
+            assert_eq!(contigs[1], n);
+        }
+
+        it "deals with simple cycle" {
+            let y = graph.add_node(RS!(2));
+            let z = graph.add_node(RS!(3));
+            graph.add_edge(_w, _x, 1);
+            graph.add_edge(_x, y, 1);
+            graph.add_edge(y, z, 1);
+            graph.add_edge(z, _x, 1);
+            assert_eq!(graph.edge_count(), 4);
+            let contigs = get_contigs(graph);
+            assert_eq!(contigs.len(), 1);
+            let mut n = name[..K_SIZE+3].to_string();
+            n.push(name.chars().nth(K_SIZE).unwrap());
+            assert_eq!(contigs[0], n);
+        }
+    }
 }

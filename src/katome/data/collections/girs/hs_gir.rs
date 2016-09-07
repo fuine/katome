@@ -75,10 +75,7 @@ impl Build for HsGIR {
                 insert = false;
             }
             if cnt > 0 {
-                let mut same_node = false;
-                if current == previous_node {
-                    same_node = true;
-                }
+                let same_node = current == previous_node;
                 create_or_modify_edge(&mut previous_node.edges, current_idx);
                 if same_node {
                     current = previous_node.clone();
