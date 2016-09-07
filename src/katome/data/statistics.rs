@@ -1,3 +1,4 @@
+//! Various statistics for `Graph`s and `GIR`s.
 use std::fmt;
 use std::fmt::Display;
 use std::iter::repeat;
@@ -8,9 +9,12 @@ use data::collections::graphs::graph::Graph;
 use data::collections::graphs::pt_graph::PtGraph;
 use ::petgraph::EdgeDirection;
 
+/// Just like `Option`, but allows for custom `fmt::Display` implementation.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Opt<T> {
+    /// Some object.
     Full(T),
+    /// No object.
     Empty,
 }
 
@@ -20,26 +24,38 @@ impl<T> Default for Opt<T> {
     }
 }
 
+/// Counts for nodes and edges.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct Counts {
     pub node_count: usize,
     pub edge_count: usize,
 }
 
+/// Various statistics which are created based on `Graph`s or `GIR`s.
 #[derive(Default, Debug, Copy, Clone)]
 pub struct Stats {
+    /// Capacity of the collection.
     pub capacity: (usize, Opt<usize>),
+    /// Counts of the collection.
     pub counts: Counts,
+    /// Biggest edge weight found in collection.
     pub max_edge_weight: Opt<EdgeWeight>,
+    /// Average edge weight.
     pub avg_edge_weight: Opt<f64>,
+    /// Maximal number of incoming edges for the node.
     pub max_in_degree: Opt<usize>,
+    /// Maximal number of outgoing edges from the node.
     pub max_out_degree: Opt<usize>,
+    /// Average number of outgoing edges per node.
     pub avg_out_degree: Opt<f64>,
+    /// Number of incoming nodes (nodes without any incoming edges).
     pub incoming_vert_count: Opt<usize>,
+    /// Number of outgoing nodes (nodes without any outgoing edges).
     pub outgoing_vert_count: Opt<usize>,
 }
 
 impl Stats {
+    /// Creates `Stats` with supplied counts.
     pub fn with_counts(node_count_: usize, edge_count_: usize) -> Stats {
         let mut stats = Stats::default();
         stats.counts = Counts {
@@ -115,8 +131,10 @@ impl Display for Stats {
     }
 }
 
+/// Create stats for the collection.
 pub trait HasStats {
     fn stats(&self) -> Stats;
+    /// Prints stats for the collection.
     fn print_stats(&self) {
         print!("{}", self.stats());
     }

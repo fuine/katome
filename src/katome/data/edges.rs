@@ -1,27 +1,34 @@
+//! Edges representation in GIR.
 use data::primitives::{EdgeWeight, Idx};
 
-/// Edges representation in GIR. It saves information about outgoing edges, in which tuples
-/// of id and weight indicate a single edge.
-
+/// Single edge representation.
+///
 /// `Idx` indicates unique id of the endpoint node of the edge, assigned based on the
 /// GIR creation order.
 pub type Edge = (Idx, EdgeWeight);
+/// Stores information about consecutive edges.
 pub type Outgoing = Box<[Edge]>;
 
+/// Edges representation in GIR. It saves information about outgoing edges, in which tuples
+/// of id and weight indicate a single edge.
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct Edges {
     pub outgoing: Outgoing,
+    /// Index of starting node for all edges in outgoing.
     pub idx: Idx,
 }
 
 impl Edges {
+    /// Creates `Edges` with a single `Edge`.
     pub fn new(to: Idx, idx_: Idx) -> Edges {
         Edges {
             outgoing: (vec![(to, 1)]).into_boxed_slice(),
             idx: idx_,
         }
     }
+
+    /// Creates empty `Edges` with given starting node.
     pub fn empty(idx_: Idx) -> Edges {
         Edges {
             outgoing: Box::new([]),
@@ -29,6 +36,7 @@ impl Edges {
         }
     }
 
+    /// Adds edge with the given endpoint.
     pub fn add_edge(&mut self, to: Idx) {
         let mut out_ = Vec::new();
         out_.extend_from_slice(&self.outgoing);
@@ -36,6 +44,7 @@ impl Edges {
         self.outgoing = out_.into_boxed_slice();
     }
 
+    /// Removes edges with weight below threshold.
     pub fn remove_weak_edges(&mut self, threshold: EdgeWeight) {
         self.outgoing = self.outgoing
             .iter()
@@ -45,6 +54,7 @@ impl Edges {
             .into_boxed_slice();
     }
 
+    /// Removes specified edge.
     pub fn remove_edge(&mut self, idx: usize) {
         let mut out_ = Vec::new();
         out_.extend_from_slice(&self.outgoing);

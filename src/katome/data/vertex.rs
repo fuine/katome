@@ -1,12 +1,13 @@
-//! Representation of pair `(ReadSlice, Edges)`
-//! which is used for serialization/deserialization during `GIR` -> `Graph`
-//! conversion
+//! Representation of single node and its outgoing edges.
 
 use data::read_slice::ReadSlice;
 use data::edges::Edges;
 use std::hash;
 use std::cmp;
 
+/// Single node and its outgoing edges.
+///
+/// Used for serialization/deserialization during `GIR` -> `Graph` conversion
 #[derive(Clone)]
 pub struct Vertex {
     pub rs: ReadSlice,

@@ -1,3 +1,4 @@
+//! `petgraph` based `Graph`.
 use ::petgraph;
 
 use algorithms::builder::Build;
@@ -12,16 +13,15 @@ use std::collections::hash_map::Entry;
 
 pub type EdgeIndex = petgraph::graph::EdgeIndex<Idx>;
 pub type NodeIndex = petgraph::graph::NodeIndex<Idx>;
+/// `Node` type in `PtGraph`.
 pub type Node = petgraph::graph::Node<ReadSlice, Idx>;
-type Edge_ = petgraph::graph::Edge<EdgeWeight, Idx>;
-// FIXME cleverly use type from graph trait ?
-pub type PtAmbiguousNodes = HashSet<NodeIndex>;
 
+/// `petgraph` based `Graph`.
 pub type PtGraph = petgraph::Graph<ReadSlice, EdgeWeight, petgraph::Directed, Idx>;
 
 impl Graph for PtGraph {
     type NodeIdentifier = NodeIndex;
-    type AmbiguousNodes = PtAmbiguousNodes;
+    type AmbiguousNodes = HashSet<NodeIndex>;
     fn get_ambiguous_nodes(&self) -> Self::AmbiguousNodes {
         self.node_indices()
             .filter(|n| {

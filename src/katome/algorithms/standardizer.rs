@@ -1,5 +1,5 @@
 use ::data::primitives::{EdgeWeight, K_SIZE};
-use ::data::collections::graphs::pt_graph::{EdgeIndex, PtGraph, NodeIndex, PtAmbiguousNodes};
+use ::data::collections::graphs::pt_graph::{EdgeIndex, PtGraph, NodeIndex};
 use ::data::collections::graphs::graph::Graph;
 use ::algorithms::pruner::Clean;
 use ::petgraph::EdgeDirection;
@@ -58,7 +58,7 @@ impl Standardizable for PtGraph {
     }
 }
 
-fn get_contigs_from_node(graph: &PtGraph, starting_node: NodeIndex, ambiguous_nodes: &PtAmbiguousNodes) -> Contigs {
+fn get_contigs_from_node(graph: &PtGraph, starting_node: NodeIndex, ambiguous_nodes: &<PtGraph as Graph>::AmbiguousNodes) -> Contigs {
     let mut contigs = vec![];
     for node in graph.neighbors_directed(starting_node, EdgeDirection::Outgoing) {
         let mut contig = vec![];

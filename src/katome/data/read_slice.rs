@@ -1,3 +1,4 @@
+//! Representation of k-mer.
 use data::primitives::{K_SIZE, Idx};
 use asm::assembler::SEQUENCES;
 use std::cmp;
@@ -5,25 +6,28 @@ use std::hash;
 use std::str;
 use std::option::Option;
 
-/// Wrapper around slice of read.
-/// Works on the global, static `Vec<u8>`.
+/// Wrapper around slice of read (`String`), which represents k-mer.
+/// Works on the global, static `Sequences` representing all reads.
+///
+/// It stores information about offset and assumes k-mer size of `K_SIZE`.
 #[derive(Eq, Clone, Default, Debug)]
 pub struct ReadSlice {
+    /// Offset on the `SEQUENCES` vector, from which slice starts.
     pub offset: Idx,
 }
 
 impl ReadSlice {
-    /// Create new slice with the given offset.
+    /// Creates new slice with the given offset.
     pub fn new(offset_: Idx) -> ReadSlice {
         ReadSlice { offset: offset_ }
     }
 
-    /// Get `String` representation of the slice.
+    /// Gets `String` representation of the slice.
     pub fn name(&self) -> String {
         unwrap!(str::from_utf8(&unwrap!(SEQUENCES.read())[self.offset as usize..(self.offset+K_SIZE) as usize])).to_string()
     }
 
-    /// Get last `char` of the slice.
+    /// Gets last `char` of the slice.
     pub fn last_char(&self) -> char {
         unwrap!(SEQUENCES.read())[(self.offset + K_SIZE - 1) as usize] as char
     }

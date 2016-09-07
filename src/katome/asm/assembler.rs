@@ -1,3 +1,4 @@
+//! Basic genome assembler.
 use data::primitives::{EdgeWeight, VecArc};
 use data::collections::girs::gir::Convert;
 use data::collections::girs::hs_gir::HsGIR;
@@ -10,8 +11,7 @@ use algorithms::collapser::get_contigs;
 
 
 lazy_static! {
-    /// Global mutable vector of bytes. Contains unique sequences, most of which
-    /// have common parts amongst themselves.
+    /// Global mutable vector of bytes. Contains unique reads slices (k-mers).
     ///
     /// `ReadSlice` uses offsets on this structure to efficiently store
     /// information about sequence. Global container allows to save 8 bytes in
@@ -19,6 +19,7 @@ lazy_static! {
     pub static ref SEQUENCES: VecArc = VecArc::default();
 }
 
+#[doc(hidden)]
 pub mod lock {
     use std::sync::Mutex;
     // mutex over sequences specifically for tests
@@ -27,6 +28,12 @@ pub mod lock {
     }
 }
 
+/// Assembles given data and writes results into the output file.
+///
+/// * `input` - Fastaq or fasta input file.
+/// * `output` - Path to the output file. Each line in the output file denotes single contig.
+/// * `original_genome_length` - length of the reference genome.
+/// * `minimal_weight_threshold` - threshold used by `Pruner`.
 pub fn assemble(input: String, output: String, original_genome_length: usize,
                 minimal_weight_threshold: usize) {
     info!("Starting assembler!");
