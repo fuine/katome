@@ -67,7 +67,7 @@ impl Build for PtGraphBuilder {
                 let mut s = SEQUENCES.write().unwrap();
                 offset = s.len();
                 s.extend_from_slice(window);
-                RS!(offset as Idx)
+                ReadSlice::new(offset as Idx)
             };
             current_node = { // get a proper key to the hashmap
                 match self.reads_to_nodes.entry(from_tmp) {
@@ -97,12 +97,12 @@ impl Build for PtGraphBuilder {
                         }
                         ins_counter = 1;
                         insert = true;
-                        self.graph.add_node(RS!(index_counter))
+                        self.graph.add_node(ReadSlice::new(index_counter))
                     }
                 }
             };
             if insert {
-                self.reads_to_nodes.insert(RS!(index_counter), current_node);
+                self.reads_to_nodes.insert(ReadSlice::new(index_counter), current_node);
                 insert = false;
             }
             if cnt > 0 { // insert current sequence as a member of the previous

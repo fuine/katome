@@ -32,7 +32,7 @@ impl Build for HsGIR {
         assert!(read.len() as Idx >= K_SIZE + 1, "Read is too short!");
         let mut ins_counter: Idx = 0;
         let mut current: Box<Vertex>;
-        let mut previous_node = Box::new(Vertex::new(RS!(0), Edges::default()));
+        let mut previous_node = Box::new(Vertex::new(ReadSlice::new(0), Edges::default()));
         let mut offset;
         let mut idx = self.len();
         let mut current_idx;
@@ -45,12 +45,12 @@ impl Build for HsGIR {
                 if ins_counter == 0 || ins_counter > K_SIZE {
                     // append window to vector
                     s.extend_from_slice(window);
-                    RS!(offset as Idx)
+                    ReadSlice::new(offset as Idx)
                 }
                 else {
                     // append only ins_counter last bytes of window
                     s.extend_from_slice(&window[(K_SIZE - ins_counter) as usize..]);
-                    RS!(offset - (K_SIZE - ins_counter) as Idx)
+                    ReadSlice::new(offset - (K_SIZE - ins_counter) as Idx)
                 }
             };
             current = Box::new(Vertex::new(rs, Edges::empty(idx)));

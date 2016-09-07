@@ -30,7 +30,7 @@ impl Build for HmGIR {
         let mut tmp_index_counter;
         let mut current: ReadSlice;
         let mut insert = false;
-        let mut previous_node: ReadSlice = RS!(0);
+        let mut previous_node: ReadSlice = ReadSlice::new(0);
         let mut offset;
         let mut idx = self.len();
         let mut current_idx;
@@ -43,19 +43,19 @@ impl Build for HmGIR {
                     // append window to vector
                     s.extend_from_slice(window);
                     tmp_index_counter = 0;
-                    RS!(offset as Idx)
+                    ReadSlice::new(offset as Idx)
                 }
                 else if ins_counter > K_SIZE {
                     // append window to vector
                     s.extend_from_slice(window);
                     tmp_index_counter = K_SIZE;
-                    RS!(offset as Idx)
+                    ReadSlice::new(offset as Idx)
                 }
                 else {
                     // append only ins_counter last bytes of window
                     s.extend_from_slice(&window[(K_SIZE - ins_counter) as usize..]);
                     tmp_index_counter = ins_counter;
-                    RS!(offset - (K_SIZE - ins_counter) as Idx)
+                    ReadSlice::new(offset - (K_SIZE - ins_counter) as Idx)
                 }
             };
             current = {
@@ -76,7 +76,7 @@ impl Build for HmGIR {
                         ins_counter = 1;
                         current_idx = idx;
                         insert = true;
-                        RS!(index_counter)
+                        ReadSlice::new(index_counter)
                     }
                 }
             };

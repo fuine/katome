@@ -125,9 +125,9 @@ mod tests {
 
         it "standardizes single contig" {
             let mut graph = PtGraph::default();
-            let x = graph.add_node(RS!(0));
-            let y = graph.add_node(RS!(1));
-            let z = graph.add_node(RS!(2));
+            let x = graph.add_node(ReadSlice::new(0));
+            let y = graph.add_node(ReadSlice::new(1));
+            let z = graph.add_node(ReadSlice::new(2));
             let e1 = graph.add_edge(x, y, 100);
             let e2 = graph.add_edge(y, z, 1);
 

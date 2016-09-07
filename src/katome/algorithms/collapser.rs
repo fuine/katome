@@ -172,8 +172,8 @@ mod tests {
                 seq.extend(name.clone().into_bytes());
             }
             let mut graph: PtGraph = PtGraph::default();
-            let _w = graph.add_node(RS!(0));
-            let _x = graph.add_node(RS!(1));
+            let _w = graph.add_node(ReadSlice::new(0));
+            let _x = graph.add_node(ReadSlice::new(1));
             assert_eq!(graph.node_count(), 2);
         }
 
@@ -192,8 +192,8 @@ mod tests {
         }
 
         it "creates one longer contig" {
-            let y = graph.add_node(RS!(2));
-            let z = graph.add_node(RS!(3));
+            let y = graph.add_node(ReadSlice::new(2));
+            let z = graph.add_node(ReadSlice::new(3));
             graph.add_edge(_w, _x, 1);
             graph.add_edge(_x, y, 1);
             graph.add_edge(y, z, 1);
@@ -204,8 +204,8 @@ mod tests {
         }
 
         it "creates two contigs" {
-            let y = graph.add_node(RS!(2));
-            let z = graph.add_node(RS!(3));
+            let y = graph.add_node(ReadSlice::new(2));
+            let z = graph.add_node(ReadSlice::new(3));
             graph.add_edge(_w, _x, 1);
             graph.add_edge(y, z, 1);
             assert_eq!(graph.edge_count(), 2);
@@ -216,8 +216,8 @@ mod tests {
         }
 
         it "creates two longer contigs" {
-            let y = graph.add_node(RS!(2));
-            let z = graph.add_node(RS!(3));
+            let y = graph.add_node(ReadSlice::new(2));
+            let z = graph.add_node(ReadSlice::new(3));
             graph.add_edge(_w, _x, 2);
             graph.add_edge(_x, y, 1);
             graph.add_edge(_x, z, 1);
@@ -231,8 +231,8 @@ mod tests {
         }
 
         it "deals with simple cycle" {
-            let y = graph.add_node(RS!(2));
-            let z = graph.add_node(RS!(3));
+            let y = graph.add_node(ReadSlice::new(2));
+            let z = graph.add_node(ReadSlice::new(3));
             graph.add_edge(_w, _x, 1);
             graph.add_edge(_x, y, 1);
             graph.add_edge(y, z, 1);

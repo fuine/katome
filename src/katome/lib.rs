@@ -13,7 +13,6 @@ extern crate petgraph;
 extern crate unwrap;
 
 
-#[macro_use]
 pub mod data;
 pub mod algorithms;
 pub mod asm;

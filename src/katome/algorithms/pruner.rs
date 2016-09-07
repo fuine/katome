@@ -193,9 +193,9 @@ mod tests {
 
         describe! with_nodes {
             before_each {
-                let x = graph.add_node(RS!(0));
-                let y = graph.add_node(RS!(1));
-                let z = graph.add_node(RS!(2));
+                let x = graph.add_node(ReadSlice::new(0));
+                let y = graph.add_node(ReadSlice::new(1));
+                let z = graph.add_node(ReadSlice::new(2));
                 assert_eq!(graph.node_count(), 3);
             }
 

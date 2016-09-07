@@ -67,12 +67,6 @@ impl cmp::Ord for ReadSlice {
     }
 }
 
-#[macro_export]
-macro_rules! RS {
-    ($o:expr) => (ReadSlice::new($o));
-}
-
-
 #[cfg(test)]
 mod tests {
     extern crate rand;
@@ -108,19 +102,19 @@ mod tests {
         }
 
         it "creates new RS with macro" {
-            let rs = RS!(0);
+            let rs = ReadSlice::new(0);
             assert_eq!(rs.name(), name);
         }
 
         it "compares similar RSes" {
-            let rs1 = RS!(0);
-            let rs2 = RS!(K_SIZE);
+            let rs1 = ReadSlice::new(0);
+            let rs2 = ReadSlice::new(K_SIZE);
             assert_eq!(rs1, rs2);
         }
 
         it "compares hashes" {
-            let rs1 = RS!(0);
-            let rs2 = RS!(K_SIZE);
+            let rs1 = ReadSlice::new(0);
+            let rs2 = ReadSlice::new(K_SIZE);
             let mut hasher = SipHasher::new();
             assert!(rs1.hash(&mut hasher) == rs2.hash(&mut hasher));
         }
