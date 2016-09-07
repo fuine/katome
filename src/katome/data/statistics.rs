@@ -27,7 +27,9 @@ impl<T> Default for Opt<T> {
 /// Counts for nodes and edges.
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct Counts {
+    /// Number of nodes in collection.
     pub node_count: usize,
+    /// Number of edges in collection.
     pub edge_count: usize,
 }
 
@@ -133,6 +135,7 @@ impl Display for Stats {
 
 /// Create stats for the collection.
 pub trait HasStats {
+    /// Gets stats for the collection.
     fn stats(&self) -> Stats;
     /// Prints stats for the collection.
     fn print_stats(&self) {

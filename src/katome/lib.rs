@@ -1,3 +1,4 @@
+//! De novo assembly library.
 #![feature(plugin)]
 #![cfg_attr(test, plugin(stainless))]
 

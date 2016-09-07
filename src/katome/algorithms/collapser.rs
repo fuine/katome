@@ -1,3 +1,4 @@
+//! Create string representation of contigs out of `Graph`.
 use ::data::collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
 use ::data::collections::graphs::graph::Graph;
 use ::petgraph::EdgeDirection;
@@ -31,10 +32,13 @@ loop
     G.delete(e) // decreases edge's weight, if it achieves 0, remove e from G
 end loop */
 
+/// Representation of serialized contig.
 pub type SerializedContig = String;
+/// Collection of serialized contigs.
 pub type SerializedContigs = Vec<String>;
 type Bridges = HashSet<EdgeIndex>;
 
+/// Collapses `Graph` into `SerializedContigs`.
 pub fn get_contigs(mut graph: PtGraph) -> SerializedContigs {
     let mut contigs: SerializedContigs = vec![];
     let mut bridges = find_bridges(&graph);
@@ -50,7 +54,7 @@ pub fn get_contigs(mut graph: PtGraph) -> SerializedContigs {
         // this invalidates NodeIndices so we need to call it after the loop is done
         graph.remove_single_vertices();
     }
-    contigs.retain(|ref x| x.len() > 0);
+    contigs.retain(|x| !x.is_empty());
     contigs
 }
 

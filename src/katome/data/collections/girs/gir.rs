@@ -2,6 +2,7 @@
 // use algorithms::pruner::Clean;
 use algorithms::builder::Build;
 use data::statistics::HasStats;
+use data::collections::graphs::graph::Graph;
 
 // pub trait GIR: Build + Clean {  }
 /// Graph's Intermediate Representation (GIR) interface.
@@ -13,6 +14,7 @@ pub trait GIR: Build + HasStats {  }
 /// O(1) for `GIR`s). Such loss depends upon implementation of the `Graph`, but
 /// usually it's better to drop support for efficient sequence check (see
 /// `PtGraph`).
-pub trait Convert<T> {
-    fn create_from(T) -> Self;
+pub trait Convert<T: GIR> {
+    /// Create `Graph` from `GIR`.
+    fn create_from(T) -> Self where Self: Graph;
 }

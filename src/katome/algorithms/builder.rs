@@ -1,3 +1,4 @@
+//! Collection builder.
 use ::pbr::ProgressBar;
 use data::primitives::Idx;
 use std::error::Error;
@@ -6,16 +7,20 @@ use std::io::BufReader;
 use std::io::prelude::*;
 use std::io;
 
+/// Description of how collection should be built.
 pub trait Build : Default {
+    /// Adds a single read to the collection.
     fn add_read(&mut self, read: &[u8]);
 
-    /// Create `GIR`/`Graph` from the supplied fastaq file,
-    /// return with information about total number of read bytes
+    /// Creates `GIR`/`Graph` from the supplied file,
+    /// return with information about total number of read bytes.
+    ///
+    /// Currently supports fastaq format.
     fn create(path: String, progress: bool) -> (Self, usize) where Self: Sized {
         let mut cnt = 0;
         let mut pb = ProgressBar::new(100 as u64);
         let chunk = if progress {
-           let line_count = Self::count_lines(&path) / 4;
+           let line_count = count_lines(&path) / 4;
            pb.format("╢▌▌░╟");
            line_count / 100
         }
@@ -24,7 +29,7 @@ pub trait Build : Default {
         };
         let mut total = 0usize;
         let mut collection = Self::default();
-        let mut lines = match Self::lines_from_file(&path) {
+        let mut lines = match lines_from_file(&path) {
             Err(why) => panic!("Couldn't open {}: {}", path, Error::description(&why)),
             Ok(lines) => lines,
         };
@@ -51,17 +56,17 @@ pub trait Build : Default {
         info!("Collection built");
         (collection, total)
     }
+}
 
-    fn lines_from_file(filename: &str) -> Result<io::Lines<io::BufReader<File>>, io::Error> {
-        let file = try!(File::open(filename));
-        Ok(io::BufReader::new(file).lines())
-    }
+fn lines_from_file(filename: &str) -> Result<io::Lines<io::BufReader<File>>, io::Error> {
+    let file = try!(File::open(filename));
+    Ok(io::BufReader::new(file).lines())
+}
 
-    /// Count lines in the supplied file.
-    #[allow(dead_code)]
-    fn count_lines(filename: &str) -> usize {
-        let file = File::open(filename).expect("I couldn't open that file, sorry :(");
-        let reader = BufReader::new(file);
-        reader.split(b'\n').count()
-    }
+// Count lines in the supplied file.
+#[allow(dead_code)]
+fn count_lines(filename: &str) -> usize {
+    let file = File::open(filename).expect("I couldn't open that file, sorry :(");
+    let reader = BufReader::new(file);
+    reader.split(b'\n').count()
 }

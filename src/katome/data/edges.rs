@@ -14,8 +14,9 @@ pub type Outgoing = Box<[Edge]>;
 #[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct Edges {
+    /// Information about outgoing edges, storing targets and weights.
     pub outgoing: Outgoing,
-    /// Index of starting node for all edges in outgoing.
+    /// Index of source node for all edges in outgoing.
     pub idx: Idx,
 }
 

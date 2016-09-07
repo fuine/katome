@@ -1,16 +1,20 @@
+//! Algorithms for standardization of edges/contigs in the `Graph`.
 use ::data::primitives::{EdgeWeight, K_SIZE};
 use ::data::collections::graphs::pt_graph::{EdgeIndex, PtGraph, NodeIndex};
 use ::data::collections::graphs::graph::Graph;
 use ::algorithms::pruner::Clean;
 use ::petgraph::EdgeDirection;
 
+/// Contig representation.
 pub type Contig = Vec<EdgeIndex>;
+/// Vector of `Contig`s.
 pub type Contigs = Vec<Contig>;
 
+/// Trait describing standardization of the `Graph`.
 pub trait Standardizable {
-    /// Standardize edges of the graph.
+    /// Standardize edges of the `Graph`.
     fn standardize_edges(&mut self, original_genome_length: usize, threshold: EdgeWeight);
-    /// Standardize each contig
+    /// Standardize each contig.
     fn standardize_contigs(&mut self);
 }
 

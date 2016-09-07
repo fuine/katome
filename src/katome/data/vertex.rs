@@ -10,11 +10,14 @@ use std::cmp;
 /// Used for serialization/deserialization during `GIR` -> `Graph` conversion
 #[derive(Clone)]
 pub struct Vertex {
+    /// Node's `ReadSlice` representing k-mer.
     pub rs: ReadSlice,
+    /// Outgoing edges.
     pub edges: Edges,
 }
 
 impl Vertex {
+    /// Creates new `Vertex`.
     pub fn new(rs_: ReadSlice, edges_: Edges) -> Vertex {
         Vertex {
             rs: rs_,

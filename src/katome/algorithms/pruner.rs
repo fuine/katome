@@ -1,4 +1,4 @@
-//! Various algorithms for graph pruning - removing unnecessary vertices/edges
+//! Various algorithms for graph pruning - removing unnecessary vertices/edges.
 use ::data::primitives::{EdgeWeight, K_SIZE};
 use ::data::collections::graphs::pt_graph::{PtGraph, EdgeIndex, NodeIndex, Node};
 use std::iter;

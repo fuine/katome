@@ -34,7 +34,7 @@ pub mod lock {
 /// * `output` - Path to the output file. Each line in the output file denotes single contig.
 /// * `original_genome_length` - length of the reference genome.
 /// * `minimal_weight_threshold` - threshold used by `Pruner`.
-pub fn assemble(input: String, output: String, original_genome_length: usize,
+pub fn assemble(input: String, _output: String, original_genome_length: usize,
                 minimal_weight_threshold: usize) {
     info!("Starting assembler!");
     let (gir, number_of_read_bytes) = HsGIR::create(input, false);

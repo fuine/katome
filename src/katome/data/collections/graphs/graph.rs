@@ -5,6 +5,7 @@ use algorithms::standardizer::Standardizable;
 
 /// Graph's interface.
 pub trait Graph: Prunable + Standardizable {
+    /// Node identifier.
     type NodeIdentifier;
     /// Collection storing nodes which are ambiguous nodes.
     ///

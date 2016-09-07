@@ -11,7 +11,9 @@ use std::collections::HashSet;
 use std::collections::hash_map::Entry;
 
 
+/// Type denoting index of edge.
 pub type EdgeIndex = petgraph::graph::EdgeIndex<Idx>;
+/// Type denoting index of node.
 pub type NodeIndex = petgraph::graph::NodeIndex<Idx>;
 /// `Node` type in `PtGraph`.
 pub type Node = petgraph::graph::Node<ReadSlice, Idx>;

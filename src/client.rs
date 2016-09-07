@@ -1,5 +1,6 @@
-#![feature(alloc_system)]
-extern crate alloc_system;
+//! Example of genome assembler using `katome` library.
+// #![feature(alloc_system)]
+// extern crate alloc_system;
 extern crate katome;
 extern crate toml;
 extern crate rustc_serialize;
@@ -23,6 +24,7 @@ fn main() {
     // flame::dump_html(&mut File::create("flame-graph.html").unwrap()).unwrap();
 }
 
+/// Config for assembler.
 #[derive(Debug)]
 #[derive(RustcDecodable)]
 pub struct GenomeConfig {
