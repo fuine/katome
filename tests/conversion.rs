@@ -17,7 +17,7 @@ pub use katome::data::primitives::K_SIZE;
 pub use katome::data::statistics::{Counts, HasStats, Stats, Opt};
 pub use std::sync::Mutex;
 
-describe! conversion {
+describe! tests {
     before_each {
         // get global lock over sequences for testing
         let _l = LOCK.lock().unwrap();

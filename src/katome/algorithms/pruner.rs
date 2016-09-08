@@ -128,7 +128,7 @@ fn remove_paths(graph: &mut PtGraph, to_remove: &[EdgeIndex]) {
 }
 
 
-/// Check if vertex initializes a dead input path.
+/// Check if vertex initializes a dead path.
 fn check_dead_path(graph: &PtGraph, vertex: NodeIndex, first_direction: EdgeDirection,
                    second_direction: EdgeDirection)
                    -> Option<Vec<EdgeIndex>> {
@@ -207,6 +207,17 @@ mod tests {
                     graph.remove_weak_edges(10);
                     assert_eq!(graph.node_count(), 2);
                     assert_eq!(graph.edge_count(), 1);
+                }
+
+                it "prunes single weak edge and no nodes" {
+                    let w = graph.add_node(ReadSlice::new(3));
+                    graph.add_edge(x, y, 100);
+                    graph.add_edge(y, z, 1);
+                    graph.add_edge(z, w, 100);
+                    assert_eq!(graph.edge_count(), 3);
+                    graph.remove_weak_edges(10);
+                    assert_eq!(graph.node_count(), 4);
+                    assert_eq!(graph.edge_count(), 2);
                 }
 
                 it "prunes strong edges" {

@@ -9,6 +9,11 @@ use data::read_slice::ReadSlice;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::hash_map::Entry;
+use std::error::Error;
+use std::io::prelude::*;
+use std::fs::File;
+use std::path::Path;
+pub use petgraph::dot::Dot;
 
 
 /// Type denoting index of edge.
@@ -20,6 +25,27 @@ pub type Node = petgraph::graph::Node<ReadSlice, Idx>;
 
 /// `petgraph` based `Graph`.
 pub type PtGraph = petgraph::Graph<ReadSlice, EdgeWeight, petgraph::Directed, Idx>;
+
+/// Serialize graph into .dot file.
+pub fn write_to_dot(graph: &PtGraph, path_: &str) {
+    let path = Path::new(path_);
+    let display = path.display();
+
+    // Open a file in write-only mode, returns `io::Result<File>`
+    let mut file = match File::create(&path) {
+        Err(why) => panic!("couldn't create {}: {}",
+                           display,
+                           why.description()),
+        Ok(file) => file,
+    };
+    match write!(file, "{}", Dot::new(graph)) {
+        Err(why) => {
+            panic!("couldn't write to {}: {}", display,
+                   why.description())
+        },
+        Ok(_) => println!("successfully wrote to {}", display),
+    }
+}
 
 impl Graph for PtGraph {
     type NodeIdentifier = NodeIndex;

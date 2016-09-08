@@ -5,6 +5,7 @@ use std::cmp;
 use std::hash;
 use std::str;
 use std::option::Option;
+use std::fmt;
 
 /// Wrapper around slice of read (`String`), which represents k-mer.
 /// Works on the global, static `Sequences` representing all reads.
@@ -30,6 +31,12 @@ impl ReadSlice {
     /// Gets last `char` of the slice.
     pub fn last_char(&self) -> char {
         unwrap!(SEQUENCES.read())[(self.offset + K_SIZE - 1) as usize] as char
+    }
+}
+
+impl fmt::Display for ReadSlice {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.offset)
     }
 }
 

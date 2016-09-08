@@ -145,13 +145,12 @@ pub trait HasStats {
 
 impl HasStats for PtGraph {
     fn stats(&self) -> Stats {
-        let max_weight = unwrap!(self.raw_edges().iter().map(|ref w| w.weight).max(),
-                                 "No weights in the self!");
+        let max_weight = self.raw_edges().iter().map(|w| w.weight).max().unwrap_or(0);
         let avg_edge_weight_ =
             self.raw_edges().iter().map(|w| w.weight).fold(0usize, |s, w| s + w as usize) as f64 /
             self.edge_count() as f64;
         let max_out_degree_ =
-            self.node_indices().map(|n| self.out_degree(&n)).max().expect("No nodes in the self!");
+            self.node_indices().map(|n| self.out_degree(&n)).max().unwrap_or(0);
         let avg_out_degree_ = (self.node_indices()
             .fold(0usize, |m, n| m + self.out_degree(&n))) as f64 /
                               self.node_count() as f64;
@@ -167,7 +166,7 @@ impl HasStats for PtGraph {
             max_in_degree: Opt::Full(self.node_indices()
                 .map(|n| self.in_degree(&n))
                 .max()
-                .unwrap()),
+                .unwrap_or(0)),
             max_out_degree: Opt::Full(max_out_degree_),
             avg_out_degree: Opt::Full(avg_out_degree_),
             incoming_vert_count: Opt::Full(self.externals(EdgeDirection::Incoming).count()),

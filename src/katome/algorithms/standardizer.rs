@@ -6,9 +6,9 @@ use ::algorithms::pruner::Clean;
 use ::petgraph::EdgeDirection;
 
 /// Contig representation.
-pub type Contig = Vec<EdgeIndex>;
+type Contig = Vec<EdgeIndex>;
 /// Vector of `Contig`s.
-pub type Contigs = Vec<Contig>;
+type Contigs = Vec<Contig>;
 
 /// Trait describing standardization of the `Graph`.
 pub trait Standardizable {
@@ -37,7 +37,7 @@ impl Standardizable for PtGraph {
               p, original_genome_length, K_SIZE, s, l);
         // normalize edges across the graph
         for weight in self.edge_weights_mut() {
-            let new_weight = (*weight as f64 * p) as EdgeWeight;
+            let new_weight = (*weight as f64 * p).round() as EdgeWeight;
             // debug!("Old: {} New: {}", *weight, new_weight);
             *weight = if new_weight == 0 && *weight >= threshold {
                 1
@@ -89,7 +89,7 @@ fn standardize_contig(graph: &mut PtGraph, contig: Contig) {
         .map(|&e| *unwrap!(graph.edge_weight(e)) as usize)
         .sum();
     // calculate new, standardizes weight
-    let standardized_weight = (sum as f64 / contig.len() as f64) as EdgeWeight;
+    let standardized_weight = (sum as f64 / contig.len() as f64).round() as EdgeWeight;
     // modify all edges in the contig with new value
     for edge in contig {
         *unwrap!(graph.edge_weight_mut(edge)) = standardized_weight;
@@ -139,8 +139,8 @@ mod tests {
             assert_eq!(*graph.edge_weight(e2).unwrap(), 1);
             graph.standardize_contigs();
             assert_eq!(graph.edge_count(), 2);
-            assert_eq!(*graph.edge_weight(e1).unwrap(), 50);
-            assert_eq!(*graph.edge_weight(e2).unwrap(), 50);
+            assert_eq!(*graph.edge_weight(e1).unwrap(), 51);
+            assert_eq!(*graph.edge_weight(e2).unwrap(), 51);
         }
 
         it "standardizes contig one in two out" {
@@ -191,7 +191,7 @@ mod tests {
                 assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 5);
             }
             for i in 7..11 {
-                assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 2431);
+                assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 2432);
             }
         }
 
