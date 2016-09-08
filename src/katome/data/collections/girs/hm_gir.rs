@@ -29,7 +29,6 @@ impl Build for HmGIR {
         let mut index_counter = unwrap!(SEQUENCES.read(), "Global sequences poisoned :(").len() as Idx;
         let mut tmp_index_counter;
         let mut current: ReadSlice;
-        let mut insert = false;
         let mut previous_node: ReadSlice = ReadSlice::new(0);
         let mut offset;
         let mut idx = self.len();
@@ -70,12 +69,12 @@ impl Build for HmGIR {
                         current_idx = oe.get().idx;
                         oe.key().clone()
                     }
-                    Entry::Vacant(_) => {
-                        // we cant use that VE because it is keyed with a temporary value
+                    Entry::Vacant(ve) => {
                         index_counter += tmp_index_counter;
                         ins_counter = 1;
                         current_idx = idx;
-                        insert = true;
+                        idx += 1;
+                        ve.insert(Edges::empty(current_idx));
                         ReadSlice::new(index_counter)
                     }
                 }
@@ -84,12 +83,6 @@ impl Build for HmGIR {
                 // insert current sequence as a member of the previous
                 let e: &mut Edges = unwrap!(self.get_mut(&previous_node), "Node disappeared");
                 create_or_modify_edge(e, current_idx);
-            }
-            if insert {
-                // insert new vertex
-                self.entry(current.clone()).or_insert_with(|| Edges::empty(current_idx));
-                idx += 1;
-                insert = false;
             }
             previous_node = current;
         }
