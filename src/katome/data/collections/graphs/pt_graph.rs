@@ -142,8 +142,8 @@ impl Build for PtGraphBuilder {
 }
 
 impl Build for PtGraph {
-    fn create(path: String, progress: bool) -> (Self, usize) where Self: Sized {
-        let (builder, number_of_read_bytes) = PtGraphBuilder::create(path, progress);
+    fn create(path: String) -> (Self, usize) where Self: Sized {
+        let (builder, number_of_read_bytes) = PtGraphBuilder::create(path);
         (builder.graph, number_of_read_bytes)
     }
 

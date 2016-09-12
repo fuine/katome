@@ -1,5 +1,4 @@
 //! Collection builder.
-use ::pbr::ProgressBar;
 use data::primitives::Idx;
 use std::error::Error;
 use std::fs::File;
@@ -16,17 +15,7 @@ pub trait Build : Default {
     /// return with information about total number of read bytes.
     ///
     /// Currently supports fastaq format.
-    fn create(path: String, progress: bool) -> (Self, usize) where Self: Sized {
-        let mut cnt = 0;
-        let mut pb = ProgressBar::new(100 as u64);
-        let chunk = if progress {
-           let line_count = count_lines(&path) / 4;
-           pb.format("╢▌▌░╟");
-           line_count / 100
-        }
-        else {
-            0
-        };
+    fn create(path: String) -> (Self, usize) where Self: Sized {
         let mut total = 0usize;
         let mut collection = Self::default();
         let mut lines = match lines_from_file(&path) {
@@ -45,13 +34,6 @@ pub trait Build : Default {
             collection.add_read(&register);
             lines.next(); // read +
             lines.next(); // read quality
-            if progress {
-               cnt += 1;
-               if cnt >= chunk {
-                   cnt = 0;
-                   pb.inc();
-               }
-            }
         }
         info!("Collection built");
         (collection, total)

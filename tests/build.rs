@@ -38,19 +38,19 @@ describe! build {
             }
 
             it "builds data1" {
-                let (gir, number_of_read_bytes) = HsGIR::create("./tests/test_files/data1.txt".to_string(), false);
+                let (gir, number_of_read_bytes) = HsGIR::create("./tests/test_files/data1.txt".to_string());
                 assert_eq!(number_of_read_bytes, _correct_read_bytes[0]);
                 assert_eq!(_correct_stats[0], gir.stats());
             }
 
             it "builds data2" {
-                let (gir, number_of_read_bytes) = HsGIR::create("./tests/test_files/data2.txt".to_string(), false);
+                let (gir, number_of_read_bytes) = HsGIR::create("./tests/test_files/data2.txt".to_string());
                 assert_eq!(number_of_read_bytes, _correct_read_bytes[1]);
                 assert_eq!(_correct_stats[1], gir.stats());
             }
 
             it "builds data3" {
-                let (gir, number_of_read_bytes) = HsGIR::create("./tests/test_files/data3.txt".to_string(), false);
+                let (gir, number_of_read_bytes) = HsGIR::create("./tests/test_files/data3.txt".to_string());
                 assert_eq!(number_of_read_bytes, _correct_read_bytes[2]);
                 assert_eq!(_correct_stats[2], gir.stats());
             }
@@ -58,7 +58,7 @@ describe! build {
             // use catch_unwind as to not to poison global SEQUENCE mutex
             it "fails for input with too short read" {
                 let result = panic::catch_unwind(|| {
-                    HsGIR::create("./tests/test_files/data_too_short_read.txt".to_string(), false);
+                    HsGIR::create("./tests/test_files/data_too_short_read.txt".to_string());
                 });
                 assert!(result.is_err());
             }
@@ -70,19 +70,19 @@ describe! build {
             }
 
             it "builds data1" {
-                let (gir, number_of_read_bytes) = HmGIR::create("./tests/test_files/data1.txt".to_string(), false);
+                let (gir, number_of_read_bytes) = HmGIR::create("./tests/test_files/data1.txt".to_string());
                 assert_eq!(number_of_read_bytes, _correct_read_bytes[0]);
                 assert_eq!(_correct_stats[0], gir.stats());
             }
 
             it "builds data2" {
-                let (gir, number_of_read_bytes) = HmGIR::create("./tests/test_files/data2.txt".to_string(), false);
+                let (gir, number_of_read_bytes) = HmGIR::create("./tests/test_files/data2.txt".to_string());
                 assert_eq!(number_of_read_bytes, _correct_read_bytes[1]);
                 assert_eq!(_correct_stats[1], gir.stats());
             }
 
             it "builds data3" {
-                let (gir, number_of_read_bytes) = HmGIR::create("./tests/test_files/data3.txt".to_string(), false);
+                let (gir, number_of_read_bytes) = HmGIR::create("./tests/test_files/data3.txt".to_string());
                 assert_eq!(number_of_read_bytes, _correct_read_bytes[2]);
                 assert_eq!(_correct_stats[2], gir.stats());
             }
@@ -90,7 +90,7 @@ describe! build {
             // use catch_unwind as to not to poison global SEQUENCE mutex
             it "fails for input with too short read" {
                 let result = panic::catch_unwind(|| {
-                    HsGIR::create("./tests/test_files/data_too_short_read.txt".to_string(), false);
+                    HsGIR::create("./tests/test_files/data_too_short_read.txt".to_string());
                 });
                 assert!(result.is_err());
             }
@@ -149,19 +149,19 @@ describe! build {
             }
 
             it "builds data1" {
-                let (graph, number_of_read_bytes) = PtGraph::create("./tests/test_files/data1.txt".to_string(), false);
+                let (graph, number_of_read_bytes) = PtGraph::create("./tests/test_files/data1.txt".to_string());
                 assert_eq!(number_of_read_bytes, _correct_read_bytes[0]);
                 assert_eq!(_correct_stats[0], graph.stats());
             }
 
             it "builds data2" {
-                let (graph, number_of_read_bytes) = PtGraph::create("./tests/test_files/data2.txt".to_string(), false);
+                let (graph, number_of_read_bytes) = PtGraph::create("./tests/test_files/data2.txt".to_string());
                 assert_eq!(number_of_read_bytes, _correct_read_bytes[1]);
                 assert_eq!(_correct_stats[1], graph.stats());
             }
 
             it "builds data3" {
-                let (graph, number_of_read_bytes) = PtGraph::create("./tests/test_files/data3.txt".to_string(), false);
+                let (graph, number_of_read_bytes) = PtGraph::create("./tests/test_files/data3.txt".to_string());
                 assert_eq!(number_of_read_bytes, _correct_read_bytes[2]);
                 assert_eq!(_correct_stats[2], graph.stats());
             }
@@ -169,7 +169,7 @@ describe! build {
             // use catch_unwind as to not to poison global SEQUENCE mutex
             it "fails for input with too short read" {
                 let result = panic::catch_unwind(|| {
-                    HsGIR::create("./tests/test_files/data_too_short_read.txt".to_string(), false);
+                    HsGIR::create("./tests/test_files/data_too_short_read.txt".to_string());
                 });
                 assert!(result.is_err());
             }

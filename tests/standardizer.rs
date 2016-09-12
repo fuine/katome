@@ -28,7 +28,7 @@ describe! tests {
 
     describe! data1 {
         before_each {
-            let (mut graph, _) = PtGraph::create("./tests/test_files/data1.txt".to_string(), false);
+            let (mut graph, _) = PtGraph::create("./tests/test_files/data1.txt".to_string());
             let correct_stats = vec![
                 Stats {
                     capacity: (32, Opt::Full(32)),
@@ -76,7 +76,7 @@ describe! tests {
 
     describe! data2 {
         before_each {
-            let (mut graph, _) = PtGraph::create("./tests/test_files/data2.txt".to_string(), false);
+            let (mut graph, _) = PtGraph::create("./tests/test_files/data2.txt".to_string());
             let correct_stats = vec![
                 Stats {
                     capacity: (1024, Opt::Full(1024)),

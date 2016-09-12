@@ -75,7 +75,7 @@ describe! conversion {
 
         describe! from_HsGIR {
             it "converts data1" {
-                let (gir, _) = HsGIR::create("./tests/test_files/data1.txt".to_string(), false);
+                let (gir, _) = HsGIR::create("./tests/test_files/data1.txt".to_string());
                 let gir_counts = gir.stats().counts;
                 let graph = PtGraph::create_from(gir);
                 assert_eq!(gir_counts, graph.stats().counts);
@@ -83,7 +83,7 @@ describe! conversion {
             }
 
             it "converts data2" {
-                let (gir, _) = HsGIR::create("./tests/test_files/data2.txt".to_string(), false);
+                let (gir, _) = HsGIR::create("./tests/test_files/data2.txt".to_string());
                 let gir_counts = gir.stats().counts;
                 let graph = PtGraph::create_from(gir);
                 assert_eq!(gir_counts, graph.stats().counts);
@@ -91,7 +91,7 @@ describe! conversion {
             }
 
             it "converts data3" {
-                let (gir, _) = HsGIR::create("./tests/test_files/data3.txt".to_string(), false);
+                let (gir, _) = HsGIR::create("./tests/test_files/data3.txt".to_string());
                 let gir_counts = gir.stats().counts;
                 let graph = PtGraph::create_from(gir);
                 assert_eq!(gir_counts, graph.stats().counts);
@@ -101,7 +101,7 @@ describe! conversion {
 
         describe! from_HmGIR {
             it "converts data1" {
-                let (gir, _) = HmGIR::create("./tests/test_files/data1.txt".to_string(), false);
+                let (gir, _) = HmGIR::create("./tests/test_files/data1.txt".to_string());
                 let gir_counts = gir.stats().counts;
                 let graph = PtGraph::create_from(gir);
                 assert_eq!(gir_counts, graph.stats().counts);
@@ -109,7 +109,7 @@ describe! conversion {
             }
 
             it "converts data2" {
-                let (gir, _) = HmGIR::create("./tests/test_files/data2.txt".to_string(), false);
+                let (gir, _) = HmGIR::create("./tests/test_files/data2.txt".to_string());
                 let gir_counts = gir.stats().counts;
                 let graph = PtGraph::create_from(gir);
                 assert_eq!(gir_counts, graph.stats().counts);
@@ -117,7 +117,7 @@ describe! conversion {
             }
 
             it "converts data3" {
-                let (gir, _) = HmGIR::create("./tests/test_files/data3.txt".to_string(), false);
+                let (gir, _) = HmGIR::create("./tests/test_files/data3.txt".to_string());
                 let gir_counts = gir.stats().counts;
                 let graph = PtGraph::create_from(gir);
                 assert_eq!(gir_counts, graph.stats().counts);

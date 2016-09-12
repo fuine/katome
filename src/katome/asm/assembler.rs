@@ -42,7 +42,7 @@ pub fn assemble(input: String, _output: String, original_genome_length: usize,
                 minimal_weight_threshold: usize) {
     info!("Starting assembler!");
     println!("{} {}", mem::size_of::<ReadSlice>(), mem::size_of::<Edges>());
-    let (gir, number_of_read_bytes) = HsGIR::create(input, false);
+    let (gir, number_of_read_bytes) = HsGIR::create(input);
     println!("I saved {} out of {} bytes -- {:.2}%",
              unwrap!(SEQUENCES.read()).len(),
              number_of_read_bytes,

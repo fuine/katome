@@ -4,7 +4,6 @@
 
 #[macro_use]
 extern crate log;
-extern crate pbr;
 #[macro_use]
 extern crate lazy_static;
 

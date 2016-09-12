@@ -88,7 +88,7 @@ impl Clean for PtGraph {
 impl Clean for HmGIR {
     fn remove_single_vertices(&mut self) {
         let mut keys_to_remove: Vec<ReadSlice> = self.iter()
-            .filter(|&(_, ref val)| val.outgoing.is_empty())
+            .filter(|&(_, val)| val.outgoing.is_empty())
             .map(|(key, _)| key.clone())
             .collect();
         keys_to_remove = keys_to_remove.into_iter()
