@@ -10,7 +10,7 @@ use data::read_slice::ReadSlice;
 use data::primitives::{K_SIZE, K1_SIZE, Idx};
 use data::vertex::Vertex;
 use algorithms::builder::Build;
-use data::collections::girs::gir::{GIR, Convert};
+use data::collections::girs::{GIR, Convert};
 use data::collections::graphs::pt_graph::{PtGraph, NodeIndex};
 
 use std::collections::HashSet as HS;

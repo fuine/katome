@@ -5,7 +5,7 @@ use std::iter::repeat;
 use data::collections::girs::hs_gir::HsGIR;
 use data::collections::girs::hm_gir::HmGIR;
 use data::primitives::EdgeWeight;
-use data::collections::graphs::graph::Graph;
+use data::collections::graphs::Graph;
 use data::collections::graphs::pt_graph::PtGraph;
 use ::petgraph::EdgeDirection;
 

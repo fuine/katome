@@ -3,7 +3,7 @@ use ::petgraph;
 
 use algorithms::builder::Build;
 use asm::assembler::SEQUENCES;
-use data::collections::graphs::graph::Graph;
+use data::collections::graphs::Graph;
 use data::primitives::{K_SIZE, K1_SIZE, EdgeWeight, Idx};
 use data::read_slice::ReadSlice;
 use std::collections::HashMap;

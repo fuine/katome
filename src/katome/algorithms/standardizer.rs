@@ -1,7 +1,7 @@
 //! Algorithms for standardization of edges/contigs in the `Graph`.
 use ::data::primitives::{EdgeWeight, K_SIZE};
 use ::data::collections::graphs::pt_graph::{EdgeIndex, PtGraph, NodeIndex};
-use ::data::collections::graphs::graph::Graph;
+use ::data::collections::graphs::Graph;
 use ::algorithms::pruner::Clean;
 use ::petgraph::EdgeDirection;
 

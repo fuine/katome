@@ -2,7 +2,7 @@
 use data::primitives::{EdgeWeight, VecArc};
 use data::read_slice::ReadSlice;
 use data::edges::Edges;
-use data::collections::girs::gir::Convert;
+use data::collections::girs::Convert;
 use data::collections::girs::hs_gir::HsGIR;
 use data::collections::graphs::pt_graph::PtGraph;
 use algorithms::builder::Build;

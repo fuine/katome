@@ -1,6 +1,6 @@
 //! Create string representation of contigs out of `Graph`.
 use ::data::collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
-use ::data::collections::graphs::graph::Graph;
+use ::data::collections::graphs::Graph;
 use ::petgraph::EdgeDirection;
 use ::petgraph::algo::scc;
 use ::algorithms::pruner::Clean;
