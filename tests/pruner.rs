@@ -9,8 +9,8 @@ extern crate petgraph;
 
 pub use katome::algorithms::builder::Build;
 pub use katome::algorithms::pruner::{Clean, Prunable};
-pub use katome::asm::assembler::lock::LOCK;
-pub use katome::asm::assembler::SEQUENCES;
+pub use katome::asm::SEQUENCES;
+pub use katome::asm::lock::LOCK;
 pub use katome::data::collections::graphs::pt_graph::PtGraph;
 pub use katome::data::primitives::K_SIZE;
 pub use katome::data::statistics::{Counts, HasStats, Opt, Stats};

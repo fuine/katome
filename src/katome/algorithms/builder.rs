@@ -2,8 +2,10 @@
 use data::primitives::Idx;
 use std::error::Error;
 use std::fs::File;
-use std::io::BufReader;
 use std::io::BufRead;
+use std::io::BufReader;
+use std::path::Path;
+
 extern crate bio;
 use self::bio::io::fastq;
 
@@ -16,11 +18,11 @@ pub trait Build : Default {
     /// return with information about total number of read bytes.
     ///
     /// Currently supports fastaq format.
-    fn create(path: String) -> (Self, usize) where Self: Sized {
+    fn create<P: AsRef<Path>>(path: P) -> (Self, usize) where Self: Sized {
         let mut total = 0usize;
         let mut collection = Self::default();
         let reader = match fastq::Reader::from_file(&path) {
-            Err(why) => panic!("Couldn't open {}: {}", path, Error::description(&why)),
+            Err(why) => panic!("Couldn't open {}: {}", path.as_ref().display(), Error::description(&why)),
             Ok(lines) => lines,
         };
         info!("Starting to build collection");

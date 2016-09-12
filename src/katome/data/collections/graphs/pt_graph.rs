@@ -2,7 +2,7 @@
 use ::petgraph;
 
 use algorithms::builder::Build;
-use asm::assembler::SEQUENCES;
+use asm::SEQUENCES;
 use data::collections::graphs::Graph;
 use data::primitives::{K_SIZE, K1_SIZE, EdgeWeight, Idx};
 use data::read_slice::ReadSlice;
@@ -142,7 +142,7 @@ impl Build for PtGraphBuilder {
 }
 
 impl Build for PtGraph {
-    fn create(path: String) -> (Self, usize) where Self: Sized {
+    fn create<P: AsRef<Path>>(path: P) -> (Self, usize) where Self: Sized {
         let (builder, number_of_read_bytes) = PtGraphBuilder::create(path);
         (builder.graph, number_of_read_bytes)
     }

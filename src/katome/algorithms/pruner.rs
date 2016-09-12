@@ -1,5 +1,5 @@
 //! Various algorithms for graph pruning - removing unnecessary vertices/edges.
-use asm::assembler::SEQUENCES;
+use asm::SEQUENCES;
 use ::data::primitives::{EdgeWeight, K_SIZE, K1_SIZE, Idx};
 use ::data::collections::graphs::pt_graph::{PtGraph, EdgeIndex, NodeIndex, Node};
 use ::data::collections::girs::hm_gir::HmGIR;

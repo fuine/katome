@@ -6,7 +6,8 @@ extern crate toml;
 extern crate rustc_serialize;
 extern crate log4rs;
 // extern crate flame;
-use katome::asm::assembler::assemble;
+use katome::asm::Assemble;
+use katome::asm::basic_assembler::BasicAsm;
 use toml::{Parser, Value};
 use std::fs::File;
 use std::io::Read;
@@ -17,10 +18,10 @@ fn main() {
     log4rs::init_file("./config/log4rs.yaml", Default::default()).unwrap();
     let config = parse_config("./config/settings.toml".to_string());
     println!("{:?}", config);
-    assemble(config.input_path,
-             config.output_path,
-             config.original_genome_length,
-             config.minimal_weight_threshold);
+    BasicAsm::assemble(config.input_path,
+                       config.output_path,
+                       config.original_genome_length,
+                       config.minimal_weight_threshold);
     // flame::dump_html(&mut File::create("flame-graph.html").unwrap()).unwrap();
 }
 

@@ -1,5 +1,5 @@
 //! `HashMap` based Graph's Intermediate Representation
-use asm::assembler::SEQUENCES;
+use asm::SEQUENCES;
 use data::edges::Edges;
 use data::read_slice::ReadSlice;
 use data::primitives::{K_SIZE, K1_SIZE, Idx};

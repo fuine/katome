@@ -7,8 +7,8 @@ extern crate lazy_static;
 extern crate katome;
 
 pub use katome::algorithms::builder::Build;
-pub use katome::asm::assembler::lock::LOCK;
-pub use katome::asm::assembler::{SEQUENCES};
+pub use katome::asm::SEQUENCES;
+pub use katome::asm::lock::LOCK;
 pub use katome::data::collections::girs::Convert;
 pub use katome::data::collections::girs::hm_gir::HmGIR;
 pub use katome::data::collections::girs::hs_gir::{HsGIR};

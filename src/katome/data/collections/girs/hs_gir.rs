@@ -4,7 +4,7 @@ use std::fmt;
 extern crate itertools;
 use self::itertools::Itertools;
 
-use asm::assembler::SEQUENCES;
+use asm::SEQUENCES;
 use data::edges::Edges;
 use data::read_slice::ReadSlice;
 use data::primitives::{K_SIZE, K1_SIZE, Idx};

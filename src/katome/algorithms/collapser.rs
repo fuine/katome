@@ -159,8 +159,8 @@ fn decrease_weight(graph: &mut PtGraph, edge: EdgeIndex, bridges: &mut Bridges) 
 #[cfg(test)]
 mod tests {
     extern crate rand;
-    pub use ::asm::assembler::SEQUENCES;
-    pub use ::asm::assembler::lock::LOCK;
+    pub use ::asm::SEQUENCES;
+    pub use ::asm::lock::LOCK;
     pub use ::data::collections::graphs::pt_graph::PtGraph;
     pub use ::data::primitives::K1_SIZE;
     pub use ::data::read_slice::ReadSlice;

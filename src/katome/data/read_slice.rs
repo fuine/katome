@@ -1,6 +1,6 @@
 //! Representation of string for vertex in De Bruijn Graph.
 use data::primitives::{K1_SIZE, Idx};
-use asm::assembler::SEQUENCES;
+use asm::SEQUENCES;
 use std::cmp;
 use std::hash;
 use std::str;
@@ -77,14 +77,14 @@ impl cmp::Ord for ReadSlice {
 #[cfg(test)]
 mod tests {
     extern crate rand;
-    pub use super::*;
+    pub use ::asm::SEQUENCES;
+    pub use ::asm::lock::LOCK;
+    pub use ::data::primitives::K1_SIZE;
     pub use self::rand::Rng;
     pub use self::rand::thread_rng;
-    pub use ::data::primitives::K1_SIZE;
-    pub use ::asm::assembler::SEQUENCES;
-    pub use std::hash::SipHasher;
     pub use std::hash::Hash;
-    pub use ::asm::assembler::lock::LOCK;
+    pub use std::hash::SipHasher;
+    pub use super::*;
 
     describe! rs {
         before_each {
