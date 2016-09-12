@@ -4,7 +4,7 @@ use ::petgraph;
 use algorithms::builder::Build;
 use asm::assembler::SEQUENCES;
 use data::collections::graphs::graph::Graph;
-use data::primitives::{K_SIZE, EdgeWeight, Idx};
+use data::primitives::{K_SIZE, K1_SIZE, EdgeWeight, Idx};
 use data::read_slice::ReadSlice;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -82,7 +82,7 @@ struct PtGraphBuilder {
 
 impl Build for PtGraphBuilder {
     fn add_read(&mut self, read: &[u8]) {
-        assert!(read.len() as Idx >= K_SIZE + 1, "Read is too short!");
+        assert!(read.len() as Idx >= K_SIZE, "Read is too short!");
         let mut ins_counter: Idx = 0;
         let mut index_counter = SEQUENCES.read().unwrap().len() as Idx;
         let mut current_node: NodeIndex;
@@ -90,7 +90,7 @@ impl Build for PtGraphBuilder {
         let mut offset;
         let mut insert = false;
         // let mut prev_val_old: *mut Edges = 0 as *mut Edges;
-        for (cnt, window) in read.windows(K_SIZE as usize).enumerate(){
+        for (cnt, window) in read.windows(K1_SIZE as usize).enumerate(){
             let from_tmp = {
                 let mut s = SEQUENCES.write().unwrap();
                 offset = s.len();
@@ -113,14 +113,14 @@ impl Build for PtGraphBuilder {
                             // append window to vector
                             SEQUENCES.write().unwrap().extend_from_slice(window);
                         }
-                        else if ins_counter > K_SIZE {
+                        else if ins_counter > K1_SIZE {
                             // append window to vector
                             SEQUENCES.write().unwrap().extend_from_slice(window);
-                            index_counter += K_SIZE;
+                            index_counter += K1_SIZE;
                         }
                         else {
                             // append only ins_counter last bytes of window
-                            SEQUENCES.write().unwrap().extend_from_slice(&window[(K_SIZE - ins_counter ) as usize ..]);
+                            SEQUENCES.write().unwrap().extend_from_slice(&window[(K1_SIZE - ins_counter ) as usize ..]);
                             index_counter += ins_counter;
                         }
                         ins_counter = 1;

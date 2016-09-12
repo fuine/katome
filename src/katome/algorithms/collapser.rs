@@ -162,7 +162,7 @@ mod tests {
     pub use ::asm::assembler::SEQUENCES;
     pub use ::asm::assembler::lock::LOCK;
     pub use ::data::collections::graphs::pt_graph::PtGraph;
-    pub use ::data::primitives::K_SIZE;
+    pub use ::data::primitives::K1_SIZE;
     pub use ::data::read_slice::ReadSlice;
     pub use std::iter::repeat;
     pub use super::*;
@@ -173,7 +173,7 @@ mod tests {
             let _l = LOCK.lock().unwrap();
             // initialize with random data
             let mut name = repeat('A')
-                .take(K_SIZE)
+                .take(K1_SIZE)
                 .collect::<String>();
             name.push_str("TGC");
             {
@@ -199,7 +199,7 @@ mod tests {
             assert_eq!(graph.edge_count(), 1);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
-            assert_eq!(contigs[0].as_str(), &name[..K_SIZE+1]);
+            assert_eq!(contigs[0].as_str(), &name[..K1_SIZE+1]);
         }
 
         it "creates one longer contig" {
@@ -211,7 +211,7 @@ mod tests {
             assert_eq!(graph.edge_count(), 3);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
-            assert_eq!(contigs[0].as_str(), &name[..K_SIZE+3]);
+            assert_eq!(contigs[0].as_str(), &name[..K1_SIZE+3]);
         }
 
         it "creates two contigs" {
@@ -222,8 +222,8 @@ mod tests {
             assert_eq!(graph.edge_count(), 2);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 2);
-            assert_eq!(contigs[0].as_str(), &name[..K_SIZE+1]);
-            assert_eq!(contigs[1].as_str(), &name[2..K_SIZE+3]);
+            assert_eq!(contigs[0].as_str(), &name[..K1_SIZE+1]);
+            assert_eq!(contigs[1].as_str(), &name[2..K1_SIZE+3]);
         }
 
         it "creates two longer contigs" {
@@ -235,9 +235,9 @@ mod tests {
             assert_eq!(graph.edge_count(), 3);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 2);
-            assert_eq!(contigs[0].as_str(), &name[..K_SIZE+2]);
-            let mut n = name[..K_SIZE+1].to_string();
-            n.push(name.chars().nth(K_SIZE+2).unwrap());
+            assert_eq!(contigs[0].as_str(), &name[..K1_SIZE+2]);
+            let mut n = name[..K1_SIZE+1].to_string();
+            n.push(name.chars().nth(K1_SIZE+2).unwrap());
             assert_eq!(contigs[1], n);
         }
 
@@ -251,8 +251,8 @@ mod tests {
             assert_eq!(graph.edge_count(), 4);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
-            let mut n = name[..K_SIZE+3].to_string();
-            n.push(name.chars().nth(K_SIZE).unwrap());
+            let mut n = name[..K1_SIZE+3].to_string();
+            n.push(name.chars().nth(K1_SIZE).unwrap());
             assert_eq!(contigs[0], n);
         }
     }

@@ -25,7 +25,7 @@ describe! build {
         // hardcoded K_SIZE value for now :/
         assert_eq!(K_SIZE, 40);
         let _correct_read_bytes = vec![200, 2500, 23300];
-        let _correct_counts = vec![(26, 26), (650, 650), (14213, 13980)];
+        let _correct_counts = vec![(26, 26), (650, 650), (14446, 14213)];
     }
     describe! girs {
         before_each {
@@ -98,48 +98,49 @@ describe! build {
     }
     describe! graphs {
         before_each {
-            let _correct_stats = vec![Stats {
-                capacity: (70, Opt::Full(70)),
-                counts: Counts {
-                    node_count: _correct_counts[0].0,
-                    edge_count: _correct_counts[0].1,
+            let _correct_stats = vec![
+                Stats {
+                    capacity: (32, Opt::Full(32)),
+                    counts: Counts {
+                        node_count: _correct_counts[0].0,
+                        edge_count: _correct_counts[0].1,
+                    },
+                    max_edge_weight: Opt::Full(72),
+                    avg_edge_weight: Opt::Full(4.69),
+                    max_in_degree: Opt::Full(2),
+                    max_out_degree: Opt::Full(1),
+                    avg_out_degree: Opt::Full(1.0),
+                    incoming_vert_count: Opt::Full(1),
+                    outgoing_vert_count: Opt::Full(0),
                 },
-                max_edge_weight: Opt::Full(70),
-                avg_edge_weight: Opt::Full(4.62),
-                max_in_degree: Opt::Full(2),
-                max_out_degree: Opt::Full(1),
-                avg_out_degree: Opt::Full(1.0),
-                incoming_vert_count: Opt::Full(1),
-                outgoing_vert_count: Opt::Full(0),
-            },
-            Stats {
-                capacity: (1024, Opt::Full(1024)),
-                counts: Counts {
-                    node_count: _correct_counts[1].0,
-                    edge_count: _correct_counts[1].1,
+                Stats {
+                    capacity: (1024, Opt::Full(1024)),
+                    counts: Counts {
+                       node_count: _correct_counts[1].0,
+                       edge_count: _correct_counts[1].1,
+                    },
+                    max_edge_weight: Opt::Full(831),
+                    avg_edge_weight: Opt::Full(2.35),
+                    max_in_degree: Opt::Full(5),
+                    max_out_degree: Opt::Full(1),
+                    avg_out_degree: Opt::Full(1.0),
+                    incoming_vert_count: Opt::Full(25),
+                    outgoing_vert_count: Opt::Full(0),
                 },
-                max_edge_weight: Opt::Full(806),
-                avg_edge_weight: Opt::Full(2.31),
-                max_in_degree: Opt::Full(5),
-                max_out_degree: Opt::Full(1),
-                avg_out_degree: Opt::Full(1.0),
-                incoming_vert_count: Opt::Full(25),
-                outgoing_vert_count: Opt::Full(0),
-            },
-            Stats {
-                capacity: (16384, Opt::Full(16384)),
-                counts: Counts {
-                    node_count: _correct_counts[2].0,
-                    edge_count: _correct_counts[2].1,
-                },
-                max_edge_weight: Opt::Full(1),
-                avg_edge_weight: Opt::Full(1.0),
-                max_in_degree: Opt::Full(1),
-                max_out_degree: Opt::Full(1),
-                avg_out_degree: Opt::Full(0.98),
-                incoming_vert_count: Opt::Full(233),
-                outgoing_vert_count: Opt::Full(233)
-            }];
+                Stats {
+                    capacity: (16384, Opt::Full(16384)),
+                    counts: Counts {
+                        node_count: _correct_counts[2].0,
+                        edge_count: _correct_counts[2].1,
+                    },
+                    max_edge_weight: Opt::Full(1),
+                    avg_edge_weight: Opt::Full(1.0),
+                    max_in_degree: Opt::Full(1),
+                    max_out_degree: Opt::Full(1),
+                    avg_out_degree: Opt::Full(0.98),
+                    incoming_vert_count: Opt::Full(233),
+                    outgoing_vert_count: Opt::Full(233)
+                }];
         }
 
         describe! PtGraph {

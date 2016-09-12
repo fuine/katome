@@ -1,8 +1,13 @@
 //! Various algorithms for graph pruning - removing unnecessary vertices/edges.
-use ::data::primitives::{EdgeWeight, K_SIZE};
+use asm::assembler::SEQUENCES;
+use ::data::primitives::{EdgeWeight, K_SIZE, K1_SIZE, Idx};
 use ::data::collections::graphs::pt_graph::{PtGraph, EdgeIndex, NodeIndex, Node};
+use ::data::collections::girs::hm_gir::HmGIR;
+use data::edges::Edge;
+use data::read_slice::ReadSlice;
 use std::iter;
 use std::slice;
+use std::collections::hash_map::Entry;
 use ::petgraph::EdgeDirection;
 
 
@@ -80,6 +85,71 @@ impl Clean for PtGraph {
     }
 }
 
+impl Clean for HmGIR {
+    fn remove_single_vertices(&mut self) {
+        let mut keys_to_remove: Vec<ReadSlice> = self.iter()
+            .filter(|&(_, ref val)| val.outgoing.is_empty())
+            .map(|(key, _)| key.clone())
+            .collect();
+        keys_to_remove = keys_to_remove.into_iter()
+            .filter(|x| !has_incoming_edges(self, x))
+            .collect();
+        for key in keys_to_remove {
+            self.remove(&key);
+        }
+    }
+
+    fn remove_weak_edges(&mut self, threshold: EdgeWeight) {
+        for vertex in self.values_mut() {
+            // if edge's weight is lower than threshold
+            vertex.outgoing = vertex.outgoing
+                .iter()
+                .cloned()
+                .filter(|&x| x.1 >= threshold)
+                .collect::<Vec<Edge>>()
+                .into_boxed_slice();
+        }
+    }
+}
+
+/// Utility function which gets us every possible incoming edge.
+/// because of memory savings we do not hold an array of incoming edges,
+/// instead we will exploit the idea behind sequencing genome, namely
+/// common bytes for each sequence.
+/// WARNING: this may or may not be optimal if we follow the fasta standard
+/// but should be sufficiently faster for just 5 characters we use at the moment
+fn has_incoming_edges(gir: &mut HmGIR, vertex: &ReadSlice) -> bool {
+    let mut output = false;
+    let offset;
+    {
+        let mut vec = vec![];
+        // copy current sequence to register
+        vec.extend(vertex.name().into_bytes());
+        // shift the register one character to the right
+        vec.truncate(K1_SIZE - 1);
+        vec.insert(0, 0);
+        let mut s = SEQUENCES.write().unwrap();
+        offset = s.len() as Idx;
+        s.extend_from_slice(vec.as_slice());
+    }
+    // try to bruteforce by inserting all possible characters: ACTGN
+    for chr in &['A', 'C', 'T', 'G', 'N'] {
+        SEQUENCES.write().unwrap()[0] = *chr as u8;
+        // dummy read slice used to check if we can find it in the gir
+        let tmp_rs = ReadSlice::new(offset);
+        if let Entry::Occupied(e) = gir.entry(tmp_rs) {
+            // if we got any hits check if our vertex is in the outgoing
+            if let Some(_) = e.get().outgoing.iter().find(|&x| x.0 == vertex.offset) {
+                output = true;
+                break;
+            }
+        }
+    }
+    SEQUENCES.write().unwrap().truncate(offset);
+    output
+}
+
+
 enum VertexType<T> {
     Input(T),
     Output(T),
@@ -137,7 +207,7 @@ fn check_dead_path(graph: &PtGraph, vertex: NodeIndex, first_direction: EdgeDire
     let mut cnt = 0;
     loop {
         cnt += 1;
-        if cnt >= 2 * K_SIZE {
+        if cnt >= 2 * (K_SIZE) {
             // this path is not dead
             return None;
         }

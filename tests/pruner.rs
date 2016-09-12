@@ -36,8 +36,8 @@ describe! tests {
                         node_count: 26,
                         edge_count: 26
                     },
-                    max_edge_weight: Opt::Full(70),
-                    avg_edge_weight: Opt::Full(4.62),
+                    max_edge_weight: Opt::Full(72),
+                    avg_edge_weight: Opt::Full(4.69),
                     max_in_degree: Opt::Full(2),
                     max_out_degree: Opt::Full(1),
                     avg_out_degree: Opt::Full(1.0),
@@ -50,8 +50,8 @@ describe! tests {
                         node_count: 1,
                         edge_count: 1
                     },
-                    max_edge_weight: Opt::Full(70),
-                    avg_edge_weight: Opt::Full(70.0),
+                    max_edge_weight: Opt::Full(72),
+                    avg_edge_weight: Opt::Full(72.0),
                     max_in_degree: Opt::Full(1),
                     max_out_degree: Opt::Full(1),
                     avg_out_degree: Opt::Full(1.0),
@@ -64,8 +64,8 @@ describe! tests {
                         node_count: 26,
                         edge_count: 26
                     },
-                    max_edge_weight: Opt::Full(70),
-                    avg_edge_weight: Opt::Full(4.62),
+                    max_edge_weight: Opt::Full(72),
+                    avg_edge_weight: Opt::Full(4.69),
                     max_in_degree: Opt::Full(2),
                     max_out_degree: Opt::Full(1),
                     avg_out_degree: Opt::Full(1.0),
@@ -101,8 +101,8 @@ describe! tests {
                         node_count: 650,
                         edge_count: 650
                     },
-                    max_edge_weight: Opt::Full(806),
-                    avg_edge_weight: Opt::Full(2.31),
+                    max_edge_weight: Opt::Full(831),
+                    avg_edge_weight: Opt::Full(2.35),
                     max_in_degree: Opt::Full(5),
                     max_out_degree: Opt::Full(1),
                     avg_out_degree: Opt::Full(1.0),
@@ -115,8 +115,8 @@ describe! tests {
                         node_count: 23,
                         edge_count: 23
                     },
-                    max_edge_weight: Opt::Full(806),
-                    avg_edge_weight: Opt::Full(37.96),
+                    max_edge_weight: Opt::Full(831),
+                    avg_edge_weight: Opt::Full(39.04),
                     max_in_degree: Opt::Full(5),
                     max_out_degree: Opt::Full(1),
                     avg_out_degree: Opt::Full(1.0),
@@ -129,8 +129,8 @@ describe! tests {
                         node_count: 1,
                         edge_count: 1
                     },
-                    max_edge_weight: Opt::Full(806),
-                    avg_edge_weight: Opt::Full(806.0),
+                    max_edge_weight: Opt::Full(831),
+                    avg_edge_weight: Opt::Full(831.0),
                     max_in_degree: Opt::Full(1),
                     max_out_degree: Opt::Full(1),
                     avg_out_degree: Opt::Full(1.0),
@@ -163,8 +163,8 @@ describe! tests {
                 Stats {
                     capacity: (16384, Opt::Full(16384)),
                     counts: Counts {
-                        node_count: 14213,
-                        edge_count: 13980
+                        node_count: 14446,
+                        edge_count: 14213
                     },
                     max_edge_weight: Opt::Full(1),
                     avg_edge_weight: Opt::Full(1.0),
@@ -177,8 +177,8 @@ describe! tests {
                 Stats {
                     capacity: (16384, Opt::Full(16384)),
                     counts: Counts {
-                        node_count: 14213,
-                        edge_count: 13980
+                        node_count: 14446,
+                        edge_count: 14213
                     },
                     max_edge_weight: Opt::Full(1),
                     avg_edge_weight: Opt::Full(1.0),

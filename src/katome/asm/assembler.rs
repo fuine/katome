@@ -1,5 +1,7 @@
 //! Basic genome assembler.
 use data::primitives::{EdgeWeight, VecArc};
+use data::read_slice::ReadSlice;
+use data::edges::Edges;
 use data::collections::girs::gir::Convert;
 use data::collections::girs::hs_gir::HsGIR;
 use data::collections::graphs::pt_graph::PtGraph;
@@ -8,6 +10,8 @@ use ::data::statistics::HasStats;
 use ::algorithms::pruner::Prunable;
 use ::algorithms::standardizer::Standardizable;
 use algorithms::collapser::Collapsable;
+
+use std::mem;
 
 
 lazy_static! {
@@ -37,6 +41,7 @@ pub mod lock {
 pub fn assemble(input: String, _output: String, original_genome_length: usize,
                 minimal_weight_threshold: usize) {
     info!("Starting assembler!");
+    println!("{} {}", mem::size_of::<ReadSlice>(), mem::size_of::<Edges>());
     let (gir, number_of_read_bytes) = HsGIR::create(input, false);
     println!("I saved {} out of {} bytes -- {:.2}%",
              unwrap!(SEQUENCES.read()).len(),

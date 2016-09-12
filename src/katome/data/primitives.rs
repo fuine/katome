@@ -7,6 +7,8 @@ pub type Idx = usize;
 pub type EdgeWeight = u16;
 /// Size of k-mer.
 pub const K_SIZE: Idx = 40;
+/// Size of substring of k-mer, used for vertex representation in De Bruijn Graph.
+pub const K1_SIZE: Idx = K_SIZE - 1;
 
 /// Stores non-repeating k-mers.
 pub type Sequences = Vec<u8>;

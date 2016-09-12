@@ -7,7 +7,7 @@ use std::mem;
 use asm::assembler::SEQUENCES;
 use data::edges::Edges;
 use data::read_slice::ReadSlice;
-use data::primitives::{K_SIZE, Idx};
+use data::primitives::{K_SIZE, K1_SIZE, Idx};
 use data::vertex::Vertex;
 use algorithms::builder::Build;
 use data::collections::girs::gir::{GIR, Convert};
@@ -29,7 +29,7 @@ impl Build for HsGIR {
 
     /// Add new reads to `HmGIR`, modify weights of existing edges.
     fn add_read(&mut self, read: &[u8]) {
-        assert!(read.len() as Idx >= K_SIZE + 1, "Read is too short!");
+        assert!(read.len() as Idx >= K_SIZE, "Read is too short!");
         let mut ins_counter: Idx = 0;
         let mut current: Box<Vertex>;
         let mut previous_node = Box::new(Vertex::new(ReadSlice::new(0), Edges::default()));
@@ -37,20 +37,20 @@ impl Build for HsGIR {
         let mut idx = self.len();
         let mut current_idx;
         let mut insert = false;
-        for (cnt, window) in read.windows(K_SIZE as usize).enumerate() {
+        for (cnt, window) in read.windows(K1_SIZE as usize).enumerate() {
             let rs = {
                 let mut s = unwrap!(SEQUENCES.write(), "Global sequences poisoned :(");
                 offset = s.len();
                 // append new data to the global vector of sequences
-                if ins_counter == 0 || ins_counter > K_SIZE {
+                if ins_counter == 0 || ins_counter > K1_SIZE {
                     // append window to vector
                     s.extend_from_slice(window);
                     ReadSlice::new(offset as Idx)
                 }
                 else {
                     // append only ins_counter last bytes of window
-                    s.extend_from_slice(&window[(K_SIZE - ins_counter) as usize..]);
-                    ReadSlice::new(offset - (K_SIZE - ins_counter) as Idx)
+                    s.extend_from_slice(&window[(K1_SIZE - ins_counter) as usize..]);
+                    ReadSlice::new(offset - (K1_SIZE - ins_counter) as Idx)
                 }
             };
             current = Box::new(Vertex::new(rs, Edges::empty(idx)));
