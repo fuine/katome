@@ -1,8 +1,8 @@
 //! `HashSet` based Graph's Intermediate Representation
 use std::mem;
-// use std::fmt;
-// extern crate itertools;
-// use self::itertools::Itertools;
+use std::fmt;
+extern crate itertools;
+use self::itertools::Itertools;
 
 use asm::assembler::SEQUENCES;
 use data::edges::Edges;
@@ -130,16 +130,17 @@ impl Convert<HsGIR> for PtGraph {
 fn deallocate<T>(ptr: *mut T) {
     unsafe{ mem::drop(Vec::from_raw_parts(ptr, 0, 1)); }
 }
-/* helper debug, uses itertools, commented out for now
+
+/// Convenience wrapper around `HsGIR`, allows for a custom Debug trait implementation
 pub struct DebugHsGIR(pub HsGIR);
 
-fn id<T>(x: T, y: T) -> T { x }
+fn id<T>(x: T, _: T) -> T { x }
 
 impl fmt::Debug for DebugHsGIR {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         self.0
             .iter()
-            .map(|ref node| {
+            .map(|node| {
                 node.edges.outgoing
                     .iter()
                     .map(|&e| {
@@ -151,4 +152,4 @@ impl fmt::Debug for DebugHsGIR {
             })
             .fold_results((), id)
     }
-} */
+}
