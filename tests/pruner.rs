@@ -12,6 +12,7 @@ pub use katome::algorithms::pruner::{Clean, Prunable};
 pub use katome::asm::SEQUENCES;
 pub use katome::asm::lock::LOCK;
 pub use katome::data::collections::graphs::pt_graph::PtGraph;
+pub use katome::data::collections::girs::hm_gir::HmGIR;
 pub use katome::data::primitives::K_SIZE;
 pub use katome::data::statistics::{Counts, HasStats, Opt, Stats};
 pub use std::sync::Mutex;
@@ -28,7 +29,6 @@ describe! tests {
 
     describe! data1 {
         before_each {
-            let (mut graph, _) = PtGraph::create("./tests/test_files/data1.txt".to_string());
             let correct_stats = vec![
                 Stats {
                     capacity: (32, Opt::Full(32)),
@@ -74,26 +74,48 @@ describe! tests {
                 }];
         }
 
-        it "removes single vertices" {
-            // TODO remove some edges to show that vertices will get removed?
-            graph.remove_single_vertices();
-            assert_eq!(correct_stats[0], graph.stats());
+        describe! graph {
+            before_each {
+                let (mut graph, _) = PtGraph::create("./tests/test_files/data1.txt".to_string());
+            }
+
+            it "removes single vertices" {
+                // TODO remove some edges to show that vertices will get removed?
+                graph.remove_single_vertices();
+                assert_eq!(correct_stats[0], graph.stats());
+            }
+
+            it "removes weak edges" {
+                graph.remove_weak_edges(3);
+                assert_eq!(correct_stats[1], graph.stats());
+            }
+
+            it "removes dead paths" {
+                graph.remove_dead_paths();
+                assert_eq!(correct_stats[2], graph.stats());
+            }
         }
 
-        it "removes weak edges" {
-            graph.remove_weak_edges(3);
-            assert_eq!(correct_stats[1], graph.stats());
+        describe! gir {
+            before_each {
+                let (mut gir, _) = HmGIR::create("./tests/test_files/data1.txt".to_string());
+            }
+
+            it "removes single vertices" {
+                gir.remove_single_vertices();
+                assert_eq!(correct_stats[0].counts, gir.stats().counts);
+            }
+
+            it "removes weak edges" {
+                gir.remove_weak_edges(3);
+                assert_eq!(correct_stats[1].counts, gir.stats().counts);
+            }
         }
 
-        it "removes dead paths" {
-            graph.remove_dead_paths();
-            assert_eq!(correct_stats[2], graph.stats());
-        }
     }
 
     describe! data2 {
         before_each {
-            let (mut graph, _) = PtGraph::create("./tests/test_files/data2.txt".to_string());
             let correct_stats = vec![
                 Stats {
                     capacity: (1024, Opt::Full(1024)),
@@ -138,27 +160,48 @@ describe! tests {
                     outgoing_vert_count: Opt::Full(0)
                 }];
         }
+        describe! graph {
+            before_each {
+                let (mut graph, _) = PtGraph::create("./tests/test_files/data2.txt".to_string());
+            }
 
-        it "removes single vertices" {
-            graph.remove_single_vertices();
-            assert_eq!(correct_stats[0], graph.stats());
+            it "removes single vertices" {
+                graph.remove_single_vertices();
+                assert_eq!(correct_stats[0], graph.stats());
+            }
+
+            it "removes weak edges" {
+                graph.remove_weak_edges(2);
+                assert_eq!(correct_stats[1], graph.stats());
+            }
+
+            it "removes dead paths" {
+                graph.remove_dead_paths();
+                assert_eq!(correct_stats[2], graph.stats());
+            }
         }
 
-        it "removes weak edges" {
-            graph.remove_weak_edges(2);
-            assert_eq!(correct_stats[1], graph.stats());
+        describe! gir {
+            before_each {
+                let (mut gir, _) = HmGIR::create("./tests/test_files/data2.txt".to_string());
+            }
+
+            it "removes single vertices" {
+                gir.remove_single_vertices();
+                assert_eq!(correct_stats[0].counts, gir.stats().counts);
+            }
+
+            it "removes weak edges" {
+                gir.remove_weak_edges(2);
+                assert_eq!(correct_stats[1].counts, gir.stats().counts);
+            }
         }
 
-        it "removes dead paths" {
-            graph.remove_dead_paths();
-            assert_eq!(correct_stats[2], graph.stats());
-        }
     }
 
     describe! data3 {
         // TODO change something in order to show better weak edges removal
         before_each {
-            let (mut graph, _) = PtGraph::create("./tests/test_files/data3.txt".to_string());
             let correct_stats = vec![
                 Stats {
                     capacity: (16384, Opt::Full(16384)),
@@ -206,19 +249,41 @@ describe! tests {
             ];
         }
 
-        it "removes single vertices" {
-            graph.remove_single_vertices();
-            assert_eq!(correct_stats[0], graph.stats());
+        describe! graph {
+            before_each {
+                let (mut graph, _) = PtGraph::create("./tests/test_files/data3.txt".to_string());
+            }
+
+            it "removes single vertices" {
+                graph.remove_single_vertices();
+                assert_eq!(correct_stats[0], graph.stats());
+            }
+
+            it "removes weak edges" {
+                graph.remove_weak_edges(1);
+                assert_eq!(correct_stats[1], graph.stats());
+            }
+
+            it "removes dead paths" {
+                graph.remove_dead_paths();
+                assert_eq!(correct_stats[2].counts, graph.stats().counts);
+            }
         }
 
-        it "removes weak edges" {
-            graph.remove_weak_edges(1);
-            assert_eq!(correct_stats[1], graph.stats());
-        }
+        describe! gir {
+            before_each {
+                let (mut gir, _) = HmGIR::create("./tests/test_files/data3.txt".to_string());
+            }
 
-        it "removes dead paths" {
-            graph.remove_dead_paths();
-            assert_eq!(correct_stats[2].counts, graph.stats().counts);
+            it "removes single vertices" {
+                gir.remove_single_vertices();
+                assert_eq!(correct_stats[0].counts, gir.stats().counts);
+            } 
+
+            it "removes weak edges" {
+                gir.remove_weak_edges(1);
+                assert_eq!(correct_stats[1].counts, gir.stats().counts);
+            }
         }
     }
 }

@@ -80,7 +80,7 @@ impl Clean for PtGraph {
     }
 
     fn remove_weak_edges(&mut self, threshold: EdgeWeight) {
-        self.retain_edges(|g, e| !(*unwrap!(g.edge_weight(e)) < threshold));
+        self.retain_edges(|g, e| *unwrap!(g.edge_weight(e)) >= threshold);
         self.remove_single_vertices();
     }
 }
@@ -109,6 +109,7 @@ impl Clean for HmGIR {
                 .collect::<Vec<Edge>>()
                 .into_boxed_slice();
         }
+        self.remove_single_vertices();
     }
 }
 
@@ -120,6 +121,8 @@ impl Clean for HmGIR {
 /// but should be sufficiently faster for just 5 characters we use at the moment
 fn has_incoming_edges(gir: &mut HmGIR, vertex: &ReadSlice) -> bool {
     let mut output = false;
+    // gir stores EdgeIndex for the Graph, so we need to compare them
+    let idx = unwrap!(gir.get(&vertex)).idx;
     let offset;
     {
         let mut vec = vec![];
@@ -134,12 +137,12 @@ fn has_incoming_edges(gir: &mut HmGIR, vertex: &ReadSlice) -> bool {
     }
     // try to bruteforce by inserting all possible characters: ACTGN
     for chr in &['A', 'C', 'T', 'G', 'N'] {
-        SEQUENCES.write().unwrap()[0] = *chr as u8;
+        SEQUENCES.write().unwrap()[offset] = *chr as u8;
         // dummy read slice used to check if we can find it in the gir
         let tmp_rs = ReadSlice::new(offset);
         if let Entry::Occupied(e) = gir.entry(tmp_rs) {
             // if we got any hits check if our vertex is in the outgoing
-            if let Some(_) = e.get().outgoing.iter().find(|&x| x.0 == vertex.offset) {
+            if let Some(_) = e.get().outgoing.iter().find(|&x| x.0 == idx) {
                 output = true;
                 break;
             }
