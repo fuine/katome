@@ -12,6 +12,7 @@ pub use katome::algorithms::pruner::{Clean, Prunable};
 pub use katome::asm::SEQUENCES;
 pub use katome::asm::lock::LOCK;
 pub use katome::data::collections::graphs::pt_graph::PtGraph;
+pub use katome::data::collections::girs::Convert;
 pub use katome::data::collections::girs::hm_gir::HmGIR;
 pub use katome::data::primitives::K_SIZE;
 pub use katome::data::statistics::{Counts, HasStats, Opt, Stats};
@@ -104,11 +105,15 @@ describe! tests {
             it "removes single vertices" {
                 gir.remove_single_vertices();
                 assert_eq!(correct_stats[0].counts, gir.stats().counts);
+                let graph = PtGraph::create_from(gir);
+                assert_eq!(correct_stats[0], graph.stats());
             }
 
             it "removes weak edges" {
                 gir.remove_weak_edges(3);
                 assert_eq!(correct_stats[1].counts, gir.stats().counts);
+                let graph = PtGraph::create_from(gir);
+                assert_eq!(correct_stats[1], graph.stats());
             }
         }
 
@@ -189,11 +194,15 @@ describe! tests {
             it "removes single vertices" {
                 gir.remove_single_vertices();
                 assert_eq!(correct_stats[0].counts, gir.stats().counts);
+                let graph = PtGraph::create_from(gir);
+                assert_eq!(correct_stats[0], graph.stats());
             }
 
             it "removes weak edges" {
                 gir.remove_weak_edges(2);
                 assert_eq!(correct_stats[1].counts, gir.stats().counts);
+                let graph = PtGraph::create_from(gir);
+                assert_eq!(correct_stats[1], graph.stats());
             }
         }
 
@@ -278,11 +287,15 @@ describe! tests {
             it "removes single vertices" {
                 gir.remove_single_vertices();
                 assert_eq!(correct_stats[0].counts, gir.stats().counts);
-            } 
+                let graph = PtGraph::create_from(gir);
+                assert_eq!(correct_stats[0], graph.stats());
+            }
 
             it "removes weak edges" {
                 gir.remove_weak_edges(1);
                 assert_eq!(correct_stats[1].counts, gir.stats().counts);
+                let graph = PtGraph::create_from(gir);
+                assert_eq!(correct_stats[1], graph.stats());
             }
         }
     }

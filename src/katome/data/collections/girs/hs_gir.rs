@@ -5,7 +5,7 @@ extern crate itertools;
 use self::itertools::Itertools;
 
 use asm::SEQUENCES;
-use data::edges::Edges;
+use data::edges::{Edges, Outgoing};
 use data::read_slice::ReadSlice;
 use data::primitives::{K_SIZE, K1_SIZE, Idx};
 use data::vertex::Vertex;
@@ -76,7 +76,7 @@ impl Build for HsGIR {
             }
             if cnt > 0 {
                 let same_node = current == previous_node;
-                create_or_modify_edge(&mut previous_node.edges, current_idx);
+                create_or_modify_edge(&mut previous_node.edges.outgoing, current_idx);
                 if same_node {
                     current = previous_node.clone();
                 }
@@ -88,23 +88,23 @@ impl Build for HsGIR {
 }
 
 /// Create edge if it previously haven't existed, otherwise increase it's weight.
-pub fn create_or_modify_edge(edges: &mut Edges, to: Idx) {
-    for i in edges.outgoing.iter_mut() {
+pub fn create_or_modify_edge(edges: &mut Outgoing, to: Idx) {
+    for i in edges.iter_mut() {
         if i.0 == to {
             i.1 += 1;
             return;
         }
     }
     let mut out_ = Vec::new();
-    out_.extend_from_slice(&edges.outgoing);
+    out_.extend_from_slice(edges);
     out_.push((to, 1));
-    edges.outgoing = out_.into_boxed_slice();
+    *edges = out_.into_boxed_slice();
 }
 
 impl Convert<HsGIR> for PtGraph {
-    fn create_from(h: HsGIR) -> Self {
+    fn create_from(mut h: HsGIR) -> Self {
         let mut graph = PtGraph::default();
-        for vertex in h.into_iter() {
+        for vertex in h.drain() {
             let source = NodeIndex::new(vertex.edges.idx);
             while source.index() >= graph.node_count() {
                 graph.add_node(ReadSlice::default());

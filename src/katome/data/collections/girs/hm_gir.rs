@@ -1,6 +1,6 @@
 //! `HashMap` based Graph's Intermediate Representation
 use asm::SEQUENCES;
-use data::edges::Edges;
+use data::edges::{Edge, Outgoing};
 use data::read_slice::ReadSlice;
 use data::primitives::{K_SIZE, K1_SIZE, Idx};
 use super::hs_gir::create_or_modify_edge;
@@ -10,13 +10,13 @@ use data::collections::graphs::pt_graph::{PtGraph, NodeIndex};
 
 use std::collections::HashMap as HM;
 use std::collections::hash_map::Entry;
-use std::hash::BuildHasherDefault;
+use std::hash::BuildHasherDefault as BuildHash;
 
 extern crate metrohash;
 use self::metrohash::MetroHash;
 
 /// `HashMap` GIR
-pub type HmGIR = HM<ReadSlice, Edges, BuildHasherDefault<MetroHash>>;
+pub type HmGIR = HM<ReadSlice, Outgoing, BuildHash<MetroHash>>;
 
 
 impl GIR for HmGIR {}
@@ -31,8 +31,6 @@ impl Build for HmGIR {
         let mut current: ReadSlice;
         let mut previous_node: ReadSlice = ReadSlice::new(0);
         let mut offset;
-        let mut idx = self.len();
-        let mut current_idx;
         for (cnt, window) in read.windows(K1_SIZE as usize).enumerate() {
             let from_tmp = {
                 let mut s = unwrap!(SEQUENCES.write(), "Global sequences poisoned :(");
@@ -66,23 +64,20 @@ impl Build for HmGIR {
                         if ins_counter > 0 {
                             ins_counter += 1;
                         }
-                        current_idx = oe.get().idx;
                         oe.key().clone()
                     }
                     Entry::Vacant(ve) => {
                         index_counter += tmp_index_counter;
                         ins_counter = 1;
-                        current_idx = idx;
-                        idx += 1;
-                        ve.insert(Edges::empty(current_idx));
+                        ve.insert(Box::new([]));
                         ReadSlice::new(index_counter)
                     }
                 }
             };
             if cnt > 0 {
                 // insert current sequence as a member of the previous
-                let e: &mut Edges = unwrap!(self.get_mut(&previous_node), "Node disappeared");
-                create_or_modify_edge(e, current_idx);
+                let e: &mut Outgoing = unwrap!(self.get_mut(&previous_node), "Node disappeared");
+                create_or_modify_edge(e, current.offset);
             }
             previous_node = current;
         }
@@ -91,29 +86,38 @@ impl Build for HmGIR {
 
 
 impl Convert<HmGIR> for PtGraph {
-    fn create_from(gir: HmGIR) -> Self {
+    fn create_from(mut gir: HmGIR) -> Self {
         info!("Starting conversion from GIR to graph");
-        // get rid of hashes -- we don't need them anymore
-        let mut vec = gir.into_iter().collect::<Vec<(ReadSlice, Edges)>>();
-        // sort this vector according to indicees of nodes, guaranteeing proper node creation (node
-        // indices are created just like we created ours, but iterator over hashmap likely changed the
-        // ordering).
-        vec.sort_by(|a, b| a.1.idx.cmp(&b.1.idx));
-        // create separate representations of nodes and edges
-        let (nodes, edges): (Vec<ReadSlice>, Vec<Edges>) = vec.into_iter().unzip();
-        let mut graph = PtGraph::default();
-        // digest nodes and move them into the Graph
-        for (cnt, node) in nodes.into_iter().enumerate() {
-            let tmp = graph.add_node(node).index();
-            assert_eq!(tmp, cnt);
-        }
-        for edges_ in edges.into_iter() {
-            let idx = edges_.idx;
-            for edge in edges_.outgoing.into_iter() {
-                graph.add_edge(NodeIndex::new(idx), NodeIndex::new(edge.0), edge.1);
+        {
+            let mut idx_set: HM<Idx, Idx, BuildHash<MetroHash>> = HM::with_capacity_and_hasher(gir.len(), BuildHash::<MetroHash>::default());
+            for (cnt, rs) in gir.keys().enumerate() {
+                idx_set.insert(rs.offset, cnt);
+            }
+            for edges in gir.values_mut() {
+                *edges = edges
+                    .iter()
+                    .cloned()
+                    .map(|x| (*unwrap!(idx_set.get(&x.0)), x.1))
+                    .collect::<Vec<Edge>>()
+                    .into_boxed_slice();
             }
         }
-        info!("Conversion ended!");
+        let mut graph = PtGraph::default();
+        for (idx, (rs, mut _edges)) in gir.drain().enumerate() {
+            let source = NodeIndex::new(idx);
+            while source.index() >= graph.node_count() {
+                graph.add_node(ReadSlice::default());
+            }
+            for edge in _edges.into_iter() {
+                while edge.0 >= graph.node_count() {
+                    graph.add_node(ReadSlice::default());
+                }
+                graph.add_edge(source, NodeIndex::new(edge.0), edge.1);
+            }
+            *unwrap!(graph.node_weight_mut(source)) = rs.clone();
+            // force drop of the original box in hashmap
+            _edges = Box::new([]);
+        }
         graph
     }
 }

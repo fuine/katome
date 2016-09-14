@@ -197,7 +197,7 @@ impl HasStats for HsGIR {
 
 impl HasStats for HmGIR {
     fn stats(&self) -> Stats {
-        let edge_count_ = self.values().map(|e| e.outgoing.len()).sum::<usize>();
+        let edge_count_ = self.values().map(|e| e.len()).sum::<usize>();
         Stats {
             capacity: (self.capacity(), Opt::Empty),
             counts: Counts {

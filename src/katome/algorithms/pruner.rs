@@ -88,7 +88,7 @@ impl Clean for PtGraph {
 impl Clean for HmGIR {
     fn remove_single_vertices(&mut self) {
         let mut keys_to_remove: Vec<ReadSlice> = self.iter()
-            .filter(|&(_, val)| val.outgoing.is_empty())
+            .filter(|&(_, val)| val.is_empty())
             .map(|(key, _)| key.clone())
             .collect();
         keys_to_remove = keys_to_remove.into_iter()
@@ -100,9 +100,9 @@ impl Clean for HmGIR {
     }
 
     fn remove_weak_edges(&mut self, threshold: EdgeWeight) {
-        for vertex in self.values_mut() {
+        for edges in self.values_mut() {
             // if edge's weight is lower than threshold
-            vertex.outgoing = vertex.outgoing
+            *edges = edges
                 .iter()
                 .cloned()
                 .filter(|&x| x.1 >= threshold)
@@ -121,8 +121,6 @@ impl Clean for HmGIR {
 /// but should be sufficiently faster for just 5 characters we use at the moment
 fn has_incoming_edges(gir: &mut HmGIR, vertex: &ReadSlice) -> bool {
     let mut output = false;
-    // gir stores EdgeIndex for the Graph, so we need to compare them
-    let idx = unwrap!(gir.get(&vertex)).idx;
     let offset;
     {
         let mut vec = vec![];
@@ -142,7 +140,7 @@ fn has_incoming_edges(gir: &mut HmGIR, vertex: &ReadSlice) -> bool {
         let tmp_rs = ReadSlice::new(offset);
         if let Entry::Occupied(e) = gir.entry(tmp_rs) {
             // if we got any hits check if our vertex is in the outgoing
-            if let Some(_) = e.get().outgoing.iter().find(|&x| x.0 == idx) {
+            if let Some(_) = e.get().iter().find(|&x| x.0 == vertex.offset) {
                 output = true;
                 break;
             }
