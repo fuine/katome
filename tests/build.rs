@@ -21,7 +21,7 @@ describe! build {
         // get global lock over sequences for testing
         let _l = LOCK.lock().unwrap();
         // Clear up SEQUENCES
-        SEQUENCES.write().unwrap().clear();
+        SEQUENCES.write().clear();
         // hardcoded K_SIZE value for now :/
         assert_eq!(K_SIZE, 40);
         let _correct_read_bytes = vec![200, 2500, 23300];

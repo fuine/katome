@@ -23,6 +23,7 @@ metrohash = "*"
 unwrap = "~1.1.0"
 bio = "^0.9.0"
 itertools = "*"
+parking_lot = "0.3.2"
 
 [dev-dependencies]
 stainless = "*"

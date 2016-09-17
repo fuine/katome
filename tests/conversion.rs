@@ -22,7 +22,7 @@ describe! conversion {
         // get global lock over sequences for testing
         let _l = LOCK.lock().unwrap();
         // Clear up SEQUENCES
-        SEQUENCES.write().unwrap().clear();
+        SEQUENCES.write().clear();
         // hardcoded K_SIZE value for now :/
         assert_eq!(K_SIZE, 40);
         let _correct_counts = vec![(26, 26), (650, 650), (14446, 14213)];

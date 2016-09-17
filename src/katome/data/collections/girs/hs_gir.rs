@@ -16,9 +16,7 @@ use data::collections::graphs::pt_graph::{PtGraph, NodeIndex};
 use std::collections::HashSet as HS;
 use std::hash::BuildHasherDefault;
 
-extern crate metrohash;
-use self::metrohash::MetroHash;
-// use ::pbr::{ProgressBar};
+use metrohash::MetroHash;
 
 /// `HashSet` GIR
 pub type HsGIR = HS<Box<Vertex>, BuildHasherDefault<MetroHash>>;
@@ -39,7 +37,7 @@ impl Build for HsGIR {
         let mut insert = false;
         for (cnt, window) in read.windows(K1_SIZE as usize).enumerate() {
             let rs = {
-                let mut s = unwrap!(SEQUENCES.write(), "Global sequences poisoned :(");
+                let mut s = SEQUENCES.write();
                 offset = s.len();
                 // append new data to the global vector of sequences
                 if ins_counter == 0 || ins_counter > K1_SIZE {
@@ -60,7 +58,7 @@ impl Build for HsGIR {
                 if ins_counter > 0 {
                     ins_counter += 1;
                 }
-                unwrap!(SEQUENCES.write()).truncate(offset);
+                SEQUENCES.write().truncate(offset);
                 current_idx = v.edges.idx;
                 current = v.clone();
             }

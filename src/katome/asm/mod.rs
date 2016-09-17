@@ -1,7 +1,7 @@
 //! De novo genome assemblers.
 pub mod basic_assembler;
 
-use data::primitives::VecArc;
+use data::primitives::LockedSequences;
 use std::path::Path;
 lazy_static! {
     /// Global mutable vector of bytes. Contains unique reads slices (k-mers).
@@ -9,7 +9,7 @@ lazy_static! {
     /// `ReadSlice` uses offsets on this structure to efficiently store
     /// information about sequence. Global container allows to save 8 bytes in
     /// ReadSlice (it doesn't have to store `Arc` to the container).
-    pub static ref SEQUENCES: VecArc = VecArc::default();
+    pub static ref SEQUENCES: LockedSequences = LockedSequences::default();
 }
 
 #[doc(hidden)]

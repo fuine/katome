@@ -6,11 +6,11 @@
 extern crate log;
 #[macro_use]
 extern crate lazy_static;
-
-extern crate petgraph;
-
 #[macro_use]
 extern crate unwrap;
+extern crate petgraph;
+extern crate metrohash;
+
 
 
 pub mod data;

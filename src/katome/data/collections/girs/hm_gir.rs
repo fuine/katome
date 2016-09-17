@@ -12,8 +12,7 @@ use std::collections::HashMap as HM;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault as BuildHash;
 
-extern crate metrohash;
-use self::metrohash::MetroHash;
+use metrohash::MetroHash;
 
 /// `HashMap` GIR
 pub type HmGIR = HM<ReadSlice, Outgoing, BuildHash<MetroHash>>;
@@ -26,14 +25,14 @@ impl Build for HmGIR {
     fn add_read(&mut self, read: &[u8]) {
         assert!(read.len() as Idx >= K_SIZE, "Read is too short!");
         let mut ins_counter: Idx = 0;
-        let mut index_counter = unwrap!(SEQUENCES.read(), "Global sequences poisoned :(").len() as Idx;
+        let mut index_counter = SEQUENCES.read().len() as Idx;
         let mut tmp_index_counter;
         let mut current: ReadSlice;
         let mut previous_node: ReadSlice = ReadSlice::new(0);
         let mut offset;
         for (cnt, window) in read.windows(K1_SIZE as usize).enumerate() {
             let from_tmp = {
-                let mut s = unwrap!(SEQUENCES.write(), "Global sequences poisoned :(");
+                let mut s = SEQUENCES.write();
                 offset = s.len();
                 // push to vector
                 if ins_counter == 0 {
@@ -60,7 +59,7 @@ impl Build for HmGIR {
                 match self.entry(from_tmp) {
                     Entry::Occupied(oe) => {
                         // remove added window from SEQUENCES
-                        unwrap!(SEQUENCES.write()).truncate(offset);
+                        SEQUENCES.write().truncate(offset);
                         if ins_counter > 0 {
                             ins_counter += 1;
                         }

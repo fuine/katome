@@ -84,7 +84,7 @@ impl Build for PtGraphBuilder {
     fn add_read(&mut self, read: &[u8]) {
         assert!(read.len() as Idx >= K_SIZE, "Read is too short!");
         let mut ins_counter: Idx = 0;
-        let mut index_counter = SEQUENCES.read().unwrap().len() as Idx;
+        let mut index_counter = SEQUENCES.read().len() as Idx;
         let mut current_node: NodeIndex;
         let mut previous_node: NodeIndex = NodeIndex::new(0);
         let mut offset;
@@ -92,7 +92,7 @@ impl Build for PtGraphBuilder {
         // let mut prev_val_old: *mut Edges = 0 as *mut Edges;
         for (cnt, window) in read.windows(K1_SIZE as usize).enumerate(){
             let from_tmp = {
-                let mut s = SEQUENCES.write().unwrap();
+                let mut s = SEQUENCES.write();
                 offset = s.len();
                 s.extend_from_slice(window);
                 ReadSlice::new(offset as Idx)
@@ -100,27 +100,27 @@ impl Build for PtGraphBuilder {
             current_node = { // get a proper key to the hashmap
                 match self.reads_to_nodes.entry(from_tmp) {
                     Entry::Occupied(oe) => {
-                        SEQUENCES.write().unwrap().truncate(offset);
+                        SEQUENCES.write().truncate(offset);
                         if ins_counter > 0 {
                             ins_counter += 1;
                         }
                         *oe.get()
                     }
                     Entry::Vacant(_) => { // we cant use that VE because it is keyed with a temporary value
-                        SEQUENCES.write().unwrap().truncate(offset);
+                        SEQUENCES.write().truncate(offset);
                         // push to vector
                         if ins_counter == 0 {
                             // append window to vector
-                            SEQUENCES.write().unwrap().extend_from_slice(window);
+                            SEQUENCES.write().extend_from_slice(window);
                         }
                         else if ins_counter > K1_SIZE {
                             // append window to vector
-                            SEQUENCES.write().unwrap().extend_from_slice(window);
+                            SEQUENCES.write().extend_from_slice(window);
                             index_counter += K1_SIZE;
                         }
                         else {
                             // append only ins_counter last bytes of window
-                            SEQUENCES.write().unwrap().extend_from_slice(&window[(K1_SIZE - ins_counter ) as usize ..]);
+                            SEQUENCES.write().extend_from_slice(&window[(K1_SIZE - ins_counter ) as usize ..]);
                             index_counter += ins_counter;
                         }
                         ins_counter = 1;

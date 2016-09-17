@@ -21,9 +21,9 @@ impl Assemble for BasicAsm {
         info!("Starting assembler!");
         let (mut gir, number_of_read_bytes) = HmGIR::create(input);
         println!("I saved {} out of {} bytes -- {:.2}%",
-                 unwrap!(SEQUENCES.read()).len(),
+                 SEQUENCES.read().len(),
                  number_of_read_bytes,
-                 (unwrap!(SEQUENCES.read()).len() * 100) as f64 / number_of_read_bytes as f64);
+                 (SEQUENCES.read().len() * 100) as f64 / number_of_read_bytes as f64);
         gir.print_stats();
         gir.remove_weak_edges(minimal_weight_threshold as EdgeWeight);
         let mut graph = PtGraph::create_from(gir);

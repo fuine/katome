@@ -177,7 +177,7 @@ mod tests {
                 .collect::<String>();
             name.push_str("TGC");
             {
-                let mut seq = SEQUENCES.write().unwrap();
+                let mut seq = SEQUENCES.write();
                 seq.clear();
                 seq.extend(name.clone().into_bytes());
                 seq.extend(name.clone().into_bytes());

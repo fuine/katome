@@ -129,13 +129,13 @@ fn has_incoming_edges(gir: &mut HmGIR, vertex: &ReadSlice) -> bool {
         // shift the register one character to the right
         vec.truncate(K1_SIZE - 1);
         vec.insert(0, 0);
-        let mut s = SEQUENCES.write().unwrap();
+        let mut s = SEQUENCES.write();
         offset = s.len() as Idx;
         s.extend_from_slice(vec.as_slice());
     }
     // try to bruteforce by inserting all possible characters: ACTGN
     for chr in &['A', 'C', 'T', 'G', 'N'] {
-        SEQUENCES.write().unwrap()[offset] = *chr as u8;
+        SEQUENCES.write()[offset] = *chr as u8;
         // dummy read slice used to check if we can find it in the gir
         let tmp_rs = ReadSlice::new(offset);
         if let Entry::Occupied(e) = gir.entry(tmp_rs) {
@@ -146,7 +146,7 @@ fn has_incoming_edges(gir: &mut HmGIR, vertex: &ReadSlice) -> bool {
             }
         }
     }
-    SEQUENCES.write().unwrap().truncate(offset);
+    SEQUENCES.write().truncate(offset);
     output
 }
 

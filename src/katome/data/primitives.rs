@@ -1,5 +1,6 @@
 //! Basic type declarations used throughout katome.
-use std::sync::{Arc, RwLock};
+extern crate parking_lot;
+use self::parking_lot::RwLock;
 
 /// Index type for both nodes and edges in the graph/gir.
 pub type Idx = usize;
@@ -13,4 +14,4 @@ pub const K1_SIZE: Idx = K_SIZE - 1;
 /// Stores non-repeating k-mers.
 pub type Sequences = Vec<u8>;
 /// Wrapper around `Sequences`, which allows for `lazy_static` initialization.
-pub type VecArc = Arc<RwLock<Sequences>>;
+pub type LockedSequences = RwLock<Sequences>;
