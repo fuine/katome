@@ -1,16 +1,18 @@
 //! Example of genome assembler using `katome` library.
+
 // #![feature(alloc_system)]
 // extern crate alloc_system;
 extern crate katome;
 extern crate toml;
 extern crate rustc_serialize;
 extern crate log4rs;
-// extern crate flame;
+
+use katome::algorithms::builder::InputFileType;
 use katome::asm::Assemble;
 use katome::asm::basic_assembler::BasicAsm;
-use toml::{Parser, Value};
 use std::fs::File;
 use std::io::Read;
+use toml::{Parser, Value};
 
 
 
@@ -21,8 +23,8 @@ fn main() {
     BasicAsm::assemble(config.input_path,
                        config.output_path,
                        config.original_genome_length,
-                       config.minimal_weight_threshold);
-    // flame::dump_html(&mut File::create("flame-graph.html").unwrap()).unwrap();
+                       config.minimal_weight_threshold,
+                       InputFileType::BFCounter);
 }
 
 /// Config for assembler.
@@ -57,13 +59,7 @@ pub fn parse_config(path: String) -> GenomeConfig {
         for err in &parser.errors {
             let (loline, locol) = parser.to_linecol(err.lo);
             let (hiline, hicol) = parser.to_linecol(err.hi);
-            println!("{}:{}:{}-{}:{} error: {}",
-                     path,
-                     loline,
-                     locol,
-                     hiline,
-                     hicol,
-                     err.desc);
+            println!("{}:{}:{}-{}:{} error: {}", path, loline, locol, hiline, hicol, err.desc);
         }
         panic!("Exiting!");
     }

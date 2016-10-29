@@ -1,9 +1,10 @@
 //! Algorithms for standardization of edges/contigs in the `Graph`.
-use ::data::primitives::{EdgeWeight, K_SIZE};
-use ::data::collections::graphs::pt_graph::{EdgeIndex, PtGraph, NodeIndex};
-use ::data::collections::graphs::Graph;
-use ::algorithms::pruner::Clean;
-use ::petgraph::EdgeDirection;
+
+use algorithms::pruner::Clean;
+use data::collections::graphs::Graph;
+use data::collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
+use data::primitives::{EdgeWeight, K_SIZE};
+use petgraph::EdgeDirection;
 
 /// Contig representation.
 type Contig = Vec<EdgeIndex>;
@@ -24,22 +25,21 @@ impl Standardizable for PtGraph {
         let (s, l) = self.raw_edges()
             .iter()
             .fold((0usize, 0usize), |acc, e| {
-                if e.weight < threshold {
-                    (acc.0 + e.weight as usize, acc.1 + e.weight as usize)
+                if e.weight.1 < threshold {
+                    (acc.0 + e.weight.1 as usize, acc.1 + e.weight.1 as usize)
                 }
                 else {
-                    (acc.0 + e.weight as usize, acc.1)
+                    (acc.0 + e.weight.1 as usize, acc.1)
                 }
             });
-        let p: f64 = calculate_standardization_ratio(
-            original_genome_length, K_SIZE, s as usize, l as usize);
-        info!("Ratio: {} for g: {} k: {} s: {} l: {}",
-              p, original_genome_length, K_SIZE, s, l);
+        let p: f64 =
+            calculate_standardization_ratio(original_genome_length, K_SIZE, s as usize, l as usize);
+        info!("Ratio: {} for g: {} k: {} s: {} l: {}", p, original_genome_length, K_SIZE, s, l);
         // normalize edges across the graph
         for weight in self.edge_weights_mut() {
-            let new_weight = (*weight as f64 * p).round() as EdgeWeight;
+            let new_weight = (weight.1 as f64 * p).round() as EdgeWeight;
             // debug!("Old: {} New: {}", *weight, new_weight);
-            *weight = if new_weight == 0 && *weight >= threshold {
+            weight.1 = if new_weight == 0 && weight.1 >= threshold {
                 1
             }
             else {
@@ -62,7 +62,9 @@ impl Standardizable for PtGraph {
     }
 }
 
-fn get_contigs_from_node(graph: &PtGraph, starting_node: NodeIndex, ambiguous_nodes: &<PtGraph as Graph>::AmbiguousNodes) -> Contigs {
+fn get_contigs_from_node(graph: &PtGraph, starting_node: NodeIndex,
+                         ambiguous_nodes: &<PtGraph as Graph>::AmbiguousNodes)
+                         -> Contigs {
     let mut contigs = vec![];
     for node in graph.neighbors_directed(starting_node, EdgeDirection::Outgoing) {
         let mut contig = vec![];
@@ -86,19 +88,19 @@ fn get_contigs_from_node(graph: &PtGraph, starting_node: NodeIndex, ambiguous_no
 fn standardize_contig(graph: &mut PtGraph, contig: Contig) {
     // sum all weights in the contig
     let sum: usize = contig.iter()
-        .map(|&e| *unwrap!(graph.edge_weight(e)) as usize)
+        .map(|&e| unwrap!(graph.edge_weight(e)).1 as usize)
         .sum();
     // calculate new, standardizes weight
     let standardized_weight = (sum as f64 / contig.len() as f64).round() as EdgeWeight;
     // modify all edges in the contig with new value
     for edge in contig {
-        *unwrap!(graph.edge_weight_mut(edge)) = standardized_weight;
+        unwrap!(graph.edge_weight_mut(edge)).1 = standardized_weight;
     }
 }
 
 #[inline]
 fn calculate_standardization_ratio(original_genome_length: usize, k: usize,
-    sum_of_all_weights: usize, weights_lower_than_threshold: usize)
+                                   sum_of_all_weights: usize, weights_lower_than_threshold: usize)
                                    -> f64 {
     (original_genome_length - k) as f64 / (sum_of_all_weights - weights_lower_than_threshold) as f64
 }
@@ -108,8 +110,8 @@ fn calculate_standardization_ratio(original_genome_length: usize, k: usize,
 mod tests {
     pub use super::*;
     use super::calculate_standardization_ratio;
-    pub use ::data::collections::graphs::pt_graph::{PtGraph, EdgeIndex};
-    pub use ::data::read_slice::ReadSlice;
+    pub use ::data::collections::graphs::pt_graph::{EdgeIndex, PtGraph};
+    pub use ::data::slices::EdgeSlice;
 
     #[test]
     fn calculates_standardization_ratio() {
@@ -129,81 +131,89 @@ mod tests {
 
         it "standardizes single contig" {
             let mut graph = PtGraph::default();
-            let x = graph.add_node(ReadSlice::new(0));
-            let y = graph.add_node(ReadSlice::new(1));
-            let z = graph.add_node(ReadSlice::new(2));
-            let e1 = graph.add_edge(x, y, 100);
-            let e2 = graph.add_edge(y, z, 1);
+            let x = graph.add_node(());
+            let y = graph.add_node(());
+            let z = graph.add_node(());
+            let e1 = graph.add_edge(x, y, (EdgeSlice::default(), 100));
+            let e2 = graph.add_edge(y, z, (EdgeSlice::default(), 1));
 
-            assert_eq!(*graph.edge_weight(e1).unwrap(), 100);
-            assert_eq!(*graph.edge_weight(e2).unwrap(), 1);
+            assert_eq!(graph.edge_weight(e1).unwrap().1, 100);
+            assert_eq!(graph.edge_weight(e2).unwrap().1, 1);
             graph.standardize_contigs();
             assert_eq!(graph.edge_count(), 2);
-            assert_eq!(*graph.edge_weight(e1).unwrap(), 51);
-            assert_eq!(*graph.edge_weight(e2).unwrap(), 51);
+            assert_eq!(graph.edge_weight(e1).unwrap().1, 51);
+            assert_eq!(graph.edge_weight(e2).unwrap().1, 51);
         }
 
         it "standardizes contig one in two out" {
             let mut graph = PtGraph::from_edges(&[
-                (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 4, 1),
-                (2, 5, 2), (5, 6, 4), (6, 7, 9)
+                (0, 1, (EdgeSlice::default(), 8)), (1, 2, (EdgeSlice::default(), 4)),
+                (2, 3, (EdgeSlice::default(), 115)), (3, 4, (EdgeSlice::default(), 1)),
+                (2, 5, (EdgeSlice::default(), 2)), (5, 6, (EdgeSlice::default(), 4)),
+                (6, 7, (EdgeSlice::default(), 9))
             ]);
             graph.standardize_contigs();
             assert_eq!(graph.edge_count(), 7);
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(0)).unwrap(), 6);
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(1)).unwrap(), 6);
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(2)).unwrap(), 58);
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(3)).unwrap(), 58);
+            assert_eq!(graph.edge_weight(EdgeIndex::new(0)).unwrap().1, 6);
+            assert_eq!(graph.edge_weight(EdgeIndex::new(1)).unwrap().1, 6);
+            assert_eq!(graph.edge_weight(EdgeIndex::new(2)).unwrap().1, 58);
+            assert_eq!(graph.edge_weight(EdgeIndex::new(3)).unwrap().1, 58);
             for i in 4..7 {
-                assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 5);
+                assert_eq!(graph.edge_weight(EdgeIndex::new(i)).unwrap().1, 5);
             }
         }
 
         it "standardizes contigs two in one out" {
             let mut graph = PtGraph::from_edges(&[
-                (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 4, 1),
-                (7, 2, 2), (5, 6, 4), (6, 7, 9)
+                (0, 1, (EdgeSlice::default(), 8)), (1, 2, (EdgeSlice::default(), 4)),
+                (2, 3, (EdgeSlice::default(), 115)), (3, 4, (EdgeSlice::default(), 1)),
+                (7, 2, (EdgeSlice::default(), 2)), (5, 6, (EdgeSlice::default(), 4)),
+                (6, 7, (EdgeSlice::default(), 9))
             ]);
             graph.standardize_contigs();
             assert_eq!(graph.edge_count(), 7);
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(0)).unwrap(), 6);
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(1)).unwrap(), 6);
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(2)).unwrap(), 58);
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(3)).unwrap(), 58);
+            assert_eq!(graph.edge_weight(EdgeIndex::new(0)).unwrap().1, 6);
+            assert_eq!(graph.edge_weight(EdgeIndex::new(1)).unwrap().1, 6);
+            assert_eq!(graph.edge_weight(EdgeIndex::new(2)).unwrap().1, 58);
+            assert_eq!(graph.edge_weight(EdgeIndex::new(3)).unwrap().1, 58);
             for i in 4..7 {
-                assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 5);
+                assert_eq!(graph.edge_weight(EdgeIndex::new(i)).unwrap().1, 5);
             }
         }
 
         it "standardizes contigs two in two out" {
             let mut graph = PtGraph::from_edges(&[
-                (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 4, 1),
-                (7, 2, 2), (5, 6, 4), (6, 7, 9),
-                (2, 8, 178), (8, 9, 298), (9, 10, 123), (10, 11, 9128)
+                (0, 1, (EdgeSlice::default(), 8)), (1, 2, (EdgeSlice::default(), 4)),
+                (2, 3, (EdgeSlice::default(), 115)), (3, 4, (EdgeSlice::default(), 1)),
+                (7, 2, (EdgeSlice::default(), 2)), (5, 6, (EdgeSlice::default(), 4)),
+                (6, 7, (EdgeSlice::default(), 9)), (2, 8, (EdgeSlice::default(), 178)),
+                (8, 9, (EdgeSlice::default(), 298)), (9, 10, (EdgeSlice::default(), 123)),
+                (10, 11, (EdgeSlice::default(), 9128))
             ]);
             graph.standardize_contigs();
             assert_eq!(graph.edge_count(), 11);
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(0)).unwrap(), 6);
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(1)).unwrap(), 6);
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(2)).unwrap(), 58);
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(3)).unwrap(), 58);
+            assert_eq!(graph.edge_weight(EdgeIndex::new(0)).unwrap().1, 6);
+            assert_eq!(graph.edge_weight(EdgeIndex::new(1)).unwrap().1, 6);
+            assert_eq!(graph.edge_weight(EdgeIndex::new(2)).unwrap().1, 58);
+            assert_eq!(graph.edge_weight(EdgeIndex::new(3)).unwrap().1, 58);
             for i in 4..7 {
-                assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 5);
+                assert_eq!(graph.edge_weight(EdgeIndex::new(i)).unwrap().1, 5);
             }
             for i in 7..11 {
-                assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 2432);
+                assert_eq!(graph.edge_weight(EdgeIndex::new(i)).unwrap().1, 2432);
             }
         }
 
         it "standardizes contigs in cycle" {
             let mut graph = PtGraph::from_edges(&[
-                (0, 1, 8), (1, 2, 4), (2, 3, 115), (3, 1, 1),
+                (0, 1, (EdgeSlice::default(), 8)), (1, 2, (EdgeSlice::default(), 4)),
+                (2, 3, (EdgeSlice::default(), 115)), (3, 1, (EdgeSlice::default(), 1)),
             ]);
             graph.standardize_contigs();
             assert_eq!(graph.edge_count(), 4);
-            assert_eq!(*graph.edge_weight(EdgeIndex::new(0)).unwrap(), 8);
+            assert_eq!(graph.edge_weight(EdgeIndex::new(0)).unwrap().1, 8);
             for i in 1..4 {
-                assert_eq!(*graph.edge_weight(EdgeIndex::new(i)).unwrap(), 40);
+                assert_eq!(graph.edge_weight(EdgeIndex::new(i)).unwrap().1, 40);
             }
         }
     }

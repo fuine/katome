@@ -83,10 +83,9 @@ fn n_metrics(collection: &[usize], tipping_point: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
-    extern crate rand;
     pub use algorithms::collapser::SerializedContigs;
-    pub use std::iter::repeat;
     pub use super::*;
+    pub use std::iter::repeat;
 
     describe! cont_stats {
         it "checks basic stats" {

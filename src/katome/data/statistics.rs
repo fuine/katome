@@ -1,13 +1,15 @@
 //! Various statistics for `Graph`s and `GIR`s.
+use data::collections::girs::hm_gir::HmGIR;
+use data::collections::girs::hs_gir::HsGIR;
+use data::collections::graphs::Graph;
+use data::collections::graphs::pt_graph::PtGraph;
+use data::primitives::EdgeWeight;
+
+use petgraph::EdgeDirection;
+
 use std::fmt;
 use std::fmt::Display;
 use std::iter::repeat;
-use data::collections::girs::hs_gir::HsGIR;
-use data::collections::girs::hm_gir::HmGIR;
-use data::primitives::EdgeWeight;
-use data::collections::graphs::Graph;
-use data::collections::graphs::pt_graph::PtGraph;
-use ::petgraph::EdgeDirection;
 
 /// Just like `Option`, but allows for custom `fmt::Display` implementation.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -71,8 +73,7 @@ impl Stats {
 impl PartialEq for Stats {
     // ignore capacity during comparison
     fn eq(&self, other: &Stats) -> bool {
-        self.counts == other.counts &&
-        self.max_edge_weight == other.max_edge_weight &&
+        self.counts == other.counts && self.max_edge_weight == other.max_edge_weight &&
         round(self.avg_edge_weight) == round(other.avg_edge_weight) &&
         self.max_in_degree == other.max_in_degree &&
         self.max_out_degree == other.max_out_degree &&
@@ -85,7 +86,7 @@ impl PartialEq for Stats {
 fn round(x: Opt<f64>) -> Opt<f64> {
     match x {
         Opt::Full(a) => Opt::Full((a * 100.0).round() / 100.0),
-        Opt::Empty => Opt::Empty
+        Opt::Empty => Opt::Empty,
     }
 }
 
@@ -106,8 +107,11 @@ impl Display for Counts {
 
 impl Display for Stats {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(writeln!(f, "I have the capacity of {}, {} for {}",
-                      self.capacity.0, self.capacity.1, self.counts));
+        try!(writeln!(f,
+                      "I have the capacity of {}, {} for {}",
+                      self.capacity.0,
+                      self.capacity.1,
+                      self.counts));
         try!(writeln!(f, "Max edge weight: {}", self.max_edge_weight));
         try!(writeln!(f, "Avg edge weight: {:.2}", self.avg_edge_weight));
         try!(writeln!(f, "Max in degree: {}", self.max_in_degree));
@@ -145,19 +149,20 @@ pub trait HasStats {
 
 impl HasStats for PtGraph {
     fn stats(&self) -> Stats {
-        let max_weight = self.raw_edges().iter().map(|w| w.weight).max().unwrap_or(0);
-        let avg_edge_weight_ =
-            self.raw_edges().iter().map(|w| w.weight).fold(0usize, |s, w| s + w as usize) as f64 /
-            self.edge_count() as f64;
-        let max_out_degree_ =
-            self.node_indices().map(|n| self.out_degree(&n)).max().unwrap_or(0);
+        let max_weight = self.raw_edges().iter().map(|w| w.weight.1).max().unwrap_or(0);
+        let avg_edge_weight_ = self.raw_edges()
+            .iter()
+            .map(|w| w.weight.1)
+            .fold(0usize, |s, w| s + w as usize) as f64 /
+                               self.edge_count() as f64;
+        let max_out_degree_ = self.node_indices().map(|n| self.out_degree(&n)).max().unwrap_or(0);
         let avg_out_degree_ = (self.node_indices()
             .fold(0usize, |m, n| m + self.out_degree(&n))) as f64 /
                               self.node_count() as f64;
         let (node_cap, edge_cap) = self.capacity();
         Stats {
             capacity: (node_cap, Opt::Full(edge_cap)),
-            counts: Counts{
+            counts: Counts {
                 node_count: self.node_count(),
                 edge_count: self.edge_count(),
             },

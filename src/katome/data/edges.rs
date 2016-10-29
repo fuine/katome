@@ -5,7 +5,8 @@ use data::primitives::{EdgeWeight, Idx};
 ///
 /// `Idx` indicates unique id of the endpoint node of the edge, assigned based on the
 /// GIR creation order.
-pub type Edge = (Idx, EdgeWeight);
+/// Last byte denotes last character in the kmer.
+pub type Edge = (Idx, EdgeWeight, u8);
 /// Stores information about consecutive edges.
 pub type Outgoing = Box<[Edge]>;
 
@@ -22,9 +23,9 @@ pub struct Edges {
 
 impl Edges {
     /// Creates `Edges` with a single `Edge`.
-    pub fn new(to: Idx, idx_: Idx) -> Edges {
+    pub fn new(to: Idx, idx_: Idx, last_char: u8) -> Edges {
         Edges {
-            outgoing: (vec![(to, 1)]).into_boxed_slice(),
+            outgoing: (vec![(to, 1, last_char)]).into_boxed_slice(),
             idx: idx_,
         }
     }
@@ -38,10 +39,10 @@ impl Edges {
     }
 
     /// Adds edge with the given endpoint.
-    pub fn add_edge(&mut self, to: Idx) {
+    pub fn add_edge(&mut self, to: Idx, last_char: u8) {
         let mut out_ = Vec::new();
         out_.extend_from_slice(&self.outgoing);
-        out_.push((to, 1));
+        out_.push((to, 1, last_char));
         self.outgoing = out_.into_boxed_slice();
     }
 
@@ -82,7 +83,7 @@ mod tests {
             let mut e: Edges = Edges::empty(0);
             assert_eq!(e.idx, 0);
             assert_eq!(e.outgoing.len(), 0);
-            e.add_edge(0);
+            e.add_edge(0, b'a');
             assert_eq!(e.outgoing.len(), 1);
         }
 
@@ -90,9 +91,9 @@ mod tests {
             let mut e: Edges = Edges::empty(1);
             assert_eq!(e.idx, 1);
             assert_eq!(e.outgoing.len(), 0);
-            e.add_edge(0);
-            e.add_edge(1);
-            e.add_edge(2);
+            e.add_edge(0, b'a');
+            e.add_edge(1, b'a');
+            e.add_edge(2, b'a');
             e.outgoing[0].1 += 3;
             assert_eq!(e.outgoing.len(), 3);
             e.remove_weak_edges(2);

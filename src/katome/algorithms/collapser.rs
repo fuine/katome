@@ -1,10 +1,10 @@
 //! Create string representation of contigs out of `Graph`.
-use ::data::collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
-use ::data::collections::graphs::Graph;
-use ::petgraph::EdgeDirection;
-use ::petgraph::algo::scc;
-use ::algorithms::pruner::Clean;
-use std::iter;
+use ::data::collections::graphs::pt_graph::{EdgeIndex, /* NodeIndex,  */PtGraph};
+// use ::data::collections::graphs::Graph;
+// use ::petgraph::EdgeDirection;
+// use ::petgraph::algo::scc;
+// use ::algorithms::pruner::Clean;
+// use std::iter;
 use std::collections::HashSet;
 
 /* contigs <- 0 // {output of assembler}
@@ -46,7 +46,7 @@ type Bridges = HashSet<EdgeIndex>;
 
 impl Collapsable for PtGraph {
     fn collapse(mut self) -> SerializedContigs {
-        let mut contigs: SerializedContigs = vec![];
+        /* let mut contigs: SerializedContigs = vec![];
         let mut bridges = find_bridges(&self);
         loop {
             let starting_vertices: Vec<NodeIndex> = self.externals(EdgeDirection::Incoming)
@@ -61,11 +61,12 @@ impl Collapsable for PtGraph {
             self.remove_single_vertices();
         }
         contigs.retain(|x| !x.is_empty());
-        contigs
+        contigs */
+        unimplemented!();
     }
 }
 
-fn find_bridges(graph: &PtGraph) -> Bridges {
+/* fn find_bridges(graph: &PtGraph) -> Bridges {
     info!("Start finding bridges");
     let sccs = scc(graph);
     let mut vec = iter::repeat(0).take(graph.node_count()).collect::<Vec<usize>>();
@@ -158,12 +159,11 @@ fn decrease_weight(graph: &mut PtGraph, edge: EdgeIndex, bridges: &mut Bridges) 
 
 #[cfg(test)]
 mod tests {
-    extern crate rand;
     pub use ::asm::SEQUENCES;
     pub use ::asm::lock::LOCK;
     pub use ::data::collections::graphs::pt_graph::PtGraph;
     pub use ::data::primitives::K1_SIZE;
-    pub use ::data::read_slice::ReadSlice;
+    pub use ::data::slices::ReadSlice;
     pub use std::iter::repeat;
     pub use super::*;
 
@@ -171,7 +171,6 @@ mod tests {
         before_each {
             // global lock on sequences for test
             let _l = LOCK.lock().unwrap();
-            // initialize with random data
             let mut name = repeat('A')
                 .take(K1_SIZE)
                 .collect::<String>();
@@ -256,4 +255,4 @@ mod tests {
             assert_eq!(contigs[0], n);
         }
     }
-}
+} */

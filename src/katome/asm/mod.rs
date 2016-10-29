@@ -2,6 +2,7 @@
 pub mod basic_assembler;
 
 use data::primitives::LockedSequences;
+use algorithms::builder::InputFileType;
 use std::path::Path;
 lazy_static! {
     /// Global mutable vector of bytes. Contains unique reads slices (k-mers).
@@ -9,7 +10,11 @@ lazy_static! {
     /// `ReadSlice` uses offsets on this structure to efficiently store
     /// information about sequence. Global container allows to save 8 bytes in
     /// ReadSlice (it doesn't have to store `Arc` to the container).
-    pub static ref SEQUENCES: LockedSequences = LockedSequences::default();
+    pub static ref SEQUENCES: LockedSequences = {
+        let l = LockedSequences::default();
+        l.write().push(vec![].into_boxed_slice());
+        l
+    };
 }
 
 #[doc(hidden)]
@@ -30,5 +35,5 @@ pub trait Assemble {
     /// * `original_genome_length` - length of the reference genome.
     /// * `minimal_weight_threshold` - threshold used by `Pruner`.
     fn assemble<P: AsRef<Path>>(input: P, _output: P, original_genome_length: usize,
-                minimal_weight_threshold: usize);
+                                minimal_weight_threshold: usize, ft: InputFileType);
 }

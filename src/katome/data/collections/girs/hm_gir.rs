@@ -1,84 +1,100 @@
 //! `HashMap` based Graph's Intermediate Representation
+use algorithms::builder::{Build, Init, InputFileType};
 use asm::SEQUENCES;
+use data::collections::girs::{Convert, GIR};
+use data::collections::graphs::pt_graph::{NodeIndex, PtGraph};
+use data::compress::{change_last_char_in_edge, compress_kmer, kmer_to_edge};
 use data::edges::{Edge, Outgoing};
-use data::read_slice::ReadSlice;
-use data::primitives::{K_SIZE, K1_SIZE, Idx};
+use data::primitives::{Idx, K_SIZE};
+use data::slices::{BasicSlice, EdgeSlice, NodeSlice};
 use super::hs_gir::create_or_modify_edge;
-use algorithms::builder::Build;
-use data::collections::girs::{GIR, Convert};
-use data::collections::graphs::pt_graph::{PtGraph, NodeIndex};
+
+use metrohash::MetroHash;
 
 use std::collections::HashMap as HM;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault as BuildHash;
 
-use metrohash::MetroHash;
-
 /// `HashMap` GIR
-pub type HmGIR = HM<ReadSlice, Outgoing, BuildHash<MetroHash>>;
-
+pub type HmGIR = HM<NodeSlice, Outgoing, BuildHash<MetroHash>>;
 
 impl GIR for HmGIR {}
 
+impl Init for HmGIR {
+    fn init(_edge_count: Option<usize>, node_count: Option<usize>, _ft: InputFileType) -> HmGIR {
+        if let Some(nodes) = node_count {
+            HmGIR::with_capacity_and_hasher(nodes, BuildHash::<MetroHash>::default())
+        }
+        else {
+            HmGIR::default()
+        }
+    }
+}
+
 impl Build for HmGIR {
     /// Add new reads to `HmGIR`, modify weights of existing edges.
-    fn add_read(&mut self, read: &[u8]) {
+    fn add_read_fastaq(&mut self, read: &[u8]) {
         assert!(read.len() as Idx >= K_SIZE, "Read is too short!");
-        let mut ins_counter: Idx = 0;
-        let mut index_counter = SEQUENCES.read().len() as Idx;
-        let mut tmp_index_counter;
-        let mut current: ReadSlice;
-        let mut previous_node: ReadSlice = ReadSlice::new(0);
-        let mut offset;
-        for (cnt, window) in read.windows(K1_SIZE as usize).enumerate() {
-            let from_tmp = {
+        let mut source_node;
+        let mut target_node;
+        let mut insert = false;
+        for window in read.windows(K_SIZE as usize) {
+            {
                 let mut s = SEQUENCES.write();
-                offset = s.len();
-                // push to vector
-                if ins_counter == 0 {
-                    // append window to vector
-                    s.extend_from_slice(window);
-                    tmp_index_counter = 0;
-                    ReadSlice::new(offset as Idx)
-                }
-                else if ins_counter > K1_SIZE {
-                    // append window to vector
-                    s.extend_from_slice(window);
-                    tmp_index_counter = K1_SIZE;
-                    ReadSlice::new(offset as Idx)
-                }
-                else {
-                    // append only ins_counter last bytes of window
-                    s.extend_from_slice(&window[(K1_SIZE - ins_counter) as usize..]);
-                    tmp_index_counter = ins_counter;
-                    ReadSlice::new(offset - (K1_SIZE - ins_counter) as Idx)
-                }
-            };
-            current = {
-                // get a proper key to the hashmap
-                match self.entry(from_tmp) {
-                    Entry::Occupied(oe) => {
-                        // remove added window from SEQUENCES
-                        SEQUENCES.write().truncate(offset);
-                        if ins_counter > 0 {
-                            ins_counter += 1;
-                        }
-                        oe.key().clone()
-                    }
-                    Entry::Vacant(ve) => {
-                        index_counter += tmp_index_counter;
-                        ins_counter = 1;
-                        ve.insert(Box::new([]));
-                        ReadSlice::new(index_counter)
-                    }
-                }
-            };
-            if cnt > 0 {
-                // insert current sequence as a member of the previous
-                let e: &mut Outgoing = unwrap!(self.get_mut(&previous_node), "Node disappeared");
-                create_or_modify_edge(e, current.offset);
+                s[0] = compress_kmer(window).into_boxed_slice();
             }
-            previous_node = current;
+            source_node = NodeSlice::new(0);
+            target_node = NodeSlice::new(1);
+            source_node = {
+                // get a proper key to the hashmap
+                match self.entry(source_node) {
+                    Entry::Occupied(oe) => *oe.key(),
+                    Entry::Vacant(_) => {
+                        // push to vector
+                        let mut s = SEQUENCES.write();
+                        let tmp = s[0].clone();
+                        let offset = s.len();
+                        s.push(tmp);
+                        insert = true;
+                        NodeSlice::new(2 * offset)
+                    }
+                }
+            };
+
+            if insert {
+                self.insert(source_node, Box::new([]));
+            }
+
+            target_node = {
+                // get a proper key to the hashmap
+                match self.entry(target_node) {
+                    Entry::Occupied(oe) => {
+                        insert = false;
+                        *oe.key()
+                    }
+                    Entry::Vacant(_) => {
+                        // push to vector
+                        let offset = if !insert {
+                            let mut s = SEQUENCES.write();
+                            let tmp = s[0].clone();
+                            s.push(tmp);
+                            2 * s.len() - 1
+                        }
+                        else {
+                            source_node.offset() + 1
+                        };
+                        insert = true;
+                        NodeSlice::new(offset)
+                    }
+                }
+            };
+
+            if insert {
+                self.insert(target_node, Box::new([]));
+                insert = false;
+            }
+            let e: &mut Outgoing = unwrap!(self.get_mut(&source_node), "Node disappeared");
+            create_or_modify_edge(e, target_node.offset(), window[window.len() - 1]);
         }
     }
 }
@@ -88,32 +104,53 @@ impl Convert<HmGIR> for PtGraph {
     fn create_from(mut gir: HmGIR) -> Self {
         info!("Starting conversion from GIR to graph");
         {
-            let mut idx_set: HM<Idx, Idx, BuildHash<MetroHash>> = HM::with_capacity_and_hasher(gir.len(), BuildHash::<MetroHash>::default());
-            for (cnt, rs) in gir.keys().enumerate() {
-                idx_set.insert(rs.offset, cnt);
+            let mut idx_set: HM<Idx, Idx, BuildHash<MetroHash>> =
+                HM::with_capacity_and_hasher(gir.len(), BuildHash::<MetroHash>::default());
+            for (cnt, ns) in gir.keys().enumerate() {
+                idx_set.insert(ns.offset(), cnt);
             }
             for edges in gir.values_mut() {
-                *edges = edges
-                    .iter()
+                *edges = edges.iter()
                     .cloned()
-                    .map(|x| (*unwrap!(idx_set.get(&x.0)), x.1))
+                    .map(|x| (*unwrap!(idx_set.get(&x.0)), x.1, x.2))
                     .collect::<Vec<Edge>>()
                     .into_boxed_slice();
             }
         }
         let mut graph = PtGraph::default();
-        for (idx, (rs, mut _edges)) in gir.drain().enumerate() {
+        let mut s = SEQUENCES.write();
+        for (idx, (ns, mut _edges)) in gir.drain().enumerate() {
             let source = NodeIndex::new(idx);
             while source.index() >= graph.node_count() {
-                graph.add_node(ReadSlice::default());
+                graph.add_node(());
             }
-            for edge in _edges.into_iter() {
+            let id = ns.idx();
+            if _edges.is_empty() {
+                // clear the underlying box as it will no longer be used. We
+                // can't pop it out of the global vector cause it would ruin our
+                // existing indices that are already in the graph.
+                s[id] = Box::new([]);
+                continue;
+            }
+            // first edge slice will be pointing at the original place of source node, next edges will be appended to the global SEQUENCEs after having their last symbol changed
+            let tmp = kmer_to_edge(&s[id]);
+            s[id] = tmp.clone().into_boxed_slice();
+            // at least one edge going out
+            let (target, weight, _) = _edges[0];
+            while target >= graph.node_count() {
+                graph.add_node(());
+            }
+            graph.add_edge(source, NodeIndex::new(target), (EdgeSlice::new(id), weight));
+            for edge in _edges.into_iter().skip(1) {
                 while edge.0 >= graph.node_count() {
-                    graph.add_node(ReadSlice::default());
+                    graph.add_node(());
                 }
-                graph.add_edge(source, NodeIndex::new(edge.0), edge.1);
+                let new_compressed = change_last_char_in_edge(&tmp, edge.2);
+                s.push(new_compressed.into_boxed_slice());
+                graph.add_edge(source,
+                               NodeIndex::new(edge.0),
+                               (EdgeSlice::new(s.len() - 1), edge.1));
             }
-            *unwrap!(graph.node_weight_mut(source)) = rs.clone();
             // force drop of the original box in hashmap
             _edges = Box::new([]);
         }

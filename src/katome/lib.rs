@@ -10,6 +10,7 @@ extern crate lazy_static;
 extern crate unwrap;
 extern crate petgraph;
 extern crate metrohash;
+extern crate rustc_serialize;
 
 
 
