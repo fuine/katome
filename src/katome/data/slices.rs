@@ -1,7 +1,7 @@
 //! Representation of string for vertex in De Bruijn Graph.
 
 use asm::SEQUENCES;
-use data::compress::{decompress_edge, decompress_last_char_edge, decompress_node};
+use data::compress::{decompress_edge, decompress_last_char_edge, decompress_node, add_char_to_edge};
 use data::primitives::{COMPRESSED_K1_SIZE, Idx};
 
 use std::cmp;
@@ -14,6 +14,21 @@ use std::str;
 /// View of the compressed edge.
 pub struct EdgeSlice {
     offset: Idx,
+}
+
+impl EdgeSlice {
+    pub fn merge(&self, other: EdgeSlice) {
+        let self_idx = self.idx();
+        let other_idx = other.idx();
+        let mut s = SEQUENCES.write();
+        let len_oth = s[other_idx].len() - 1;
+        let last_char = s[other_idx][len_oth];
+        let tmp = add_char_to_edge(&s[self_idx], last_char);
+        // clear other as we won't use it anymore
+        s[other_idx] = Vec::new().into_boxed_slice();
+        // swap to the new value
+        s[self_idx] = tmp.into_boxed_slice();
+    }
 }
 
 #[derive(Copy, Clone, Default, Debug)]

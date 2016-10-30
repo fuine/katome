@@ -1,7 +1,5 @@
 //! `petgraph` based `Graph`.
 
-extern crate fixedbitset;
-
 use algorithms::builder::{Build, Init, InputFileType};
 use asm::SEQUENCES;
 use data::collections::graphs::Graph;
@@ -9,10 +7,10 @@ use data::compress::{compress_kmer, kmer_to_edge};
 use data::primitives::{EdgeWeight, Idx, K_SIZE};
 use data::slices::{BasicSlice, EdgeSlice, NodeSlice};
 
+use fixedbitset::FixedBitSet;
 use metrohash::MetroHash;
 use petgraph;
 use petgraph::dot::{Config, Dot};
-use self::fixedbitset::FixedBitSet;
 
 use std::collections::HashSet;
 use std::collections::hash_map::{Entry, HashMap};

@@ -11,6 +11,7 @@ extern crate unwrap;
 extern crate petgraph;
 extern crate metrohash;
 extern crate rustc_serialize;
+extern crate fixedbitset;
 
 
 
