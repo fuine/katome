@@ -26,3 +26,5 @@ reorder_imports = true
 format_strings = true
 chains_overflow_last = true
 take_source_hints = true
+normalise_comments = false
+wrap_comments = false

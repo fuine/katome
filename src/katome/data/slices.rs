@@ -21,9 +21,8 @@ impl EdgeSlice {
         let self_idx = self.idx();
         let other_idx = other.idx();
         let mut s = SEQUENCES.write();
-        let len_oth = s[other_idx].len() - 1;
-        let last_char = s[other_idx][len_oth];
-        let tmp = add_char_to_edge(&s[self_idx], last_char);
+        let last_char = decompress_last_char_edge(&*s[other_idx]) as u8;
+        let tmp = add_char_to_edge(&*s[self_idx], last_char);
         // clear other as we won't use it anymore
         s[other_idx] = Vec::new().into_boxed_slice();
         // swap to the new value

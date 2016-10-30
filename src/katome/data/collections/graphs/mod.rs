@@ -8,9 +8,10 @@ pub mod pt_graph;
 use algorithms::pruner::Prunable;
 use algorithms::standardizer::Standardizable;
 use algorithms::collapser::Collapsable;
+use algorithms::shrinker::Shrinkable;
 
 /// Graph's interface.
-pub trait Graph: Prunable + Standardizable + Collapsable {
+pub trait Graph: Prunable + Standardizable + Collapsable + Shrinkable {
     /// Node identifier.
     type NodeIdentifier;
     /// Collection storing nodes which are ambiguous nodes.

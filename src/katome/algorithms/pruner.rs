@@ -237,7 +237,7 @@ fn check_dead_path(graph: &PtGraph, vertex: NodeIndex, first_direction: EdgeDire
 mod tests {
     #![allow(unused_variables)]
     pub use super::*;
-    pub use ::data::collections::graphs::pt_graph::PtGraph;
+    pub use ::data::collections::graphs::pt_graph::{PtGraph, EdgeIndex};
     pub use ::data::slices::EdgeSlice;
 
     describe! pr {
@@ -335,6 +335,19 @@ mod tests {
                     graph.remove_single_vertices();
                     assert_eq!(graph.node_count(), 0);
                     assert_eq!(graph.edge_count(), 0);
+                }
+
+                it "removes after removal of edge" {
+                    graph.add_edge(x, y, (EdgeSlice::default(), 100));
+                    graph.add_edge(y, z, (EdgeSlice::default(), 1));
+                    assert_eq!(graph.edge_count(), 2);
+                    assert_eq!(graph.node_count(), 3);
+                    graph.remove_edge(EdgeIndex::new(1));
+                    assert_eq!(graph.edge_count(), 1);
+                    assert_eq!(graph.node_count(), 3);
+                    graph.remove_single_vertices();
+                    assert_eq!(graph.node_count(), 2);
+                    assert_eq!(graph.edge_count(), 1);
                 }
             }
         }

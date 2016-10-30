@@ -75,8 +75,8 @@ fn get_last_char_from_node(node: &[u8]) -> u8 {
 }
 
 pub fn change_char_in_chunk(mut chunk: u8, padding: usize, to: u8) -> u8 {
-    let mask = 0b11111100 << 2 * padding;
-    let compressed_char = encode_fasta_symbol(to, 0u8) << 2 * padding;
+    let mask = 0b11111100 << (2 * padding);
+    let compressed_char = encode_fasta_symbol(to, 0u8) << (2 * padding);
     chunk &= mask;
     chunk |= compressed_char;
     chunk
@@ -94,6 +94,7 @@ pub fn change_last_char_in_edge(edge: &[u8], to: u8) -> Vec<u8> {
 }
 
 pub fn add_char_to_edge(edge: &[u8], mut chr: u8) -> Vec<u8> {
+    assert!(edge.len() > 1);
     let padding = edge[0];
     let len = edge.len() - 1;
     let new_pad = padding.wrapping_sub(1) % CHARS_PER_BYTE as u8;
