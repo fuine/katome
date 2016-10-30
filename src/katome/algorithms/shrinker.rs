@@ -16,7 +16,7 @@ pub trait Shrinkable {
     /// vertices except source and target of the path have in_degree == out_degree == 1)
     /// It is assumed that after shrinking graph will not have any nodes
     /// connected in this way: s -> x -> ... -> t
-    fn shrink(&mut Self);
+    fn shrink(&mut self);
 }
 
 pub struct ShrinkTraverse {
@@ -81,12 +81,12 @@ impl ShrinkTraverse {
 }
 
 impl Shrinkable for PtGraph {
-    fn shrink(graph: &mut PtGraph) {
-        let mut t = ShrinkTraverse::new(graph);
-        while let Some((start_node, base_edge)) = t.next(graph) {
-            shrink_from_node(graph, start_node, base_edge);
+    fn shrink(&mut self) {
+        let mut t = ShrinkTraverse::new(self);
+        while let Some((start_node, base_edge)) = t.next(self) {
+            shrink_from_node(self, start_node, base_edge);
         }
-        graph.remove_single_vertices();
+        self.remove_single_vertices();
     }
 
 }
@@ -201,7 +201,7 @@ mod tests {
                                           (1, 2, (EdgeSlice::new(1), 1))]);
         assert_eq!(g.node_count(), 3);
         assert_eq!(g.edge_count(), 2);
-        shrink(&mut g);
+        g.shrink();
         assert_eq!(g.node_count(), 2);
         assert_eq!(g.edge_count(), 1);
         check_node!(g, 0, 0, 1);
@@ -259,7 +259,7 @@ mod tests {
                                           (3, 1, (EdgeSlice::new(3), 1))]);
         assert_eq!(g.node_count(), 4);
         assert_eq!(g.edge_count(), 4);
-        shrink(&mut g);
+        g.shrink();
         assert_eq!(g.node_count(), 2);
         assert_eq!(g.edge_count(), 2);
         check_node!(g, 0, 0, 1);
@@ -277,7 +277,7 @@ mod tests {
                                           (3, 4, (EdgeSlice::new(3), 1))]);
         assert_eq!(g.node_count(), 5);
         assert_eq!(g.edge_count(), 4);
-        shrink(&mut g);
+        g.shrink();
         assert_eq!(g.node_count(), 3);
         assert_eq!(g.edge_count(), 2);
         check_node!(g, 0, 0, 2);
@@ -297,7 +297,7 @@ mod tests {
                                           (4, 2, (EdgeSlice::new(3), 1))]);
         assert_eq!(g.node_count(), 5);
         assert_eq!(g.edge_count(), 4);
-        shrink(&mut g);
+        g.shrink();
         assert_eq!(g.node_count(), 3);
         assert_eq!(g.edge_count(), 2);
         check_node!(g, 0, 0, 1);

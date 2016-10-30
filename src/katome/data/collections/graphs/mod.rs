@@ -5,13 +5,16 @@
 //! into the specified `Graph`.
 pub mod pt_graph;
 
-use algorithms::pruner::Prunable;
-use algorithms::standardizer::Standardizable;
+use algorithms::builder::Build;
 use algorithms::collapser::Collapsable;
+use algorithms::pruner::Prunable;
 use algorithms::shrinker::Shrinkable;
+use algorithms::standardizer::Standardizable;
+use data::statistics::HasStats;
 
 /// Graph's interface.
-pub trait Graph: Prunable + Standardizable + Collapsable + Shrinkable {
+pub trait Graph
+    : Build + Prunable + Standardizable + Collapsable + Shrinkable + HasStats {
     /// Node identifier.
     type NodeIdentifier;
     /// Collection storing nodes which are ambiguous nodes.

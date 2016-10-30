@@ -10,6 +10,7 @@ extern crate log4rs;
 use katome::algorithms::builder::InputFileType;
 use katome::asm::Assemble;
 use katome::asm::basic_assembler::BasicAsm;
+use katome::data::collections::graphs::pt_graph::PtGraph;
 use std::fs::File;
 use std::io::Read;
 use toml::{Parser, Value};
@@ -20,11 +21,11 @@ fn main() {
     log4rs::init_file("./config/log4rs.yaml", Default::default()).unwrap();
     let config = parse_config("./config/settings.toml".to_string());
     println!("{:?}", config);
-    BasicAsm::assemble(config.input_path,
-                       config.output_path,
-                       config.original_genome_length,
-                       config.minimal_weight_threshold,
-                       InputFileType::BFCounter);
+    BasicAsm::assemble::<String, PtGraph>(config.input_path,
+                                          config.output_path,
+                                          config.original_genome_length,
+                                          config.minimal_weight_threshold,
+                                          InputFileType::BFCounter);
 }
 
 /// Config for assembler.
