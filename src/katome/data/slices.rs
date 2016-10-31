@@ -2,7 +2,7 @@
 
 use asm::SEQUENCES;
 use data::compress::{decompress_edge, decompress_last_char_edge, decompress_node, add_char_to_edge};
-use data::primitives::{COMPRESSED_K1_SIZE, Idx};
+use data::primitives::{COMPRESSED_K1_SIZE, K1_SIZE, Idx};
 
 use std::cmp;
 use std::fmt;
@@ -27,6 +27,12 @@ impl EdgeSlice {
         s[other_idx] = Vec::new().into_boxed_slice();
         // swap to the new value
         s[self_idx] = tmp.into_boxed_slice();
+    }
+
+    pub fn remainder(&self) -> String {
+        let mut name = self.name();
+        name.drain(..K1_SIZE);
+        name
     }
 }
 

@@ -1,39 +1,16 @@
 //! Create string representation of contigs out of `Graph`.
-use ::data::collections::graphs::pt_graph::{EdgeIndex, /* NodeIndex,  */PtGraph};
-// use ::data::collections::graphs::Graph;
-// use ::petgraph::EdgeDirection;
-// use ::petgraph::algo::scc;
-// use ::algorithms::pruner::Clean;
-// use std::iter;
-use std::collections::HashSet;
 
-/* contigs <- 0 // {output of assembler}
-v <- v0 // current vertex
-c <- 0  // current contig
-loop
-    if |v.out| == 0 then
-        contigs.insert(c)
-        return contigs // end of algorithm
-    end if
-    e <- v.out[0] // current edge
-    if|v:out| > 1 then
-        f <- v.out[1] // second current edge
-        if|v.out| == 2 and (isBridge(e) or isBridge(f)) then
-            if isBridge(e)then
-                e <- f
-            end if
-        else
-            contigs.insert(c) // v is ambiguous
-            c <- 0 // new contig
-        end if
-    end if
-    c.insert(e)
-    v <- e.target
-    G.delete(e) // decreases edge's weight, if it achieves 0, remove e from G
-end loop */
+use algorithms::pruner::Clean;
+use algorithms::shrinker::Shrinkable;
+use data::collections::graphs::Graph;
+use data::collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
+use data::slices::BasicSlice;
+
+use petgraph::EdgeDirection;
+use petgraph::visit::EdgeRef;
 
 /// Collapse `Graph` into `SerializedContigs`.
-pub trait Collapsable {
+pub trait Collapsable: Shrinkable {
     /// Collapses `Graph` into `SerializedContigs`.
     fn collapse(mut self) -> SerializedContigs;
 }
@@ -42,12 +19,10 @@ pub trait Collapsable {
 pub type SerializedContig = String;
 /// Collection of serialized contigs.
 pub type SerializedContigs = Vec<String>;
-type Bridges = HashSet<EdgeIndex>;
 
 impl Collapsable for PtGraph {
     fn collapse(mut self) -> SerializedContigs {
-        /* let mut contigs: SerializedContigs = vec![];
-        let mut bridges = find_bridges(&self);
+        let mut contigs: SerializedContigs = vec![];
         loop {
             let starting_vertices: Vec<NodeIndex> = self.externals(EdgeDirection::Incoming)
                 .collect();
@@ -55,105 +30,146 @@ impl Collapsable for PtGraph {
                 break;
             }
             for v in starting_vertices {
-                contigs.extend(contigs_from_vertex(&mut self, v, &mut bridges));
+                // ensure that we don't end up with straight paths longer than
+                // one edge
+                self.shrink();
+                contigs.extend(contigs_from_vertex(&mut self, v));
             }
-            // this invalidates NodeIndices so we need to call it after the loop is done
             self.remove_single_vertices();
         }
         contigs.retain(|x| !x.is_empty());
-        contigs */
-        unimplemented!();
+        contigs
     }
 }
 
-/* fn find_bridges(graph: &PtGraph) -> Bridges {
-    info!("Start finding bridges");
-    let sccs = scc(graph);
-    let mut vec = iter::repeat(0).take(graph.node_count()).collect::<Vec<usize>>();
-    let count: usize = sccs.iter().map(|x| x.iter().count()).sum();
-    debug!("Nodes: {} sccs: {} vec: {}", graph.node_count(), count, vec.len());
-    // flatten sccs representation from petgraph
-    for (i, scc) in sccs.into_iter().enumerate() {
-        for node in scc.into_iter() {
-            vec[node.index()] = i;
-        }
-    }
-    let mut bridges = Bridges::new();
-    for (id, edge) in graph.raw_edges().iter().enumerate() {
-        if vec[edge.source().index()] != vec[edge.target().index()] {
-            bridges.insert(EdgeIndex::new(id));
-        }
-    }
-    info!("{} bridges found", bridges.len());
-    bridges
-}
-
-fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex, bridges: &mut Bridges) -> SerializedContigs {
+fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex) -> SerializedContigs {
     let mut contigs: SerializedContigs = vec![];
     let mut contig: SerializedContig = String::new();
     let mut current_vertex = v;
     let mut current_edge_index;
+    let mut single_loop;
     loop {
+        single_loop = None;
         let number_of_edges = graph.out_degree(&current_vertex);
         if number_of_edges == 0 {
             contigs.push(contig.clone());
             return contigs;
         }
         current_edge_index = unwrap!(graph.first_edge(current_vertex, EdgeDirection::Outgoing));
-        if number_of_edges > 1 {
-            let second_edge_index =
-                unwrap!(graph.next_edge(current_edge_index, EdgeDirection::Outgoing));
-            let first_bridge = bridges.contains(&current_edge_index);
-            if number_of_edges == 2 && (first_bridge || bridges.contains(&second_edge_index)) {
-                if first_bridge {
-                    current_edge_index = second_edge_index;
+        match number_of_edges {
+            0 => {
+                unreachable!();
+            }
+            1 => {
+                // make sure that we are not dealing with the loopy end
+                if self_loop(graph, current_vertex).is_none() {
+                    single_loop = simple_loop(graph, current_edge_index);
                 }
             }
-            else {
+            2 => {
+                // because we handle simple loops in the match arm for 1 then
+                // any vertex with 2 outgoing edges has either a self-loop or
+                // is ambiguous
+                if let Some(e) = self_loop(graph, current_vertex) {
+                    current_edge_index = e;
+                }
+                else {
+                    contigs.push(contig.clone());
+                    contig.clear();
+                }
+            }
+            _ => {
+                // ambiguous edge
                 contigs.push(contig.clone());
                 contig.clear();
             }
         }
         if contig.is_empty() {
-            let (source, target) = unwrap!(graph.edge_endpoints(current_edge_index));
-            contig = unwrap!(graph.node_weight(source)).name();
-            contig.push(unwrap!(graph.node_weight(target)).last_char());
+            contig = unwrap!(graph.edge_weight(current_edge_index)).0.name();
         }
         else {
-            let (_, target) = unwrap!(graph.edge_endpoints(current_edge_index));
-            contig.push(unwrap!(graph.node_weight(target)).last_char());
+            contig.push_str(&unwrap!(graph.edge_weight(current_edge_index)).0.remainder());
         }
         let (_, target) = unwrap!(graph.edge_endpoints(current_edge_index));
-        decrease_weight(graph, current_edge_index, bridges);
+        if let Some(e) = single_loop {
+            contig.push_str(&unwrap!(graph.edge_weight(e)).0.remainder());
+            // make sure to possibly remove edges in the right order (petgraph
+            // will switch the index of the last edge is anything prior to it is
+            // removed)
+            if current_edge_index < e {
+                decrease_weight(graph, e);
+                decrease_weight(graph, current_edge_index);
+            }
+            else {
+                decrease_weight(graph, current_edge_index);
+                decrease_weight(graph, e);
+            }
+        }
+        else {
+            decrease_weight(graph, current_edge_index);
+        }
         current_vertex = target;
     }
 }
 
-fn decrease_weight(graph: &mut PtGraph, edge: EdgeIndex, bridges: &mut Bridges) {
+/// Check if node has self-loop.
+///
+/// Only loops that are allowed look like this:
+/// a -> b -> c, b -> b
+/// a -> b, b -> b
+/// It is assumed that node has 1 or 2 outgoing edges
+/// TODO add simple diagram to illustrate
+fn self_loop(graph: &PtGraph, node: NodeIndex) -> Option<EdgeIndex> {
+    if graph.in_degree(&node) > 2 {
+        return None;
+    }
+    for e in graph.edges_directed(node, EdgeDirection::Outgoing) {
+        if e.target() == e.source() {
+            return Some(e.id());
+        }
+    }
+    None
+}
+
+/// Check if node has simple loop.
+///
+/// Simple loop has only one entrance and one exit.
+/// Function does not deal well with self loops.
+/// Note that shrinking enforces only two nodes in the loop.
+/// Edges source has to have exactly one outgoing edge (functions argument).
+/// TODO add dragram
+fn simple_loop(graph: &PtGraph, edge: EdgeIndex) -> Option<EdgeIndex> {
+    let (source, target) = unwrap!(graph.edge_endpoints(edge));
+    let in_source = graph.in_degree(&source);
+    if in_source == 0 || in_source > 2 {
+        return None;
+    }
+    let in_target = graph.in_degree(&target);
+    let out_target = graph.out_degree(&target);
+    // since this isn't self loop these conditions must hold
+    // note that shrinking ensures that we won't have situation like this:
+    // a -> b -> c, b -> d, d -> b
+    if in_target != 1 || out_target != 2 {
+        return None;
+    }
+    for e in graph.edges_directed(target, EdgeDirection::Outgoing) {
+        if e.target() == source {
+            return Some(e.id());
+        }
+    }
+    None
+}
+
+fn decrease_weight(graph: &mut PtGraph, edge: EdgeIndex) {
     {
         let edge_mut = unwrap!(graph.edge_weight_mut(edge),
                                "Trying to decrease weight of non-existent edge");
-        *edge_mut -= 1;
-        if *edge_mut > 0 {
+        edge_mut.1 -= 1;
+        if edge_mut.1 > 0 {
             return;
         }
     }
     // weight is equal to zero - edge should be removed
-    let last_edge = EdgeIndex::new(graph.edge_count() - 1);
-    let last_contains = bridges.contains(&last_edge);
-    let current_contains = bridges.contains(&edge);
-    // keep track of the possibly switched EdgeId
-    // as last edge index will become current index
-    if last_contains && current_contains {
-        bridges.remove(&last_edge);
-    }
-    else if last_contains {
-        bridges.insert(edge);
-        bridges.remove(&last_edge);
-    }
-    else if current_contains {
-        bridges.remove(&edge);
-    }
     graph.remove_edge(edge);
 }
 
@@ -162,8 +178,9 @@ mod tests {
     pub use ::asm::SEQUENCES;
     pub use ::asm::lock::LOCK;
     pub use ::data::collections::graphs::pt_graph::PtGraph;
-    pub use ::data::primitives::K1_SIZE;
-    pub use ::data::slices::ReadSlice;
+    pub use ::data::compress::compress_edge;
+    pub use ::data::primitives::{K1_SIZE, K_SIZE};
+    pub use ::data::slices::{BasicSlice, EdgeSlice};
     pub use std::iter::repeat;
     pub use super::*;
 
@@ -174,16 +191,26 @@ mod tests {
             let mut name = repeat('A')
                 .take(K1_SIZE)
                 .collect::<String>();
-            name.push_str("TGC");
+            let mut second = name.clone();
+            name.push_str("TGCT");
+            second.push_str("G");
+            let c1 = compress_edge(name[..K_SIZE].as_bytes());
+            let c2 = compress_edge(name[1..K_SIZE+1].as_bytes());
+            let c3 = compress_edge(name[2..K_SIZE+2].as_bytes());
+            let c4 = compress_edge(name[3..K_SIZE+3].as_bytes());
+            let c5 = compress_edge(second[..K_SIZE].as_bytes());
             {
                 let mut seq = SEQUENCES.write();
                 seq.clear();
-                seq.extend(name.clone().into_bytes());
-                seq.extend(name.clone().into_bytes());
+                seq.push(c1.into_boxed_slice());
+                seq.push(c2.into_boxed_slice());
+                seq.push(c3.into_boxed_slice());
+                seq.push(c4.into_boxed_slice());
+                seq.push(c5.into_boxed_slice());
             }
             let mut graph: PtGraph = PtGraph::default();
-            let _w = graph.add_node(ReadSlice::new(0));
-            let _x = graph.add_node(ReadSlice::new(1));
+            let _w = graph.add_node(());
+            let _x = graph.add_node(());
             assert_eq!(graph.node_count(), 2);
         }
 
@@ -194,65 +221,64 @@ mod tests {
         }
 
         it "creates one small contig" {
-            graph.add_edge(_w, _x, 1);
+            graph.add_edge(_w, _x, (EdgeSlice::new(0), 1));
             assert_eq!(graph.edge_count(), 1);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
-            assert_eq!(contigs[0].as_str(), &name[..K1_SIZE+1]);
+            assert_eq!(contigs[0].as_str(), &name[..K_SIZE]);
         }
 
         it "creates one longer contig" {
-            let y = graph.add_node(ReadSlice::new(2));
-            let z = graph.add_node(ReadSlice::new(3));
-            graph.add_edge(_w, _x, 1);
-            graph.add_edge(_x, y, 1);
-            graph.add_edge(y, z, 1);
+            let y = graph.add_node(());
+            let z = graph.add_node(());
+            graph.add_edge(_w, _x, (EdgeSlice::new(0), 1));
+            graph.add_edge(_x, y, (EdgeSlice::new(1), 1));
+            graph.add_edge(y, z, (EdgeSlice::new(2), 1));
             assert_eq!(graph.edge_count(), 3);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
-            assert_eq!(contigs[0].as_str(), &name[..K1_SIZE+3]);
+            assert_eq!(contigs[0].as_str(), &name[..K_SIZE+2]);
         }
 
         it "creates two contigs" {
-            let y = graph.add_node(ReadSlice::new(2));
-            let z = graph.add_node(ReadSlice::new(3));
-            graph.add_edge(_w, _x, 1);
-            graph.add_edge(y, z, 1);
+            let y = graph.add_node(());
+            let z = graph.add_node(());
+            graph.add_edge(_w, _x, (EdgeSlice::new(0), 1));
+            graph.add_edge(y, z, (EdgeSlice::new(2), 1));
             assert_eq!(graph.edge_count(), 2);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 2);
-            assert_eq!(contigs[0].as_str(), &name[..K1_SIZE+1]);
-            assert_eq!(contigs[1].as_str(), &name[2..K1_SIZE+3]);
+            assert_eq!(contigs[0].as_str(), &name[..K_SIZE]);
+            assert_eq!(contigs[1].as_str(), &name[2..K_SIZE+2]);
         }
 
         it "creates two longer contigs" {
-            let y = graph.add_node(ReadSlice::new(2));
-            let z = graph.add_node(ReadSlice::new(3));
-            graph.add_edge(_w, _x, 2);
-            graph.add_edge(_x, y, 1);
-            graph.add_edge(_x, z, 1);
+            let y = graph.add_node(());
+            let z = graph.add_node(());
+            graph.add_edge(_w, _x, (EdgeSlice::new(0), 2));
+            graph.add_edge(_x, y, (EdgeSlice::new(1), 1));
+            graph.add_edge(_x, z, (EdgeSlice::new(4), 1));
             assert_eq!(graph.edge_count(), 3);
             let contigs = graph.collapse();
-            assert_eq!(contigs.len(), 2);
-            assert_eq!(contigs[0].as_str(), &name[..K1_SIZE+2]);
-            let mut n = name[..K1_SIZE+1].to_string();
-            n.push(name.chars().nth(K1_SIZE+2).unwrap());
-            assert_eq!(contigs[1], n);
+            assert_eq!(contigs.len(), 3);
+            assert_eq!(contigs[0].as_str(), &name[..K_SIZE]);
+            assert_eq!(contigs[2].as_str(), &name[..K_SIZE+1]);
+            assert_eq!(contigs[1], second);
         }
 
         it "deals with simple cycle" {
-            let y = graph.add_node(ReadSlice::new(2));
-            let z = graph.add_node(ReadSlice::new(3));
-            graph.add_edge(_w, _x, 1);
-            graph.add_edge(_x, y, 1);
-            graph.add_edge(y, z, 1);
-            graph.add_edge(z, _x, 1);
+            let y = graph.add_node(());
+            let z = graph.add_node(());
+            graph.add_edge(_w, _x, (EdgeSlice::new(0), 1));
+            graph.add_edge(_x, y, (EdgeSlice::new(1), 1));
+            graph.add_edge(y, z, (EdgeSlice::new(2), 1));
+            graph.add_edge(z, _x, (EdgeSlice::new(3), 1));
             assert_eq!(graph.edge_count(), 4);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
-            let mut n = name[..K1_SIZE+3].to_string();
-            n.push(name.chars().nth(K1_SIZE).unwrap());
-            assert_eq!(contigs[0], n);
+            assert_eq!(contigs[0], name);
         }
+
+        // TODO add more tessts for self_loop and simple_loop
     }
-} */
+}

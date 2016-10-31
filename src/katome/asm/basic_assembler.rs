@@ -4,6 +4,7 @@ use algorithms::builder::InputFileType;
 use asm::{Assemble, SEQUENCES};
 use data::collections::girs::{GIR, Convert};
 use data::collections::graphs::Graph;
+use data::contigs_statistics::HasContigsStats;
 use data::primitives::EdgeWeight;
 
 use std::path::Path;
@@ -12,13 +13,10 @@ use std::path::Path;
 pub struct BasicAsm {}
 
 impl Assemble for BasicAsm {
-    fn assemble<P: AsRef<Path>, G: Graph>(input: P,
-                                          _output: P,
-                                          original_genome_length: usize,
-                                          minimal_weight_threshold: usize,
-                                          ft: InputFileType) {
+    fn assemble<P: AsRef<Path>, G: Graph>(input: P, _output: P, original_genome_length: usize,
+                                          minimal_weight_threshold: usize, ft: InputFileType) {
         info!("Starting assembler!");
-        let (mut graph, number_of_read_bytes) = G::create(input, ft);
+        let (graph, number_of_read_bytes) = G::create(input, ft);
         let saved: usize = SEQUENCES.read().iter().map(|x| x.len()).sum();
         let total: usize = SEQUENCES.read().len();
         println!("Avg size of edge: {}", saved as f64 / total as f64);
@@ -26,15 +24,15 @@ impl Assemble for BasicAsm {
                  saved,
                  number_of_read_bytes,
                  (saved * 100) as f64 / number_of_read_bytes as f64);
-        assemble_with_graph(&mut graph, _output, original_genome_length, minimal_weight_threshold);
+        assemble_with_graph(graph, _output, original_genome_length, minimal_weight_threshold);
     }
 
-    fn assemble_with_gir<P: AsRef<Path>, G: Graph, T: GIR>(input: P,
-                                                           _output: P,
+    fn assemble_with_gir<P: AsRef<Path>, G: Graph, T: GIR>(input: P, _output: P,
                                                            original_genome_length: usize,
                                                            minimal_weight_threshold: usize,
                                                            ft: InputFileType)
         where G: Graph + Convert<T> {
+
         info!("Starting assembler!");
         let (gir, number_of_read_bytes) = T::create(input, ft);
         let saved: usize = SEQUENCES.read().iter().map(|x| x.len()).sum();
@@ -46,13 +44,12 @@ impl Assemble for BasicAsm {
                  (saved * 100) as f64 / number_of_read_bytes as f64);
         gir.print_stats();
         // gir.remove_weak_edges(minimal_weight_threshold as EdgeWeight);
-        let mut graph = G::create_from(gir);
-        assemble_with_graph(&mut graph, _output, original_genome_length, minimal_weight_threshold);
+        let graph = G::create_from(gir);
+        assemble_with_graph(graph, _output, original_genome_length, minimal_weight_threshold);
     }
 }
 
-fn assemble_with_graph<P: AsRef<Path>, G: Graph>(graph: &mut G,
-                                                 _output: P,
+fn assemble_with_graph<P: AsRef<Path>, G: Graph>(mut graph: G, _output: P,
                                                  original_genome_length: usize,
                                                  minimal_weight_threshold: usize) {
     graph.print_stats();
@@ -68,10 +65,9 @@ fn assemble_with_graph<P: AsRef<Path>, G: Graph>(graph: &mut G,
     println!("Second pruning");
     graph.remove_dead_paths();
     graph.print_stats();
-    println!("Shrinking!");
-    graph.shrink();
     println!("Collapsing!");
-    // let contigs = graph.collapse();
-    // println!("I created {} contigs", contigs.len());
+    let contigs = graph.collapse();
+    println!("I created {} contigs", contigs.len());
+    contigs.print_stats(original_genome_length);
     info!("All done!");
 }
