@@ -5,7 +5,8 @@
 #[macro_use]
 extern crate lazy_static;
 extern crate katome;
-pub use katome::algorithms::builder::{Build, InputFileType};
+pub use katome::config::InputFileType;
+pub use katome::algorithms::builder::Build;
 pub use katome::asm::SEQUENCES;
 pub use katome::asm::lock::LOCK;
 pub use katome::data::collections::girs::hm_gir::HmGIR;

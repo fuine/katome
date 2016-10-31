@@ -1,24 +1,19 @@
 //! Collection builder.
+
+use config::InputFileType;
 use data::primitives::{EdgeWeight, Idx};
+
 
 use std::error::Error;
 use std::fs::File;
+use std::io;
 use std::io::BufRead;
 use std::io::BufReader;
-use std::io::Result;
-use std::io;
+use std::io::Result as Res;
 use std::path::Path;
 
 extern crate bio;
 use self::bio::io::{fasta, fastq};
-
-#[derive(RustcDecodable, Debug)]
-/// Type of input file
-pub enum InputFileType {
-    Fasta,
-    Fastq,
-    BFCounter,
-}
 
 /// Custom init function for collections
 pub trait Init: Default {
@@ -121,7 +116,7 @@ fn create_fastq<P: AsRef<Path>, T: Sized + Init + Build>(path: P) -> (T, usize) 
     (collection, total)
 }
 
-fn lines_from_file<P: AsRef<Path>>(filename: P) -> Result<io::Lines<io::BufReader<File>>> {
+fn lines_from_file<P: AsRef<Path>>(filename: P) -> Res<io::Lines<io::BufReader<File>>> {
     let file = try!(File::open(filename));
     Ok(io::BufReader::new(file).lines())
 }

@@ -1,19 +1,21 @@
 //! `HashMap` based Graph's Intermediate Representation
-use algorithms::builder::{Build, Init, InputFileType};
+
+use algorithms::builder::{Build, Init};
 use asm::SEQUENCES;
+use config::InputFileType;
 use data::collections::girs::{Convert, GIR};
 use data::collections::graphs::pt_graph::{NodeIndex, PtGraph};
 use data::compress::{change_last_char_in_edge, compress_kmer, kmer_to_edge};
 use data::edges::{Edge, Outgoing};
 use data::primitives::{Idx, K_SIZE};
 use data::slices::{BasicSlice, EdgeSlice, NodeSlice};
-use super::hs_gir::create_or_modify_edge;
 
 use metrohash::MetroHash;
 
 use std::collections::HashMap as HM;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault as BuildHash;
+use super::hs_gir::create_or_modify_edge;
 
 /// `HashMap` GIR
 pub type HmGIR = HM<NodeSlice, Outgoing, BuildHash<MetroHash>>;

@@ -1,7 +1,8 @@
 //! `petgraph` based `Graph`.
 
-use algorithms::builder::{Build, Init, InputFileType};
+use algorithms::builder::{Build, Init};
 use asm::SEQUENCES;
+use config::InputFileType;
 use data::collections::graphs::Graph;
 use data::compress::{compress_kmer, kmer_to_edge};
 use data::primitives::{EdgeWeight, Idx, K_SIZE};

@@ -1,13 +1,11 @@
 //! Example of genome assembler using `katome` library.
 
-// #![feature(alloc_system)]
-// extern crate alloc_system;
 extern crate katome;
 extern crate toml;
 extern crate rustc_serialize;
 extern crate log4rs;
 
-use katome::algorithms::builder::InputFileType;
+use katome::Config;
 use katome::asm::Assemble;
 use katome::asm::basic_assembler::BasicAsm;
 use katome::data::collections::graphs::pt_graph::PtGraph;
@@ -15,33 +13,17 @@ use std::fs::File;
 use std::io::Read;
 use toml::{Parser, Value};
 
-
-
 fn main() {
     log4rs::init_file("./config/log4rs.yaml", Default::default()).unwrap();
     let config = parse_config("./config/settings.toml".to_string());
     println!("{:?}", config);
-    BasicAsm::assemble::<String, PtGraph>(config.input_path,
-                                          config.output_path,
-                                          config.original_genome_length,
-                                          config.minimal_weight_threshold,
-                                          InputFileType::BFCounter);
-}
-
-/// Config for assembler.
-#[derive(Debug)]
-#[derive(RustcDecodable)]
-pub struct GenomeConfig {
-    input_path: String,
-    output_path: String,
-    original_genome_length: usize,
-    minimal_weight_threshold: usize,
+    BasicAsm::assemble::<String, PtGraph>(config);
 }
 
 /// Attempt to load and parse the config file into our Config struct.
 /// If a file cannot be found, return a default Config.
 /// If we find a file but cannot parse it, panic
-pub fn parse_config(path: String) -> GenomeConfig {
+pub fn parse_config(path: String) -> Config<String> {
     let mut config_toml = String::new();
     let mut file = match File::open(&path) {
         Ok(file) => file,

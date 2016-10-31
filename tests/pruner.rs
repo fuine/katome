@@ -7,7 +7,8 @@ extern crate lazy_static;
 extern crate katome;
 extern crate petgraph;
 
-pub use katome::algorithms::builder::{Build, InputFileType};
+pub use katome::config::InputFileType;
+pub use katome::algorithms::builder::Build;
 pub use katome::algorithms::pruner::{Clean, Prunable};
 pub use katome::asm::SEQUENCES;
 pub use katome::asm::lock::LOCK;

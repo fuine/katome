@@ -14,7 +14,10 @@ extern crate rustc_serialize;
 extern crate fixedbitset;
 
 
-
+#[macro_use]
+mod utils;
 pub mod data;
 pub mod algorithms;
 pub mod asm;
+pub mod config;
+pub use config::Config;

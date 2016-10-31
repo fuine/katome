@@ -6,3 +6,7 @@ output_path = "/path/to/output/file"
 
 # original genome length
 original_genome_length = 100
+
+# input file type, currently can have one of threes values:
+# BFCounter, Fasta, Fastaq
+input_file_type = "Fastaq"

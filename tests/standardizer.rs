@@ -3,11 +3,12 @@
 #![allow(non_snake_case)]
 
 #[macro_use]
+// use katome::InputFileType;
 extern crate lazy_static;
 extern crate katome;
 extern crate petgraph;
 
-pub use katome::algorithms::builder::{Build, InputFileType};
+// pub use katome::algorithms::builder::{Build, InputFileType};
 pub use katome::algorithms::standardizer::Standardizable;
 pub use katome::asm::SEQUENCES;
 pub use katome::asm::lock::LOCK;
