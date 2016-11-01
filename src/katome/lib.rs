@@ -23,3 +23,4 @@ pub mod config;
 pub use config::Config;
 pub mod collections;
 pub mod compress;
+pub mod stats;

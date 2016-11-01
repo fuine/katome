@@ -9,10 +9,10 @@ use algorithms::builder::Build;
 use algorithms::collapser::Collapsable;
 use algorithms::pruner::Prunable;
 use algorithms::standardizer::Standardizable;
-use data::statistics::HasStats;
+use stats::{Stats, CollectionStats};
 
 /// Graph's interface.
-pub trait Graph: Build + Prunable + Standardizable + Collapsable + HasStats {
+pub trait Graph: Build + Prunable + Standardizable + Collapsable + Stats<CollectionStats> {
     /// Node identifier.
     type NodeIdentifier;
     /// Collection storing nodes which are ambiguous nodes.

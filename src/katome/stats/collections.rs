@@ -4,6 +4,7 @@ use collections::{Graph, HmGIR, HsGIR, PtGraph};
 use data::primitives::EdgeWeight;
 
 use petgraph::EdgeDirection;
+use stats::Stats;
 
 use std::fmt;
 use std::fmt::Display;
@@ -35,7 +36,7 @@ pub struct Counts {
 
 /// Various statistics which are created based on `Graph`s or `GIR`s.
 #[derive(Default, Debug, Copy, Clone)]
-pub struct Stats {
+pub struct CollectionStats {
     /// Capacity of the collection.
     pub capacity: (usize, Opt<usize>),
     /// Counts of the collection.
@@ -56,10 +57,10 @@ pub struct Stats {
     pub outgoing_vert_count: Opt<usize>,
 }
 
-impl Stats {
-    /// Creates `Stats` with supplied counts.
-    pub fn with_counts(node_count_: usize, edge_count_: usize) -> Stats {
-        let mut stats = Stats::default();
+impl CollectionStats {
+    /// Creates `CollectionStats` with supplied counts.
+    pub fn with_counts(node_count_: usize, edge_count_: usize) -> CollectionStats {
+        let mut stats = CollectionStats::default();
         stats.counts = Counts {
             node_count: node_count_,
             edge_count: edge_count_,
@@ -68,9 +69,9 @@ impl Stats {
     }
 }
 
-impl PartialEq for Stats {
+impl PartialEq for CollectionStats {
     // ignore capacity during comparison
-    fn eq(&self, other: &Stats) -> bool {
+    fn eq(&self, other: &CollectionStats) -> bool {
         self.counts == other.counts && self.max_edge_weight == other.max_edge_weight &&
         round(self.avg_edge_weight) == round(other.avg_edge_weight) &&
         self.max_in_degree == other.max_in_degree &&
@@ -103,7 +104,7 @@ impl Display for Counts {
     }
 }
 
-impl Display for Stats {
+impl Display for CollectionStats {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(writeln!(f,
                       "I have the capacity of {}, {} for {}",
@@ -135,18 +136,8 @@ impl Display for Stats {
     }
 }
 
-/// Create stats for the collection.
-pub trait HasStats {
-    /// Gets stats for the collection.
-    fn stats(&self) -> Stats;
-    /// Prints stats for the collection.
-    fn print_stats(&self) {
-        print!("{}", self.stats());
-    }
-}
-
-impl HasStats for PtGraph {
-    fn stats(&self) -> Stats {
+impl Stats<CollectionStats> for PtGraph {
+    fn stats(&self) -> CollectionStats {
         let max_weight = self.raw_edges().iter().map(|w| w.weight.1).max().unwrap_or(0);
         let avg_edge_weight_ = self.raw_edges()
             .iter()
@@ -158,7 +149,7 @@ impl HasStats for PtGraph {
             .fold(0usize, |m, n| m + self.out_degree(&n))) as f64 /
                               self.node_count() as f64;
         let (node_cap, edge_cap) = self.capacity();
-        Stats {
+        CollectionStats {
             capacity: (node_cap, Opt::Full(edge_cap)),
             counts: Counts {
                 node_count: self.node_count(),
@@ -178,10 +169,10 @@ impl HasStats for PtGraph {
     }
 }
 
-impl HasStats for HsGIR {
-    fn stats(&self) -> Stats {
+impl Stats<CollectionStats> for HsGIR {
+    fn stats(&self) -> CollectionStats {
         let edge_count_ = self.iter().map(|e| e.edges.outgoing.len()).sum::<usize>();
-        Stats {
+        CollectionStats {
             capacity: (self.capacity(), Opt::Empty),
             counts: Counts {
                 node_count: self.len(),
@@ -198,10 +189,10 @@ impl HasStats for HsGIR {
     }
 }
 
-impl HasStats for HmGIR {
-    fn stats(&self) -> Stats {
+impl Stats<CollectionStats> for HmGIR {
+    fn stats(&self) -> CollectionStats {
         let edge_count_ = self.values().map(|e| e.len()).sum::<usize>();
-        Stats {
+        CollectionStats {
             capacity: (self.capacity(), Opt::Empty),
             counts: Counts {
                 node_count: self.len(),
@@ -222,8 +213,8 @@ impl HasStats for HmGIR {
 mod tests {
     pub use super::*;
     describe! stats {
-        it "compares two Stats" {
-            let st = Stats {
+        it "compares two CollectionStats" {
+            let st = CollectionStats {
                 capacity: (1024, Opt::Full(1024)),
                 counts: Counts {
                     node_count: 1,
@@ -241,7 +232,7 @@ mod tests {
         }
 
         it "detects difference in counts" {
-            let st = Stats {
+            let st = CollectionStats {
                 capacity: (1024, Opt::Full(1024)),
                 counts: Counts {
                     node_count: 1,
@@ -265,7 +256,7 @@ mod tests {
         }
 
         it "rounds floats properly" {
-            let st = Stats {
+            let st = CollectionStats {
                 capacity: (1024, Opt::Full(1024)),
                 counts: Counts {
                     node_count: 1,

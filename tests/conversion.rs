@@ -12,7 +12,7 @@ pub use katome::asm::SEQUENCES;
 pub use katome::asm::lock::LOCK;
 pub use katome::collections::{Convert, HmGIR, HsGIR, PtGraph};
 pub use katome::data::primitives::K_SIZE;
-pub use katome::data::statistics::{Counts, HasStats, Stats, Opt};
+pub use katome::stats::{Counts, CollectionStats, Stats, Opt};
 pub use std::sync::Mutex;
 
 describe! conversion {
@@ -34,7 +34,7 @@ describe! conversion {
             "./tests/test_files/data3.txt".to_string(),
         ];
         let _correct_stats = vec![
-            Stats {
+            CollectionStats {
                 capacity: (64, Opt::Full(64)),
                 counts: Counts {
                     node_count: _correct_counts[0].0,
@@ -48,7 +48,7 @@ describe! conversion {
                 incoming_vert_count: Opt::Full(1),
                 outgoing_vert_count: Opt::Full(1)
             },
-            Stats {
+            CollectionStats {
                 capacity: (8192, Opt::Full(8192)),
                 counts: Counts {
                     node_count: 5704 ,
@@ -63,7 +63,7 @@ describe! conversion {
                 outgoing_vert_count: Opt::Full(92)
             },
 
-            Stats {
+            CollectionStats {
                 capacity: (16384, Opt::Full(16384)),
                 counts: Counts {
                     node_count: _correct_counts[2].0,

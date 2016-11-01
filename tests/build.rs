@@ -11,7 +11,7 @@ pub use katome::asm::SEQUENCES;
 pub use katome::asm::lock::LOCK;
 pub use katome::collections::{HmGIR, HsGIR, PtGraph};
 pub use katome::data::primitives::K_SIZE;
-pub use katome::data::statistics::{Counts, HasStats, Stats, Opt};
+pub use katome::stats::{Counts, CollectionStats, Stats, Opt};
 pub use std::sync::Mutex;
 pub use std::panic;
 
@@ -41,7 +41,7 @@ macro_rules! test_build {
                         "./tests/test_files/data3.txt".to_string(),
                         "./tests/test_files/data_too_short_reads".to_string(),
                     ];
-                    let _correct_stats: Vec<Stats> = _correct_counts.iter().map(|&(x, y)| Stats::with_counts(x, y)).collect();
+                    let _correct_stats: Vec<CollectionStats> = _correct_counts.iter().map(|&(x, y)| CollectionStats::with_counts(x, y)).collect();
                 }
                 it "builds data1" {
                     let (col, number_of_read_bytes) = $t::create(filenames[0].clone(), InputFileType::Fastq);
@@ -95,7 +95,7 @@ describe! build {
     }
     describe! girs {
         before_each {
-            let _correct_stats: Vec<Stats> = _correct_counts.iter().map(|&(x, y)| Stats::with_counts(x, y)).collect();
+            let _correct_stats: Vec<CollectionStats> = _correct_counts.iter().map(|&(x, y)| CollectionStats::with_counts(x, y)).collect();
         }
 
 /* #[cfg(test)]
@@ -170,7 +170,7 @@ mod tests {
     describe! graphs {
         before_each {
             let _correct_stats = vec![
-                Stats {
+                CollectionStats {
                     capacity: (64, Opt::Full(64)),
                     counts: Counts {
                         node_count: _correct_counts[0].0,
@@ -184,7 +184,7 @@ mod tests {
                     incoming_vert_count: Opt::Full(1),
                     outgoing_vert_count: Opt::Full(1)
                 },
-                Stats {
+                CollectionStats {
                     capacity: (8192, Opt::Full(8192)),
                     counts: Counts {
                         node_count: _correct_counts[1].0,
@@ -199,7 +199,7 @@ mod tests {
                     outgoing_vert_count: Opt::Full(92)
                 },
 
-                Stats {
+                CollectionStats {
                     capacity: (16384, Opt::Full(16384)),
                     counts: Counts {
                         node_count: _correct_counts[2].0,

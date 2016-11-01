@@ -1,9 +1,9 @@
 //! Basic genome assembler.
 
-use asm::{Assemble, SEQUENCES};
+use asm::{Assemble, Contigs, SEQUENCES};
 use config::Config;
 use collections::{GIR, Graph, Convert};
-use data::contigs_statistics::HasContigsStats;
+use stats::Stats;
 use data::primitives::EdgeWeight;
 
 use std::path::Path;
@@ -65,8 +65,9 @@ fn assemble_with_graph<P: AsRef<Path>, G: Graph>(mut graph: G, _output: P,
     graph.remove_dead_paths();
     graph.print_stats();
     println!("Collapsing!");
-    let contigs = graph.collapse();
-    println!("I created {} contigs", contigs.len());
-    contigs.print_stats(original_genome_length);
+    let serialized_contigs = graph.collapse();
+    println!("I created {} contigs", serialized_contigs.len());
+    let contigs = Contigs::new(original_genome_length, serialized_contigs);
+    contigs.print_stats();
     info!("All done!");
 }

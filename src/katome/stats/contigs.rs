@@ -1,6 +1,10 @@
 //! Various statistics for contigs.
 
-use algorithms::collapser::SerializedContigs;
+use asm::Contigs;
+use stats::Stats;
+use std::fmt;
+use std::fmt::Display;
+
 
 /// Statistics for created contigs.
 #[derive(Default, Debug, Copy, Clone, PartialEq)]
@@ -18,19 +22,16 @@ pub struct ContigsStats {
     pub ng50: usize,
 }
 
-/// Create stats for contigs.
-pub trait HasContigsStats {
-    /// Gets stats for contigs.
-    fn stats(&self, original_genome_length: usize) -> ContigsStats;
-    /// Prints stats for contigs.
-    fn print_stats(&self, original_genome_length: usize) {
-        print!("{:#?}", self.stats(original_genome_length));
+impl Display for ContigsStats {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "{:#?}", self)
     }
 }
 
-impl HasContigsStats for SerializedContigs {
-    fn stats(&self, original_genome_length: usize) -> ContigsStats {
-        let mut contigs = self.iter()
+impl Stats<ContigsStats> for Contigs {
+    fn stats(&self) -> ContigsStats {
+        let mut contigs = self.serialized_contigs
+            .iter()
             .map(|x| x.len())
             .collect::<Vec<usize>>();
         // reverse-sorted order
@@ -39,7 +40,7 @@ impl HasContigsStats for SerializedContigs {
         println!("Sum: {} half: {}", sum, sum / 2);
         let n50_ = n_metrics(&contigs, sum / 2);
         let n90_ = n_metrics(&contigs, (0.1 * sum as f64) as usize);
-        let ng50_ = n_metrics(&contigs, original_genome_length / 2);
+        let ng50_ = n_metrics(&contigs, self.original_genome_length / 2);
         let l50_ = contigs.iter()
             .rev()
             .enumerate()
@@ -84,6 +85,8 @@ fn n_metrics(collection: &[usize], tipping_point: usize) -> usize {
 #[cfg(test)]
 mod tests {
     pub use algorithms::collapser::SerializedContigs;
+    pub use asm::Contigs;
+    pub use stats::Stats;
     pub use std::iter::repeat;
     pub use super::*;
 
@@ -97,11 +100,12 @@ mod tests {
             };
             let vec1 = vec![2,3,4,5,6,7,8,9,10];
             let original_length = vec1.iter().sum();
-            let mut conts: SerializedContigs = Vec::new();
+            let mut serialized_conts: SerializedContigs = Vec::new();
             for i in vec1 {
-                conts.push(repeat("a").take(i).collect::<String>());
+                serialized_conts.push(repeat("a").take(i).collect::<String>());
             }
-            assert_eq!(correct_stats, conts.stats(original_length));
+            let conts = Contigs::new(original_length, serialized_conts);
+            assert_eq!(correct_stats, conts.stats());
         }
 
         it "checks example from wiki" {
@@ -121,16 +125,18 @@ mod tests {
             let b = vec![80,70,50,40,30,20,10,5];
             let original_length_a = a.iter().sum();
             let original_length_b = b.iter().sum();
-            let mut conts_a: SerializedContigs = Vec::new();
-            let mut conts_b: SerializedContigs = Vec::new();
+            let mut serialized_conts_a: SerializedContigs = Vec::new();
+            let mut serialized_conts_b: SerializedContigs = Vec::new();
             for i in a {
-                conts_a.push(repeat("a").take(i).collect::<String>());
+                serialized_conts_a.push(repeat("a").take(i).collect::<String>());
             }
             for i in b {
-                conts_b.push(repeat("b").take(i).collect::<String>());
+                serialized_conts_b.push(repeat("b").take(i).collect::<String>());
             }
-            assert_eq!(correct_stats_a, conts_a.stats(original_length_a));
-            assert_eq!(correct_stats_b, conts_b.stats(original_length_b));
+            let conts_a = Contigs::new(original_length_a, serialized_conts_a);
+            let conts_b = Contigs::new(original_length_b, serialized_conts_b);
+            assert_eq!(correct_stats_a, conts_a.stats());
+            assert_eq!(correct_stats_b, conts_b.stats());
         }
     }
 }

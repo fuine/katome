@@ -9,10 +9,10 @@ pub mod hm_gir;
 
 use algorithms::builder::Build;
 use collections::Graph;
-use data::statistics::HasStats;
+use stats::{Stats, CollectionStats};
 
 /// Graph's Intermediate Representation (GIR) interface.
-pub trait GIR: Build + HasStats {}
+pub trait GIR: Build + Stats<CollectionStats> {}
 
 /// Convert `GIR` to `Graph`.
 ///

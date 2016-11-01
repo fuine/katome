@@ -14,7 +14,7 @@ pub use katome::asm::SEQUENCES;
 pub use katome::asm::lock::LOCK;
 pub use katome::collections::{Convert, HmGIR, PtGraph};
 pub use katome::data::primitives::K_SIZE;
-pub use katome::data::statistics::{Counts, HasStats, Opt, Stats};
+pub use katome::stats::{Counts, Opt, CollectionStats, Stats};
 pub use std::sync::Mutex;
 pub use std::f64;
 
@@ -35,7 +35,7 @@ describe! pruner {
     describe! data1 {
         before_each {
             let correct_stats = vec![
-                Stats {
+                CollectionStats {
                     capacity: (64, Opt::Full(64)),
                     counts: Counts {
                         node_count: 62,
@@ -49,7 +49,7 @@ describe! pruner {
                     incoming_vert_count: Opt::Full(1),
                     outgoing_vert_count: Opt::Full(1)
                 },
-                Stats {
+                CollectionStats {
                     capacity: (64, Opt::Full(64)),
                     counts: Counts {
                         node_count: 0,
@@ -111,7 +111,7 @@ describe! pruner {
     describe! data2 {
         before_each {
             let correct_stats = vec![
-                Stats {
+                CollectionStats {
                     capacity: (8192, Opt::Full(8192)),
                     counts: Counts {
                         node_count: 5704,
@@ -125,7 +125,7 @@ describe! pruner {
                     incoming_vert_count: Opt::Full(92),
                     outgoing_vert_count: Opt::Full(92)
                 },
-                Stats {
+                CollectionStats {
                     capacity: (64, Opt::Full(64)),
                     counts: Counts {
                         node_count: 0,
@@ -185,7 +185,7 @@ describe! pruner {
         // TODO change something in order to show better weak edges removal
         before_each {
             let correct_stats = vec![
-                Stats {
+                CollectionStats {
                     capacity: (16384, Opt::Full(16384)),
                     counts: Counts {
                         node_count: 14446,
@@ -199,7 +199,7 @@ describe! pruner {
                     incoming_vert_count: Opt::Full(233),
                     outgoing_vert_count: Opt::Full(233)
                 },
-                Stats {
+                CollectionStats {
                     capacity: (16384, Opt::Full(16384)),
                     counts: Counts {
                         node_count: 14446,
@@ -213,7 +213,7 @@ describe! pruner {
                     incoming_vert_count: Opt::Full(233),
                     outgoing_vert_count: Opt::Full(233)
                 },
-                Stats {
+                CollectionStats {
                     capacity: (16384, Opt::Full(16384)),
                     counts: Counts {
                         node_count: 0,

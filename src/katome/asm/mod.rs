@@ -4,6 +4,8 @@ pub mod basic_assembler;
 use config::Config;
 use collections::{GIR, Graph, Convert};
 use data::primitives::LockedSequences;
+use algorithms::collapser::SerializedContigs;
+
 use std::path::Path;
 lazy_static! {
     /// Global mutable vector of bytes. Contains unique reads slices (k-mers).
@@ -24,6 +26,20 @@ pub mod lock {
     // mutex over sequences specifically for tests
     lazy_static! {
         pub static ref LOCK: Mutex<()> = Mutex::new(());
+    }
+}
+
+pub struct Contigs {
+    pub original_genome_length: usize,
+    pub serialized_contigs: SerializedContigs,
+}
+
+impl Contigs {
+    pub fn new(length_: usize, serialized: SerializedContigs) -> Contigs {
+        Contigs {
+            original_genome_length: length_,
+            serialized_contigs: serialized,
+        }
     }
 }
 

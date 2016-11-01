@@ -9,7 +9,7 @@ use petgraph::EdgeDirection;
 /// Contig representation.
 type Contig = Vec<EdgeIndex>;
 /// Vector of `Contig`s.
-type Contigs = Vec<Contig>;
+type GraphContigs = Vec<Contig>;
 
 /// Trait describing standardization of the `Graph`.
 pub trait Standardizable {
@@ -64,7 +64,7 @@ impl Standardizable for PtGraph {
 
 fn get_contigs_from_node(graph: &PtGraph, starting_node: NodeIndex,
                          ambiguous_nodes: &<PtGraph as Graph>::AmbiguousNodes)
-                         -> Contigs {
+                         -> GraphContigs {
     let mut contigs = vec![];
     for node in graph.neighbors_directed(starting_node, EdgeDirection::Outgoing) {
         let mut contig = vec![];

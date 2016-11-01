@@ -14,7 +14,7 @@ pub use katome::asm::SEQUENCES;
 pub use katome::asm::lock::LOCK;
 pub use katome::collections::graphs::pt_graph::{PtGraph, NodeIndex, EdgeIndex};
 pub use katome::data::primitives::K_SIZE;
-pub use katome::data::statistics::{Counts, HasStats, Opt, Stats};
+pub use katome::stats::{Counts, Opt, CollectionStats, Stats};
 pub use katome::data::slices::EdgeSlice;
 pub use std::sync::Mutex;
 
@@ -36,7 +36,7 @@ describe! tests {
         before_each {
             let (mut graph, _) = PtGraph::create("./tests/test_files/data1.txt".to_string(), InputFileType::Fastq);
             let correct_stats = vec![
-                Stats {
+                CollectionStats {
                     capacity: (32, Opt::Full(32)),
                     counts: Counts {
                         node_count: 26,
@@ -50,7 +50,7 @@ describe! tests {
                     incoming_vert_count: Opt::Full(1),
                     outgoing_vert_count: Opt::Full(0)
                 },
-                Stats {
+                CollectionStats {
                     capacity: (32, Opt::Full(32)),
                     counts: Counts {
                         node_count: 26,
@@ -84,7 +84,7 @@ describe! tests {
         before_each {
             let (mut graph, _) = PtGraph::create("./tests/test_files/data2.txt".to_string(), InputFileType::Fastq);
             let correct_stats = vec![
-                Stats {
+                CollectionStats {
                     capacity: (1024, Opt::Full(1024)),
                     counts: Counts {
                         node_count: 650,
@@ -98,7 +98,7 @@ describe! tests {
                     incoming_vert_count: Opt::Full(25),
                     outgoing_vert_count: Opt::Full(0),
                 },
-                Stats {
+                CollectionStats {
                     capacity: (1024, Opt::Full(1024)),
                     counts: Counts {
                         node_count: 9,
