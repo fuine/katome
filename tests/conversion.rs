@@ -11,7 +11,7 @@ pub use katome::algorithms::builder::Build;
 pub use katome::asm::SEQUENCES;
 pub use katome::asm::lock::LOCK;
 pub use katome::collections::{Convert, HmGIR, HsGIR, PtGraph};
-pub use katome::data::primitives::K_SIZE;
+pub use katome::prelude::K_SIZE;
 pub use katome::stats::{Counts, CollectionStats, Stats, Opt};
 pub use std::sync::Mutex;
 

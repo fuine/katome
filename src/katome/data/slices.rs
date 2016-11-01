@@ -2,7 +2,7 @@
 
 use asm::SEQUENCES;
 use compress::{decompress_edge, decompress_last_char_edge, decompress_node, add_char_to_edge};
-use data::primitives::{COMPRESSED_K1_SIZE, K1_SIZE, Idx};
+use prelude::{COMPRESSED_K1_SIZE, K1_SIZE, Idx};
 
 use std::cmp;
 use std::fmt;
@@ -207,7 +207,7 @@ mod tests {
     pub use ::asm::SEQUENCES;
     pub use ::asm::lock::LOCK;
     pub use ::compress::{compress_kmer, kmer_to_edge};
-    pub use ::data::primitives::{K1_SIZE, K_SIZE};
+    pub use ::prelude::{K1_SIZE, K_SIZE};
     pub use self::rand::Rng;
     pub use self::rand::thread_rng;
     pub use std::collections::hash_map::DefaultHasher;

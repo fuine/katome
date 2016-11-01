@@ -3,4 +3,3 @@
 pub mod slices;
 pub mod edges;
 pub mod vertex;
-pub mod primitives;

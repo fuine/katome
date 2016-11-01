@@ -1,4 +1,4 @@
-//! Basic type declarations used throughout katome.
+//! Basic type and const values declarations used throughout katome.
 extern crate parking_lot;
 use self::parking_lot::RwLock;
 

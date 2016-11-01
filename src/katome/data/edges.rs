@@ -1,6 +1,6 @@
 //! Edges representation in GIR.
 
-use data::primitives::{EdgeWeight, Idx};
+use prelude::{EdgeWeight, Idx};
 
 /// Single edge representation.
 ///

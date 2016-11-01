@@ -5,7 +5,6 @@
 // See more in https://github.com/rust-lang-nursery/rustfmt
 
 /// Create easily decodable enums for config.
-#[macro_export]
 macro_rules! impl_enum_decodable {
     ( $e:ident, $( $x:ident ),* ) => {
         impl ::rustc_serialize::Decodable for $e {
@@ -38,7 +37,6 @@ macro_rules! impl_enum_decodable {
 }
 
 /// Create config enum
-#[macro_export]
 macro_rules! config_option_enum {
     ($e:ident: $( $x:ident ),+ $(,)*) => {
         #[derive(Copy, Clone, Eq, PartialEq, Debug)]

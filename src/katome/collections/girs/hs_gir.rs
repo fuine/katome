@@ -7,7 +7,7 @@ use collections::{Convert, GIR};
 use collections::graphs::pt_graph::{NodeIndex, PtGraph};
 use compress::{change_last_char_in_edge, compress_kmer, kmer_to_edge};
 use data::edges::{Edges, Outgoing};
-use data::primitives::{Idx, K_SIZE};
+use prelude::{Idx, K_SIZE};
 use data::slices::{BasicSlice, EdgeSlice, NodeSlice};
 use data::vertex::Vertex;
 

@@ -179,7 +179,7 @@ mod tests {
     pub use ::asm::lock::LOCK;
     pub use ::collections::graphs::pt_graph::PtGraph;
     pub use ::compress::compress_edge;
-    pub use ::data::primitives::{K1_SIZE, K_SIZE};
+    pub use ::prelude::{K1_SIZE, K_SIZE};
     pub use ::data::slices::{BasicSlice, EdgeSlice};
     pub use std::iter::repeat;
     pub use super::*;

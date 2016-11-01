@@ -1,7 +1,7 @@
 //! Collection builder.
 
 use config::InputFileType;
-use data::primitives::{EdgeWeight, Idx};
+use prelude::{EdgeWeight, Idx};
 
 
 use std::error::Error;

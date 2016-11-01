@@ -4,7 +4,7 @@ use asm::{Assemble, Contigs, SEQUENCES};
 use config::Config;
 use collections::{GIR, Graph, Convert};
 use stats::Stats;
-use data::primitives::EdgeWeight;
+use prelude::EdgeWeight;
 
 use std::path::Path;
 

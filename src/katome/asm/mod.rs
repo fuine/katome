@@ -3,7 +3,7 @@ pub mod basic_assembler;
 
 use config::Config;
 use collections::{GIR, Graph, Convert};
-use data::primitives::LockedSequences;
+use prelude::LockedSequences;
 use algorithms::collapser::SerializedContigs;
 
 use std::path::Path;

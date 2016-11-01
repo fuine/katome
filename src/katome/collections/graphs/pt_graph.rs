@@ -5,7 +5,7 @@ use asm::SEQUENCES;
 use config::InputFileType;
 use collections::graphs::Graph;
 use compress::{compress_kmer, kmer_to_edge};
-use data::primitives::{EdgeWeight, Idx, K_SIZE};
+use prelude::{EdgeWeight, Idx, K_SIZE};
 use data::slices::{BasicSlice, EdgeSlice, NodeSlice};
 
 use fixedbitset::FixedBitSet;

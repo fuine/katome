@@ -1,7 +1,7 @@
 //! Efficient compression/decompression algorithm for sequences with basic
 //! nucleotydes.
 
-use data::primitives::{K1_SIZE, K_SIZE, COMPRESSED_K1_SIZE};
+use prelude::{K1_SIZE, K_SIZE, COMPRESSED_K1_SIZE};
 
 /// Number of characters fitting inside the byte.
 pub const CHARS_PER_BYTE: usize = 4;
@@ -235,7 +235,7 @@ fn decode_compressed_chunk(mut chunk: u8) -> [u8; CHARS_PER_BYTE] {
 #[cfg(test)]
 mod tests {
     extern crate rand;
-    use data::primitives::K_SIZE;
+    use prelude::K_SIZE;
     use self::rand::Rng;
     use self::rand::thread_rng;
     use super::*;
