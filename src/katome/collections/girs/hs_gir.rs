@@ -4,9 +4,9 @@ extern crate itertools;
 use algorithms::builder::{Build, Init};
 use asm::SEQUENCES;
 use collections::{Convert, GIR};
+use collections::girs::edges::{Edges, Outgoing};
 use collections::graphs::pt_graph::{NodeIndex, PtGraph};
 use compress::{change_last_char_in_edge, compress_kmer, kmer_to_edge};
-use collections::girs::edges::{Edges, Outgoing};
 use prelude::{Idx, K_SIZE};
 use slices::{BasicSlice, EdgeSlice, NodeSlice};
 
@@ -16,8 +16,8 @@ use self::itertools::Itertools;
 use std::cmp;
 use std::collections::HashSet as HS;
 use std::fmt;
-use std::hash::BuildHasherDefault;
 use std::hash;
+use std::hash::BuildHasherDefault;
 use std::mem;
 
 /// Single node and its outgoing edges.
@@ -168,7 +168,9 @@ impl Convert<HsGIR> for PtGraph {
                 s[id] = Box::new([]);
                 continue;
             }
-            // first edge slice will be pointing at the original place of source node, next edges will be appended to the global SEQUENCEs after having their last symbol changed
+            // first edge slice will be pointing at the original place of source
+            // node, next edges will be appended to the global SEQUENCEs after
+            // having their last symbol changed
             let tmp = kmer_to_edge(&s[id]);
             s[id] = tmp.clone().into_boxed_slice();
             // at least one edge going out

@@ -2,9 +2,9 @@
 
 use asm::SEQUENCES;
 use collections::HmGIR;
+use collections::girs::edges::Edge;
 use collections::graphs::pt_graph::{EdgeIndex, Node, NodeIndex, PtGraph};
 use compress::{compress_node, encode_fasta_symbol};
-use collections::girs::edges::Edge;
 use prelude::{EdgeWeight, K1_SIZE, K_SIZE};
 use slices::{BasicSlice, NodeSlice};
 

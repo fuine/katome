@@ -4,6 +4,7 @@ use algorithms::pruner::Clean;
 use collections::Graph;
 use collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
 use prelude::{EdgeWeight, K_SIZE};
+
 use petgraph::EdgeDirection;
 
 /// Contig representation.

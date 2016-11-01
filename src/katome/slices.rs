@@ -254,7 +254,8 @@ mod tests {
                 let st = unsafe{ String::from_utf8_unchecked(name[..K1_SIZE].to_vec()) };
                 assert_eq!(ns.name(), st);
                 let ns = NodeSlice::new(1);
-                assert_eq!(ns.name(), unsafe{ String::from_utf8_unchecked(name[1..1+K1_SIZE].to_vec())});
+                assert_eq!(ns.name(), unsafe{
+                    String::from_utf8_unchecked(name[1..1+K1_SIZE].to_vec())});
             }
 
             it "compares similar" {

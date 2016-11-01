@@ -2,9 +2,9 @@
 
 use collections::{Graph, HmGIR, HsGIR, PtGraph};
 use prelude::EdgeWeight;
+use stats::Stats;
 
 use petgraph::EdgeDirection;
-use stats::Stats;
 
 use std::fmt;
 use std::fmt::Display;

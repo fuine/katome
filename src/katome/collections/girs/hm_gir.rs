@@ -2,20 +2,20 @@
 
 use algorithms::builder::{Build, Init};
 use asm::SEQUENCES;
-use config::InputFileType;
 use collections::{Convert, GIR};
+use collections::girs::edges::{Edge, Outgoing};
 use collections::graphs::pt_graph::{NodeIndex, PtGraph};
 use compress::{change_last_char_in_edge, compress_kmer, kmer_to_edge};
-use collections::girs::edges::{Edge, Outgoing};
+use config::InputFileType;
 use prelude::{Idx, K_SIZE};
 use slices::{BasicSlice, EdgeSlice, NodeSlice};
+use super::hs_gir::create_or_modify_edge;
 
 use metrohash::MetroHash;
 
 use std::collections::HashMap as HM;
 use std::collections::hash_map::Entry;
 use std::hash::BuildHasherDefault as BuildHash;
-use super::hs_gir::create_or_modify_edge;
 
 /// `HashMap` GIR
 pub type HmGIR = HM<NodeSlice, Outgoing, BuildHash<MetroHash>>;
@@ -134,7 +134,9 @@ impl Convert<HmGIR> for PtGraph {
                 s[id] = Box::new([]);
                 continue;
             }
-            // first edge slice will be pointing at the original place of source node, next edges will be appended to the global SEQUENCEs after having their last symbol changed
+            // first edge slice will be pointing at the original place of source
+            // node, next edges will be appended to the global SEQUENCEs after
+            // having their last symbol changed
             let tmp = kmer_to_edge(&s[id]);
             s[id] = tmp.clone().into_boxed_slice();
             // at least one edge going out

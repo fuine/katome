@@ -1,10 +1,10 @@
 //! Basic genome assembler.
 
 use asm::{Assemble, Contigs, SEQUENCES};
-use config::Config;
 use collections::{GIR, Graph, Convert};
-use stats::Stats;
+use config::Config;
 use prelude::EdgeWeight;
+use stats::Stats;
 
 use std::path::Path;
 

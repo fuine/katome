@@ -1,10 +1,10 @@
 //! De novo genome assemblers.
 pub mod basic_assembler;
 
-use config::Config;
-use collections::{GIR, Graph, Convert};
-use prelude::LockedSequences;
 use algorithms::collapser::SerializedContigs;
+use collections::{GIR, Graph, Convert};
+use config::Config;
+use prelude::LockedSequences;
 
 use std::path::Path;
 lazy_static! {

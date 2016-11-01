@@ -12,7 +12,8 @@ use algorithms::standardizer::Standardizable;
 use stats::{Stats, CollectionStats};
 
 /// Graph's interface.
-pub trait Graph: Build + Prunable + Standardizable + Collapsable + Stats<CollectionStats> {
+pub trait Graph
+    : Build + Prunable + Standardizable + Collapsable + Stats<CollectionStats> {
     /// Node identifier.
     type NodeIdentifier;
     /// Collection storing nodes which are ambiguous nodes.

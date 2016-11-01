@@ -5,9 +5,7 @@ extern crate toml;
 extern crate rustc_serialize;
 extern crate log4rs;
 
-use katome::Config;
-use katome::asm::Assemble;
-use katome::asm::basic_assembler::BasicAsm;
+use katome::{Assemble, BasicAsm, Config};
 use katome::collections::PtGraph;
 use std::fs::File;
 use std::io::Read;

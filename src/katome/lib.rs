@@ -19,9 +19,14 @@ mod utils;
 #[macro_use]
 pub mod slices;
 pub mod algorithms;
+
 pub mod asm;
+pub use asm::Assemble;
+pub use asm::basic_assembler::BasicAsm;
+
 pub mod config;
 pub use config::Config;
+
 pub mod collections;
 pub mod compress;
 pub mod stats;

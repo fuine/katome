@@ -2,9 +2,9 @@
 
 use algorithms::builder::{Build, Init};
 use asm::SEQUENCES;
-use config::InputFileType;
 use collections::graphs::Graph;
 use compress::{compress_kmer, kmer_to_edge};
+use config::InputFileType;
 use prelude::{EdgeWeight, Idx, K_SIZE};
 use slices::{BasicSlice, EdgeSlice, NodeSlice};
 
