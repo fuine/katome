@@ -1,7 +1,7 @@
 //! Representation of string for vertex in De Bruijn Graph.
 
 use asm::SEQUENCES;
-use data::compress::{decompress_edge, decompress_last_char_edge, decompress_node, add_char_to_edge};
+use compress::{decompress_edge, decompress_last_char_edge, decompress_node, add_char_to_edge};
 use data::primitives::{COMPRESSED_K1_SIZE, K1_SIZE, Idx};
 
 use std::cmp;
@@ -206,7 +206,7 @@ mod tests {
     extern crate rand;
     pub use ::asm::SEQUENCES;
     pub use ::asm::lock::LOCK;
-    pub use ::data::compress::{compress_kmer, kmer_to_edge};
+    pub use ::compress::{compress_kmer, kmer_to_edge};
     pub use ::data::primitives::{K1_SIZE, K_SIZE};
     pub use self::rand::Rng;
     pub use self::rand::thread_rng;

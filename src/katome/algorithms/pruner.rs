@@ -1,10 +1,9 @@
 //! Various algorithms for graph pruning - removing unnecessary vertices/edges.
 
 use asm::SEQUENCES;
-use data::collections::HmGIR;
-use data::collections::graphs::pt_graph::{EdgeIndex, Node, NodeIndex, PtGraph};
-use data::compress::compress_node;
-use data::compress::encode_fasta_symbol;
+use collections::HmGIR;
+use collections::graphs::pt_graph::{EdgeIndex, Node, NodeIndex, PtGraph};
+use compress::{compress_node, encode_fasta_symbol};
 use data::edges::Edge;
 use data::primitives::{EdgeWeight, K1_SIZE, K_SIZE};
 use data::slices::{BasicSlice, NodeSlice};
@@ -237,7 +236,7 @@ fn check_dead_path(graph: &PtGraph, vertex: NodeIndex, first_direction: EdgeDire
 #[cfg(test)]
 mod tests {
     #![allow(unused_variables)]
-    pub use ::data::collections::graphs::pt_graph::{PtGraph, EdgeIndex};
+    pub use ::collections::graphs::pt_graph::{PtGraph, EdgeIndex};
     pub use ::data::slices::EdgeSlice;
     pub use super::*;
 

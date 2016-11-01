@@ -1,8 +1,8 @@
 //! Algorithms for standardization of edges/contigs in the `Graph`.
 
 use algorithms::pruner::Clean;
-use data::collections::graphs::Graph;
-use data::collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
+use collections::Graph;
+use collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
 use data::primitives::{EdgeWeight, K_SIZE};
 use petgraph::EdgeDirection;
 
@@ -108,7 +108,7 @@ fn calculate_standardization_ratio(original_genome_length: usize, k: usize,
 
 #[cfg(test)]
 mod tests {
-    pub use ::data::collections::graphs::pt_graph::{EdgeIndex, PtGraph};
+    pub use ::collections::graphs::pt_graph::{EdgeIndex, PtGraph};
     pub use ::data::slices::EdgeSlice;
     pub use super::*;
     use super::calculate_standardization_ratio;

@@ -12,7 +12,7 @@ extern crate petgraph;
 pub use katome::algorithms::standardizer::Standardizable;
 pub use katome::asm::SEQUENCES;
 pub use katome::asm::lock::LOCK;
-pub use katome::data::collections::graphs::pt_graph::{PtGraph, NodeIndex, EdgeIndex};
+pub use katome::collections::graphs::pt_graph::{PtGraph, NodeIndex, EdgeIndex};
 pub use katome::data::primitives::K_SIZE;
 pub use katome::data::statistics::{Counts, HasStats, Opt, Stats};
 pub use katome::data::slices::EdgeSlice;

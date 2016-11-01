@@ -132,7 +132,7 @@ pub fn kmer_to_edge(kmer: &[u8]) -> Vec<u8> {
 /// # Example
 ///
 /// ```
-/// use katome::data::compress::compress_edge;
+/// use katome::compress::compress_edge;
 /// let compressed = compress_edge(b"AGGTCG");
 /// assert_eq!(vec![2u8, 0b00101011, 0b01100000], compressed);
 /// ```
@@ -164,7 +164,7 @@ pub fn compress_edge(edge: &[u8]) -> Vec<u8> {
 /// # Example
 ///
 /// ```
-/// use katome::data::compress::decompress_edge;
+/// use katome::compress::decompress_edge;
 /// let decompressed = decompress_edge(&vec![2u8, 0b00101011, 0b01100000]);
 /// assert_eq!(b"AGGTCG", decompressed.as_slice());
 /// ```

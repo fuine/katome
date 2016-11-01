@@ -3,8 +3,8 @@
 use algorithms::builder::{Build, Init};
 use asm::SEQUENCES;
 use config::InputFileType;
-use data::collections::graphs::Graph;
-use data::compress::{compress_kmer, kmer_to_edge};
+use collections::graphs::Graph;
+use compress::{compress_kmer, kmer_to_edge};
 use data::primitives::{EdgeWeight, Idx, K_SIZE};
 use data::slices::{BasicSlice, EdgeSlice, NodeSlice};
 

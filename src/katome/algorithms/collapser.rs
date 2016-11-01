@@ -2,8 +2,8 @@
 
 use algorithms::pruner::Clean;
 use algorithms::shrinker::Shrinkable;
-use data::collections::graphs::Graph;
-use data::collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
+use collections::Graph;
+use collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
 use data::slices::BasicSlice;
 
 use petgraph::EdgeDirection;
@@ -177,8 +177,8 @@ fn decrease_weight(graph: &mut PtGraph, edge: EdgeIndex) {
 mod tests {
     pub use ::asm::SEQUENCES;
     pub use ::asm::lock::LOCK;
-    pub use ::data::collections::graphs::pt_graph::PtGraph;
-    pub use ::data::compress::compress_edge;
+    pub use ::collections::graphs::pt_graph::PtGraph;
+    pub use ::compress::compress_edge;
     pub use ::data::primitives::{K1_SIZE, K_SIZE};
     pub use ::data::slices::{BasicSlice, EdgeSlice};
     pub use std::iter::repeat;

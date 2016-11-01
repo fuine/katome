@@ -8,7 +8,7 @@ pub mod hs_gir;
 pub mod hm_gir;
 
 use algorithms::builder::Build;
-use data::collections::graphs::Graph;
+use collections::Graph;
 use data::statistics::HasStats;
 
 /// Graph's Intermediate Representation (GIR) interface.

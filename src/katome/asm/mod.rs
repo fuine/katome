@@ -2,8 +2,7 @@
 pub mod basic_assembler;
 
 use config::Config;
-use data::collections::girs::{GIR, Convert};
-use data::collections::graphs::Graph;
+use collections::{GIR, Graph, Convert};
 use data::primitives::LockedSequences;
 use std::path::Path;
 lazy_static! {

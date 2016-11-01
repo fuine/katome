@@ -1,8 +1,8 @@
 //! Shrink the given graph
 
 use algorithms::pruner::Clean;
-use data::collections::graphs::Graph;
-use data::collections::graphs::pt_graph::{PtGraph, NodeIndex, EdgeIndex};
+use collections::Graph;
+use collections::graphs::pt_graph::{PtGraph, NodeIndex, EdgeIndex};
 
 use fixedbitset::FixedBitSet;
 use petgraph::Direction::{Incoming, Outgoing};
@@ -134,9 +134,9 @@ fn next_out_edge(graph: &PtGraph, node: NodeIndex) -> EdgeIndex {
 mod tests {
     use ::asm::SEQUENCES;
     use ::asm::lock::LOCK;
-    use ::data::collections::graphs::Graph;
-    use ::data::collections::graphs::pt_graph::{PtGraph, NodeIndex, EdgeIndex};
-    use ::data::compress::compress_edge;
+    use ::collections::graphs::Graph;
+    use ::collections::graphs::pt_graph::{PtGraph, NodeIndex, EdgeIndex};
+    use ::compress::compress_edge;
     use ::data::slices::{EdgeSlice, BasicSlice};
     use super::*;
     use super::shrink_from_node;

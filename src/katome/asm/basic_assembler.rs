@@ -2,8 +2,7 @@
 
 use asm::{Assemble, SEQUENCES};
 use config::Config;
-use data::collections::girs::{GIR, Convert};
-use data::collections::graphs::Graph;
+use collections::{GIR, Graph, Convert};
 use data::contigs_statistics::HasContigsStats;
 use data::primitives::EdgeWeight;
 
