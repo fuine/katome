@@ -6,18 +6,66 @@ use asm::SEQUENCES;
 use collections::{Convert, GIR};
 use collections::graphs::pt_graph::{NodeIndex, PtGraph};
 use compress::{change_last_char_in_edge, compress_kmer, kmer_to_edge};
-use data::edges::{Edges, Outgoing};
+use collections::girs::edges::{Edges, Outgoing};
 use prelude::{Idx, K_SIZE};
 use slices::{BasicSlice, EdgeSlice, NodeSlice};
-use data::vertex::Vertex;
 
 use metrohash::MetroHash;
 use self::itertools::Itertools;
 
+use std::cmp;
 use std::collections::HashSet as HS;
 use std::fmt;
 use std::hash::BuildHasherDefault;
+use std::hash;
 use std::mem;
+
+/// Single node and its outgoing edges.
+///
+/// Used for serialization/deserialization during `GIR` -> `Graph` conversion
+#[derive(Clone)]
+pub struct Vertex {
+    /// Node's `ReadSlice` representing k-mer.
+    pub ns: NodeSlice,
+    /// Outgoing edges.
+    pub edges: Edges,
+}
+
+impl Vertex {
+    /// Creates new `Vertex`.
+    pub fn new(ns_: NodeSlice, edges_: Edges) -> Vertex {
+        Vertex {
+            ns: ns_,
+            edges: edges_,
+        }
+    }
+}
+
+impl hash::Hash for Vertex {
+    fn hash<H>(&self, state: &mut H) where H: hash::Hasher {
+        self.ns.hash(state)
+    }
+}
+
+impl cmp::Eq for Vertex {}
+
+impl cmp::PartialEq for Vertex {
+    fn eq(&self, other: &Vertex) -> bool {
+        self.ns == other.ns
+    }
+}
+
+impl cmp::PartialOrd for Vertex {
+    fn partial_cmp(&self, other: &Vertex) -> Option<cmp::Ordering> {
+        self.ns.partial_cmp(&other.ns)
+    }
+}
+
+impl cmp::Ord for Vertex {
+    fn cmp(&self, other: &Vertex) -> cmp::Ordering {
+        self.ns.cmp(&other.ns)
+    }
+}
 
 /// `HashSet` GIR
 pub type HsGIR = HS<Box<Vertex>, BuildHasherDefault<MetroHash>>;

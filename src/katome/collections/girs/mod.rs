@@ -6,6 +6,7 @@
 //! algorithmic efficiency
 pub mod hs_gir;
 pub mod hm_gir;
+pub mod edges;
 
 use algorithms::builder::Build;
 use collections::Graph;

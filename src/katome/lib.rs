@@ -18,7 +18,6 @@ extern crate fixedbitset;
 mod utils;
 #[macro_use]
 pub mod slices;
-pub mod data;
 pub mod algorithms;
 pub mod asm;
 pub mod config;
