@@ -1,4 +1,5 @@
 //! Edges representation in GIR.
+
 use data::primitives::{EdgeWeight, Idx};
 
 /// Single edge representation.

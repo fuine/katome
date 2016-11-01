@@ -108,10 +108,10 @@ fn calculate_standardization_ratio(original_genome_length: usize, k: usize,
 
 #[cfg(test)]
 mod tests {
-    pub use super::*;
-    use super::calculate_standardization_ratio;
     pub use ::data::collections::graphs::pt_graph::{EdgeIndex, PtGraph};
     pub use ::data::slices::EdgeSlice;
+    pub use super::*;
+    use super::calculate_standardization_ratio;
 
     #[test]
     fn calculates_standardization_ratio() {

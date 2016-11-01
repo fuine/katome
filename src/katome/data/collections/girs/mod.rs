@@ -8,11 +8,11 @@ pub mod hs_gir;
 pub mod hm_gir;
 
 use algorithms::builder::Build;
-use data::statistics::HasStats;
 use data::collections::graphs::Graph;
+use data::statistics::HasStats;
 
 /// Graph's Intermediate Representation (GIR) interface.
-pub trait GIR: Build + HasStats {  }
+pub trait GIR: Build + HasStats {}
 
 /// Convert `GIR` to `Graph`.
 ///

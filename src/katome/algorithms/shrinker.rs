@@ -88,7 +88,6 @@ impl Shrinkable for PtGraph {
         }
         self.remove_single_vertices();
     }
-
 }
 
 fn shrink_from_node(graph: &mut PtGraph, start_node: NodeIndex, mut base_edge: EdgeIndex) {

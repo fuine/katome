@@ -84,8 +84,8 @@ fn n_metrics(collection: &[usize], tipping_point: usize) -> usize {
 #[cfg(test)]
 mod tests {
     pub use algorithms::collapser::SerializedContigs;
-    pub use super::*;
     pub use std::iter::repeat;
+    pub use super::*;
 
     describe! cont_stats {
         it "checks basic stats" {

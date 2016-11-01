@@ -1,8 +1,9 @@
 //! Various statistics for `Graph`s and `GIR`s.
-use data::collections::girs::hm_gir::HmGIR;
-use data::collections::girs::hs_gir::HsGIR;
-use data::collections::graphs::Graph;
-use data::collections::graphs::pt_graph::PtGraph;
+
+use data::collections::Graph;
+use data::collections::HmGIR;
+use data::collections::HsGIR;
+use data::collections::PtGraph;
 use data::primitives::EdgeWeight;
 
 use petgraph::EdgeDirection;

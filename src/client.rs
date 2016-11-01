@@ -8,7 +8,7 @@ extern crate log4rs;
 use katome::Config;
 use katome::asm::Assemble;
 use katome::asm::basic_assembler::BasicAsm;
-use katome::data::collections::graphs::pt_graph::PtGraph;
+use katome::data::collections::PtGraph;
 use std::fs::File;
 use std::io::Read;
 use toml::{Parser, Value};
