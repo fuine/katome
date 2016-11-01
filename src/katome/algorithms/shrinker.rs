@@ -137,7 +137,7 @@ mod tests {
     use ::collections::graphs::Graph;
     use ::collections::graphs::pt_graph::{PtGraph, NodeIndex, EdgeIndex};
     use ::compress::compress_edge;
-    use ::data::slices::{EdgeSlice, BasicSlice};
+    use ::slices::{EdgeSlice, BasicSlice};
     use super::*;
     use super::shrink_from_node;
 

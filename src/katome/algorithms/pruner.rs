@@ -6,7 +6,7 @@ use collections::graphs::pt_graph::{EdgeIndex, Node, NodeIndex, PtGraph};
 use compress::{compress_node, encode_fasta_symbol};
 use data::edges::Edge;
 use prelude::{EdgeWeight, K1_SIZE, K_SIZE};
-use data::slices::{BasicSlice, NodeSlice};
+use slices::{BasicSlice, NodeSlice};
 
 use petgraph::EdgeDirection;
 
@@ -237,7 +237,7 @@ fn check_dead_path(graph: &PtGraph, vertex: NodeIndex, first_direction: EdgeDire
 mod tests {
     #![allow(unused_variables)]
     pub use ::collections::graphs::pt_graph::{PtGraph, EdgeIndex};
-    pub use ::data::slices::EdgeSlice;
+    pub use ::slices::EdgeSlice;
     pub use super::*;
 
     describe! pr {

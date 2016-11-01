@@ -1,7 +1,7 @@
 //! Representation of single node and its outgoing edges.
 
 use data::edges::Edges;
-use data::slices::NodeSlice;
+use slices::NodeSlice;
 
 use std::cmp;
 use std::hash;

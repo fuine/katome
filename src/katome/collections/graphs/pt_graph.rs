@@ -6,7 +6,7 @@ use config::InputFileType;
 use collections::graphs::Graph;
 use compress::{compress_kmer, kmer_to_edge};
 use prelude::{EdgeWeight, Idx, K_SIZE};
-use data::slices::{BasicSlice, EdgeSlice, NodeSlice};
+use slices::{BasicSlice, EdgeSlice, NodeSlice};
 
 use fixedbitset::FixedBitSet;
 use metrohash::MetroHash;

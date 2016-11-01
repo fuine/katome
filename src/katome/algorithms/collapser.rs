@@ -4,7 +4,7 @@ use algorithms::pruner::Clean;
 use algorithms::shrinker::Shrinkable;
 use collections::Graph;
 use collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
-use data::slices::BasicSlice;
+use slices::BasicSlice;
 
 use petgraph::EdgeDirection;
 use petgraph::visit::EdgeRef;
@@ -180,7 +180,7 @@ mod tests {
     pub use ::collections::graphs::pt_graph::PtGraph;
     pub use ::compress::compress_edge;
     pub use ::prelude::{K1_SIZE, K_SIZE};
-    pub use ::data::slices::{BasicSlice, EdgeSlice};
+    pub use ::slices::{BasicSlice, EdgeSlice};
     pub use std::iter::repeat;
     pub use super::*;
 

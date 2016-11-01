@@ -15,7 +15,7 @@ pub use katome::asm::lock::LOCK;
 pub use katome::collections::graphs::pt_graph::{PtGraph, NodeIndex, EdgeIndex};
 pub use katome::prelude::K_SIZE;
 pub use katome::stats::{Counts, Opt, CollectionStats, Stats};
-pub use katome::data::slices::EdgeSlice;
+pub use katome::slices::EdgeSlice;
 pub use std::sync::Mutex;
 
 describe! tests {
