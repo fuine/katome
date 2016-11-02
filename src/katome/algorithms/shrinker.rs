@@ -10,6 +10,8 @@ use petgraph::visit::EdgeRef;
 
 /// Mark graph as shrinkable.
 pub trait Shrinkable {
+    /// Edge index associated with collection.
+    type EdgeIdx;
     /// Shrink graph.
     ///
     /// This operation should shrink all straight paths (paths in which all
@@ -17,6 +19,10 @@ pub trait Shrinkable {
     /// It is assumed that after shrinking graph will not have any nodes
     /// connected in this way: s -> x -> ... -> t
     fn shrink(&mut self);
+    /// Shrink one single path. This method assumes that `base_edge` argument points
+    /// to a valid edge, which target has a single outgoing edge.
+    /// Returns index of the shrinked path represented by edge.
+    fn shrink_single_path(&mut self, base_edge: Self::EdgeIdx) -> Self::EdgeIdx;
 }
 
 pub struct ShrinkTraverse {
@@ -38,7 +44,7 @@ impl ShrinkTraverse {
         }
     }
 
-    pub fn next(&mut self, graph: &PtGraph) -> Option<(NodeIndex, EdgeIndex)> {
+    pub fn next(&mut self, graph: &PtGraph) -> Option<EdgeIndex> {
         while let Some(&node) = self.stack.last() {
             let mut current_node = node;
             let mut new_ancestor;
@@ -53,7 +59,7 @@ impl ShrinkTraverse {
                     if graph.out_degree(&n) == 1 && graph.in_degree(&n) == 1 {
                         // current_node -> n -> x
                         // that's the only thing we need to start shrinking
-                        return Some((current_node, e.id()));
+                        return Some(e.id());
                     }
                     else {
                         self.stack.push(n);
@@ -81,43 +87,44 @@ impl ShrinkTraverse {
 }
 
 impl Shrinkable for PtGraph {
+    type EdgeIdx = EdgeIndex;
     fn shrink(&mut self) {
         let mut t = ShrinkTraverse::new(self);
-        while let Some((start_node, base_edge)) = t.next(self) {
-            shrink_from_node(self, start_node, base_edge);
+        while let Some(base_edge) = t.next(self) {
+            self.shrink_single_path(base_edge);
         }
         self.remove_single_vertices();
     }
-}
 
-fn shrink_from_node(graph: &mut PtGraph, start_node: NodeIndex, mut base_edge: EdgeIndex) {
-    let mut mid_node = edge_target(graph, base_edge);
-    loop {
-        let next_edge = next_out_edge(graph, mid_node);
-        // [TODO]: take different edge weights under consideration - 2016-10-29 06:43
-        let base_edge_weight = *unwrap!(graph.edge_weight(base_edge));
-        let target = edge_target(graph, next_edge);
-        // make sure that we remove higher index first to prevent higher index
-        // invalidation
-        let next_edge_weight = if base_edge.index() < next_edge.index() {
-            let tmp = unwrap!(graph.remove_edge(next_edge)).0;
-            graph.remove_edge(base_edge);
-            tmp
-        }
-        else {
-            graph.remove_edge(base_edge);
-            unwrap!(graph.remove_edge(next_edge)).0
-        };
+    fn shrink_single_path(&mut self, mut base_edge: EdgeIndex) -> EdgeIndex {
+        let (start_node, mut mid_node) = unwrap!(self.edge_endpoints(base_edge));
+        loop {
+            let next_edge = next_out_edge(self, mid_node);
+            let base_edge_weight = *unwrap!(self.edge_weight(base_edge));
+            let target = edge_target(self, next_edge);
+            // make sure that we remove higher index first to prevent higher index
+            // invalidation
+            let next_edge_weight = if base_edge.index() < next_edge.index() {
+                let tmp = unwrap!(self.remove_edge(next_edge)).0;
+                self.remove_edge(base_edge);
+                tmp
+            }
+            else {
+                self.remove_edge(base_edge);
+                unwrap!(self.remove_edge(next_edge)).0
+            };
 
-        base_edge_weight.0.merge(next_edge_weight);
-        base_edge = graph.add_edge(start_node, target, base_edge_weight);
-        mid_node = target;
-        if graph.in_degree(&mid_node) != 1 || graph.out_degree(&mid_node) != 1 ||
-           mid_node == start_node {
-            break;
+            base_edge_weight.0.merge(next_edge_weight);
+            base_edge = self.add_edge(start_node, target, base_edge_weight);
+            mid_node = target;
+            if self.in_degree(&mid_node) != 1 || self.out_degree(&mid_node) != 1 ||
+               mid_node == start_node {
+                return base_edge;
+            }
         }
     }
 }
+
 
 #[inline]
 fn edge_target(graph: &PtGraph, edge: EdgeIndex) -> NodeIndex {
@@ -139,7 +146,6 @@ mod tests {
     use ::compress::compress_edge;
     use ::slices::{EdgeSlice, BasicSlice};
     use super::*;
-    use super::shrink_from_node;
 
     macro_rules! setup (
         () => (
@@ -183,7 +189,7 @@ mod tests {
                                           (1, 2, (EdgeSlice::new(1), 1))]);
         assert_eq!(g.node_count(), 3);
         assert_eq!(g.edge_count(), 2);
-        shrink_from_node(&mut g, NodeIndex::new(0), EdgeIndex::new(0));
+        g.shrink_single_path(EdgeIndex::new(0));
         assert_eq!(g.node_count(), 3);
         assert_eq!(g.edge_count(), 1);
         check_node!(g, 0, 0, 1);
@@ -216,7 +222,7 @@ mod tests {
                                           (2, 0, (EdgeSlice::new(2), 1))]);
         assert_eq!(g.node_count(), 3);
         assert_eq!(g.edge_count(), 3);
-        shrink_from_node(&mut g, NodeIndex::new(0), EdgeIndex::new(0));
+        g.shrink_single_path(EdgeIndex::new(0));
         assert_eq!(g.node_count(), 3);
         assert_eq!(g.edge_count(), 1);
         check_node!(g, 0, 1, 1);

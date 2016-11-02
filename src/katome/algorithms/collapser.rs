@@ -1,6 +1,5 @@
 //! Create string representation of contigs out of `Graph`.
 
-use algorithms::pruner::Clean;
 use algorithms::shrinker::Shrinkable;
 use collections::Graph;
 use collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
@@ -24,18 +23,15 @@ impl Collapsable for PtGraph {
     fn collapse(mut self) -> SerializedContigs {
         let mut contigs: SerializedContigs = vec![];
         loop {
-            let starting_vertices: Vec<NodeIndex> = self.externals(EdgeDirection::Incoming)
-                .collect();
-            if starting_vertices.is_empty() {
+            // ensure that we don't end up with straight paths longer than
+            // one edge
+            self.shrink();
+            if let Some(n) = self.externals(EdgeDirection::Incoming).next() {
+                contigs.extend(contigs_from_vertex(&mut self, n));
+            }
+            else {
                 break;
             }
-            for v in starting_vertices {
-                // ensure that we don't end up with straight paths longer than
-                // one edge
-                self.shrink();
-                contigs.extend(contigs_from_vertex(&mut self, v));
-            }
-            self.remove_single_vertices();
         }
         contigs.retain(|x| !x.is_empty());
         contigs
@@ -61,12 +57,28 @@ fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex) -> SerializedContigs {
                 unreachable!();
             }
             1 => {
+                if requires_shrink(graph, current_edge_index) {
+                    // shrink single path and save newly shrinked path as
+                    // current edge. This if ensures that loop-recognition
+                    // algorithms can work -- they assume that graph is fully
+                    // shrinked.
+                    current_edge_index = graph.shrink_single_path(current_edge_index);
+                    current_vertex = unwrap!(graph.edge_endpoints(current_edge_index)).0;
+                }
                 // make sure that we are not dealing with the loopy end
                 if self_loop(graph, current_vertex).is_none() {
                     single_loop = simple_loop(graph, current_edge_index);
                 }
             }
             2 => {
+                if requires_shrink(graph, current_edge_index) {
+                    // shrink single path and save newly shrinked path as
+                    // current edge. This if ensures that loop-recognition
+                    // algorithms can work -- they assume that graph is fully
+                    // shrinked.
+                    current_edge_index = graph.shrink_single_path(current_edge_index);
+                    current_vertex = unwrap!(graph.edge_endpoints(current_edge_index)).0;
+                }
                 // because we handle simple loops in the match arm for 1 then
                 // any vertex with 2 outgoing edges has either a self-loop or
                 // is ambiguous
@@ -110,6 +122,17 @@ fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex) -> SerializedContigs {
         }
         current_vertex = target;
     }
+}
+
+/// Sometimes when collapser creates contigs and removes edges there might be
+/// situation, where we have some paths that are not fully shrinked, i.e. they
+/// look like x -> y -> ... This function checks if path starting with given
+/// edge requires additional shrinkage.
+fn requires_shrink(graph: &PtGraph, edge: EdgeIndex) -> bool {
+    let (source, target) = unwrap!(graph.edge_endpoints(edge));
+    let in_target = graph.in_degree(&target);
+    let out_target = graph.out_degree(&target);
+    in_target == 1 && out_target == 1 && source != target
 }
 
 /// Check if node has self-loop.
