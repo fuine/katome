@@ -54,20 +54,20 @@ impl Graph for PtGraph {
     fn get_ambiguous_nodes(&self) -> Self::AmbiguousNodes {
         self.node_indices()
             .filter(|n| {
-                let in_degree = self.in_degree(n);
-                let out_degree = self.out_degree(n);
+                let in_degree = self.in_degree(*n);
+                let out_degree = self.out_degree(*n);
                 (in_degree > 1 || out_degree > 1) || (in_degree == 0 && out_degree >= 1)
             })
             .collect::<Self::AmbiguousNodes>()
     }
 
-    fn out_degree(&self, node: &Self::NodeIdentifier) -> usize {
-        self.neighbors_directed(*node, petgraph::EdgeDirection::Outgoing)
+    fn out_degree(&self, node: Self::NodeIdentifier) -> usize {
+        self.neighbors_directed(node, petgraph::EdgeDirection::Outgoing)
             .count()
     }
 
-    fn in_degree(&self, node: &Self::NodeIdentifier) -> usize {
-        self.neighbors_directed(*node, petgraph::EdgeDirection::Incoming)
+    fn in_degree(&self, node: Self::NodeIdentifier) -> usize {
+        self.neighbors_directed(node, petgraph::EdgeDirection::Incoming)
             .count()
     }
 }

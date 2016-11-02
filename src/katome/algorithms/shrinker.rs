@@ -56,7 +56,7 @@ impl ShrinkTraverse {
                         continue;
                     }
                     self.mark_visited(n);
-                    if graph.out_degree(&n) == 1 && graph.in_degree(&n) == 1 {
+                    if graph.out_degree(n) == 1 && graph.in_degree(n) == 1 {
                         // current_node -> n -> x
                         // that's the only thing we need to start shrinking
                         return Some(e.id());
@@ -117,7 +117,7 @@ impl Shrinkable for PtGraph {
             base_edge_weight.0.merge(next_edge_weight);
             base_edge = self.add_edge(start_node, target, base_edge_weight);
             mid_node = target;
-            if self.in_degree(&mid_node) != 1 || self.out_degree(&mid_node) != 1 ||
+            if self.in_degree(mid_node) != 1 || self.out_degree(mid_node) != 1 ||
                mid_node == start_node {
                 return base_edge;
             }
@@ -167,8 +167,8 @@ mod tests {
 
     macro_rules! check_node (
         ($g:ident, $i:expr, $x:expr, $y:expr) => (
-            assert_eq!($g.in_degree(&NodeIndex::new($i)), $x);
-            assert_eq!($g.out_degree(&NodeIndex::new($i)), $y);
+            assert_eq!($g.in_degree(NodeIndex::new($i)), $x);
+            assert_eq!($g.out_degree(NodeIndex::new($i)), $y);
         )
     );
 

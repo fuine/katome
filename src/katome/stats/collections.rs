@@ -144,9 +144,9 @@ impl Stats<CollectionStats> for PtGraph {
             .map(|w| w.weight.1)
             .fold(0usize, |s, w| s + w as usize) as f64 /
                                self.edge_count() as f64;
-        let max_out_degree_ = self.node_indices().map(|n| self.out_degree(&n)).max().unwrap_or(0);
+        let max_out_degree_ = self.node_indices().map(|n| self.out_degree(n)).max().unwrap_or(0);
         let avg_out_degree_ = (self.node_indices()
-            .fold(0usize, |m, n| m + self.out_degree(&n))) as f64 /
+            .fold(0usize, |m, n| m + self.out_degree(n))) as f64 /
                               self.node_count() as f64;
         let (node_cap, edge_cap) = self.capacity();
         CollectionStats {
@@ -158,7 +158,7 @@ impl Stats<CollectionStats> for PtGraph {
             max_edge_weight: Opt::Full(max_weight),
             avg_edge_weight: Opt::Full(avg_edge_weight_),
             max_in_degree: Opt::Full(self.node_indices()
-                .map(|n| self.in_degree(&n))
+                .map(|n| self.in_degree(n))
                 .max()
                 .unwrap_or(0)),
             max_out_degree: Opt::Full(max_out_degree_),

@@ -72,7 +72,7 @@ fn get_contigs_from_node(graph: &PtGraph, starting_node: NodeIndex,
         let mut current_node = node;
         let mut current_edge = unwrap!(graph.find_edge(starting_node, node));
         loop {
-            let out_degree = graph.out_degree(&current_node);
+            let out_degree = graph.out_degree(current_node);
             contig.push(current_edge);
             if out_degree != 1 || ambiguous_nodes.contains(&current_node) {
                 break;

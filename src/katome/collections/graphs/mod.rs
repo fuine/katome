@@ -26,7 +26,7 @@ pub trait Graph
     /// Finds all ambiguous in the `Graph`.
     fn get_ambiguous_nodes(&self) -> Self::AmbiguousNodes;
     /// Gets number of outgoing edges for the given node.
-    fn out_degree(&self, &Self::NodeIdentifier) -> usize;
+    fn out_degree(&self, Self::NodeIdentifier) -> usize;
     /// Gets number of incoming edges for the given node.
-    fn in_degree(&self, &Self::NodeIdentifier) -> usize;
+    fn in_degree(&self, Self::NodeIdentifier) -> usize;
 }

@@ -46,7 +46,7 @@ fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex) -> SerializedContigs {
     let mut single_loop;
     loop {
         single_loop = None;
-        let number_of_edges = graph.out_degree(&current_vertex);
+        let number_of_edges = graph.out_degree(current_vertex);
         if number_of_edges == 0 {
             contigs.push(contig.clone());
             return contigs;
@@ -130,8 +130,8 @@ fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex) -> SerializedContigs {
 /// edge requires additional shrinkage.
 fn requires_shrink(graph: &PtGraph, edge: EdgeIndex) -> bool {
     let (source, target) = unwrap!(graph.edge_endpoints(edge));
-    let in_target = graph.in_degree(&target);
-    let out_target = graph.out_degree(&target);
+    let in_target = graph.in_degree(target);
+    let out_target = graph.out_degree(target);
     in_target == 1 && out_target == 1 && source != target
 }
 
@@ -143,7 +143,7 @@ fn requires_shrink(graph: &PtGraph, edge: EdgeIndex) -> bool {
 /// It is assumed that node has 1 or 2 outgoing edges
 /// TODO add simple diagram to illustrate
 fn self_loop(graph: &PtGraph, node: NodeIndex) -> Option<EdgeIndex> {
-    if graph.in_degree(&node) > 2 {
+    if graph.in_degree(node) > 2 {
         return None;
     }
     for e in graph.edges_directed(node, EdgeDirection::Outgoing) {
@@ -163,12 +163,12 @@ fn self_loop(graph: &PtGraph, node: NodeIndex) -> Option<EdgeIndex> {
 /// TODO add dragram
 fn simple_loop(graph: &PtGraph, edge: EdgeIndex) -> Option<EdgeIndex> {
     let (source, target) = unwrap!(graph.edge_endpoints(edge));
-    let in_source = graph.in_degree(&source);
+    let in_source = graph.in_degree(source);
     if in_source == 0 || in_source > 2 {
         return None;
     }
-    let in_target = graph.in_degree(&target);
-    let out_target = graph.out_degree(&target);
+    let in_target = graph.in_degree(target);
+    let out_target = graph.out_degree(target);
     // since this isn't self loop these conditions must hold
     // note that shrinking ensures that we won't have situation like this:
     // a -> b -> c, b -> d, d -> b
