@@ -37,7 +37,6 @@ impl Stats<ContigsStats> for Contigs {
         // reverse-sorted order
         contigs.sort();
         let sum: usize = contigs.iter().sum();
-        println!("Sum: {} half: {}", sum, sum / 2);
         let n50_ = n_metrics(&contigs, sum / 2);
         let n90_ = n_metrics(&contigs, (0.1 * sum as f64) as usize);
         let ng50_ = n_metrics(&contigs, self.original_genome_length / 2);

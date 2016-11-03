@@ -11,7 +11,7 @@ use petgraph::visit::EdgeRef;
 /// Collapse `Graph` into `SerializedContigs`.
 pub trait Collapsable: Shrinkable {
     /// Collapses `Graph` into `SerializedContigs`.
-    fn collapse(mut self) -> SerializedContigs;
+    fn collapse(self) -> SerializedContigs;
 }
 
 /// Representation of serialized contig.
