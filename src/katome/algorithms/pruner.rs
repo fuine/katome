@@ -75,14 +75,7 @@ impl Prunable for PtGraph {
 
 impl Clean for PtGraph {
     fn remove_single_vertices(&mut self) {
-        self.retain_nodes(|g, n| {
-            if let None = g.neighbors_undirected(n).next() {
-                false
-            }
-            else {
-                true
-            }
-        });
+        self.retain_nodes(|g, n| g.neighbors_undirected(n).next().is_some());
     }
 
     fn remove_weak_edges(&mut self, threshold: EdgeWeight) {
@@ -145,7 +138,7 @@ fn has_incoming_edges(gir: &mut HmGIR, node: &NodeSlice) -> bool {
         // dummy read slice used to check if we can find it in the gir
         if let Entry::Occupied(e) = gir.entry(tmp_ns) {
             // if we got any hits check if our vertex is in the outgoing
-            if let Some(_) = e.get().iter().find(|&x| x.0 == node.offset()) {
+            if e.get().iter().any(|&x| x.0 == node.offset()) {
                 output = true;
                 break;
             }
@@ -227,7 +220,7 @@ fn check_dead_path(graph: &PtGraph, vertex: NodeIndex, first_direction: EdgeDire
         else {
             return Some(output_vec);
         }
-        if let Some(_) = graph.neighbors_directed(current_vertex, first_direction).nth(2) {
+        if graph.neighbors_directed(current_vertex, first_direction).nth(2).is_some() {
             return Some(output_vec);
         }
     }
