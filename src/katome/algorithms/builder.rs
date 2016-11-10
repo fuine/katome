@@ -117,7 +117,7 @@ fn create_fastq<P: AsRef<Path>, T: Sized + Init + Build>(path: P) -> (T, usize) 
 }
 
 fn lines_from_file<P: AsRef<Path>>(filename: P) -> Res<io::Lines<io::BufReader<File>>> {
-    let file = try!(File::open(filename));
+    let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
 }
 

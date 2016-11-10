@@ -106,16 +106,16 @@ impl Display for Counts {
 
 impl Display for CollectionStats {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(writeln!(f,
-                      "I have the capacity of {}, {} for {}",
-                      self.capacity.0,
-                      self.capacity.1,
-                      self.counts));
-        try!(writeln!(f, "Max edge weight: {}", self.max_edge_weight));
-        try!(writeln!(f, "Avg edge weight: {:.2}", self.avg_edge_weight));
-        try!(writeln!(f, "Max in degree: {}", self.max_in_degree));
-        try!(writeln!(f, "Max out degree: {}", self.max_out_degree));
-        try!(writeln!(f, "Avg out degree: {}", self.avg_out_degree));
+        writeln!(f,
+                 "I have the capacity of {}, {} for {}",
+                 self.capacity.0,
+                 self.capacity.1,
+                 self.counts)?;
+        writeln!(f, "Max edge weight: {}", self.max_edge_weight)?;
+        writeln!(f, "Avg edge weight: {:.2}", self.avg_edge_weight)?;
+        writeln!(f, "Max in degree: {}", self.max_in_degree)?;
+        writeln!(f, "Max out degree: {}", self.max_out_degree)?;
+        writeln!(f, "Avg out degree: {}", self.avg_out_degree)?;
         let percentage = |x| {
             match x {
                 Opt::Full(c) => Opt::Full((c * 100) as f64 / self.counts.node_count as f64),
@@ -124,14 +124,14 @@ impl Display for CollectionStats {
         };
         let in_percentage = percentage(self.incoming_vert_count);
         let out_percentage = percentage(self.outgoing_vert_count);
-        try!(writeln!(f,
-                      "Incoming vertices count: {} ({:.2}%)",
-                      self.incoming_vert_count,
-                      in_percentage));
-        try!(writeln!(f,
-                      "Outgoing vertices count: {} ({:.2}%)",
-                      self.outgoing_vert_count,
-                      out_percentage));
+        writeln!(f,
+                 "Incoming vertices count: {} ({:.2}%)",
+                 self.incoming_vert_count,
+                 in_percentage)?;
+        writeln!(f,
+                 "Outgoing vertices count: {} ({:.2}%)",
+                 self.outgoing_vert_count,
+                 out_percentage)?;
         writeln!(f, "{}", repeat("*").take(20).collect::<String>())
     }
 }
