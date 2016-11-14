@@ -217,13 +217,14 @@ mod tests {
     pub use std::collections::hash_map::DefaultHasher;
     pub use std::hash::Hash;
     pub use super::*;
+    pub use std::panic::catch_unwind;
 
-    describe! rs {
-        before_each {
-    // global lock on sequences for test
-            let _l = LOCK.lock().unwrap();
-    // initialize with random data
-            let name = thread_rng()
+    macro_rules! setup {
+        ($l:ident, $n:ident) => {
+            // global lock on sequences for test
+            let $l = LOCK.lock().unwrap();
+            // initialize with random data
+            let $n = thread_rng()
                 .gen_iter::<u8>()
                 .take(K_SIZE)
                 .map(|x| {
@@ -235,13 +236,13 @@ mod tests {
                         _ => unreachable!(),
                     }
                 })
-                .collect::<Vec<u8>>();
+            .collect::<Vec<u8>>();
             {
                 let mut seq = SEQUENCES.write();
                 seq.clear();
-                let mut shifted_kmer = Vec::from(&name[1..]);
+                let mut shifted_kmer = Vec::from(&$n[1..]);
                 shifted_kmer.push(b'A');
-                let compressed_kmer = compress_kmer(&name);
+                let compressed_kmer = compress_kmer(&$n);
                 let compressed_shifted_kmer = compress_kmer(&shifted_kmer);
                 let compressed_edge = kmer_to_edge(&compressed_kmer);
                 seq.push(compressed_kmer.clone().into_boxed_slice());
@@ -251,61 +252,99 @@ mod tests {
                 seq.push(compressed_edge.clone().into_boxed_slice());
             }
         }
+    }
+    macro_rules! test {
+        ($n:ident, $b:block) => {
+            #[test]
+            fn $n() {
+                let result = {
+                    $b
+                };
+                assert!(result.is_ok());
+            }
+        }
+    }
+    mod ns {
+        use super::*;
 
-        describe! ns {
-            it "creates new" {
+        test!(creates_new, {
+            setup!(_l, name);
+            catch_unwind(|| {
                 let ns = NodeSlice::new(0);
                 let st = unsafe{ String::from_utf8_unchecked(name[..K1_SIZE].to_vec()) };
                 assert_eq!(ns.name(), st);
                 let ns = NodeSlice::new(1);
                 assert_eq!(ns.name(), unsafe{
                     String::from_utf8_unchecked(name[1..1+K1_SIZE].to_vec())});
-            }
+            })
+        });
 
-            it "compares similar" {
+        test!(compares_similar, {
+            setup!(_l, name);
+            catch_unwind(|| {
                 let ns1 = NodeSlice::new(0);
                 let ns2 = NodeSlice::new(2);
                 assert_eq!(ns1, ns2);
-            }
+            })
+        });
 
-            it "compares shifted names" {
+        test!(compares_shifted_names, {
+            setup!(_l, name);
+            catch_unwind(|| {
                 let ns1 = NodeSlice::new(1);
                 let ns2 = NodeSlice::new(4);
                 assert_eq!(ns1.name(), ns2.name());
-            }
+            })
+        });
 
-            it "compares shifted slices" {
+        test!(compares_shifted_slices, {
+            setup!(_l, name);
+            catch_unwind(|| {
                 let ns1 = NodeSlice::new(1);
                 let ns2 = NodeSlice::new(4);
                 assert_eq!(ns1, ns2);
-            }
+            })
+        });
 
-            it "compares hashes" {
+        test!(compares_hashes, {
+            setup!(_l, name);
+            catch_unwind(|| {
                 let ns1 = NodeSlice::new(0);
                 let ns2 = NodeSlice::new(2);
                 let mut hasher = DefaultHasher::new();
                 assert!(ns1.hash(&mut hasher) == ns2.hash(&mut hasher));
-            }
-        }
+            })
+        });
+    }
 
-        describe! es {
-            it "creates new" {
+    mod es {
+        use super::*;
+
+        test!(creates_new, {
+            setup!(_l, name);
+            catch_unwind(|| {
                 let es = EdgeSlice::new(3);
                 assert_eq!(es.name(), unsafe{ String::from_utf8_unchecked(name)});
-            }
+            })
+        });
 
-            it "compares similar" {
+        test!(compares_similar, {
+            setup!(_l, name);
+            catch_unwind(|| {
                 let es1 = EdgeSlice::new(3);
                 let es2 = EdgeSlice::new(4);
                 assert_eq!(es1, es2);
-            }
+            })
+        });
 
-            it "compares hashes" {
+        test!(compares_hashes, {
+            setup!(_l, name);
+            catch_unwind(|| {
                 let es1 = EdgeSlice::new(3);
                 let es2 = EdgeSlice::new(4);
                 let mut hasher = DefaultHasher::new();
                 assert!(es1.hash(&mut hasher) == es2.hash(&mut hasher));
-            }
-        }
+            })
+        });
     }
 }

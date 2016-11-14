@@ -233,116 +233,131 @@ mod tests {
     pub use ::slices::EdgeSlice;
     pub use super::*;
 
-    describe! pr {
-        before_each {
-            let mut graph: PtGraph = PtGraph::default();
+    #[test]
+    fn prunes_single_graph() {
+        let mut graph: PtGraph = PtGraph::default();
+        assert_eq!(graph.node_count(), 0);
+        assert_eq!(graph.edge_count(), 0);
+        graph.remove_weak_edges(10);
+        assert_eq!(graph.node_count(), 0);
+        assert_eq!(graph.edge_count(), 0);
+    }
+
+    macro_rules! setup {
+        ($g:ident, $x:ident, $y:ident, $z:ident) => {
+            let mut $g: PtGraph = PtGraph::default();
+            let $x = $g.add_node(());
+            let $y = $g.add_node(());
+            let $z = $g.add_node(());
+            assert_eq!($g.node_count(), 3);
+        }
+    }
+
+    mod remove_weak_edges {
+        use super::*;
+        #[test]
+        fn prunes_single_weak_edge() {
+            setup!(graph, x, y, z);
+            graph.add_edge(x, y, (EdgeSlice::default(), 100));
+            graph.add_edge(y, z, (EdgeSlice::default(), 1));
+            assert_eq!(graph.edge_count(), 2);
+            graph.remove_weak_edges(10);
+            assert_eq!(graph.node_count(), 2);
+            assert_eq!(graph.edge_count(), 1);
         }
 
-        describe! empty_graph {
-            it "prunes single graph" {
-                assert_eq!(graph.node_count(), 0);
-                assert_eq!(graph.edge_count(), 0);
-                graph.remove_weak_edges(10);
-                assert_eq!(graph.node_count(), 0);
-                assert_eq!(graph.edge_count(), 0);
-            }
+        #[test]
+        fn prunes_single_weak_edge_and_no_nodes() {
+            setup!(graph, x, y, z);
+            let w = graph.add_node(());
+            graph.add_edge(x, y, (EdgeSlice::default(), 100));
+            graph.add_edge(y, z, (EdgeSlice::default(), 1));
+            graph.add_edge(z, w, (EdgeSlice::default(), 100));
+            assert_eq!(graph.edge_count(), 3);
+            graph.remove_weak_edges(10);
+            assert_eq!(graph.node_count(), 4);
+            assert_eq!(graph.edge_count(), 2);
         }
 
-        describe! with_nodes {
-            before_each {
-                let x = graph.add_node(());
-                let y = graph.add_node(());
-                let z = graph.add_node(());
-                assert_eq!(graph.node_count(), 3);
-            }
+        #[test]
+        fn prunes_strong_edges() {
+            setup!(graph, x, y, z);
+            graph.add_edge(x, y, (EdgeSlice::default(), 100));
+            graph.add_edge(y, z, (EdgeSlice::default(), 100));
+            assert_eq!(graph.edge_count(), 2);
+            graph.remove_weak_edges(10);
+            assert_eq!(graph.node_count(), 3);
+            assert_eq!(graph.edge_count(), 2);
+        }
 
-            describe! remove_weak_edges {
-                it "prunes single weak edge" {
-                    graph.add_edge(x, y, (EdgeSlice::default(), 100));
-                    graph.add_edge(y, z, (EdgeSlice::default(), 1));
-                    assert_eq!(graph.edge_count(), 2);
-                    graph.remove_weak_edges(10);
-                    assert_eq!(graph.node_count(), 2);
-                    assert_eq!(graph.edge_count(), 1);
-                }
+        #[test]
+        fn prunes_cycle() {
+            setup!(graph, x, y, z);
+            graph.add_edge(x, y, (EdgeSlice::default(), 1));
+            graph.add_edge(y, z, (EdgeSlice::default(), 1));
+            graph.add_edge(z, x, (EdgeSlice::default(), 1));
+            assert_eq!(graph.edge_count(), 3);
+            graph.remove_weak_edges(10);
+            assert_eq!(graph.node_count(), 0);
+            assert_eq!(graph.edge_count(), 0);
+        }
+    }
 
-                it "prunes single weak edge and no nodes" {
-                    let w = graph.add_node(());
-                    graph.add_edge(x, y, (EdgeSlice::default(), 100));
-                    graph.add_edge(y, z, (EdgeSlice::default(), 1));
-                    graph.add_edge(z, w, (EdgeSlice::default(), 100));
-                    assert_eq!(graph.edge_count(), 3);
-                    graph.remove_weak_edges(10);
-                    assert_eq!(graph.node_count(), 4);
-                    assert_eq!(graph.edge_count(), 2);
-                }
+    mod remove_single_vertices {
+        use super::*;
+        #[test]
+        fn doesnt_remove_vertices() {
+            setup!(graph, x, y, z);
+            graph.add_edge(x, y, (EdgeSlice::default(), 100));
+            graph.add_edge(y, z, (EdgeSlice::default(), 1));
+            assert_eq!(graph.edge_count(), 2);
+            graph.remove_single_vertices();
+            assert_eq!(graph.node_count(), 3);
+            assert_eq!(graph.edge_count(), 2);
+        }
 
-                it "prunes strong edges" {
-                    graph.add_edge(x, y, (EdgeSlice::default(), 100));
-                    graph.add_edge(y, z, (EdgeSlice::default(), 100));
-                    assert_eq!(graph.edge_count(), 2);
-                    graph.remove_weak_edges(10);
-                    assert_eq!(graph.node_count(), 3);
-                    assert_eq!(graph.edge_count(), 2);
-                }
+        #[test]
+        fn removes_one_vertex() {
+            setup!(graph, x, y, z);
+            graph.add_edge(x, y, (EdgeSlice::default(), 100));
+            assert_eq!(graph.edge_count(), 1);
+            graph.remove_single_vertices();
+            assert_eq!(graph.node_count(), 2);
+            assert_eq!(graph.edge_count(), 1);
+        }
 
-                it "prunes cycle" {
-                    graph.add_edge(x, y, (EdgeSlice::default(), 1));
-                    graph.add_edge(y, z, (EdgeSlice::default(), 1));
-                    graph.add_edge(z, x, (EdgeSlice::default(), 1));
-                    assert_eq!(graph.edge_count(), 3);
-                    graph.remove_weak_edges(10);
-                    assert_eq!(graph.node_count(), 0);
-                    assert_eq!(graph.edge_count(), 0);
-                }
-            }
+        #[test]
+        fn removes_two_vertices() {
+            setup!(graph, x, y, z);
+            graph.add_edge(x, x, (EdgeSlice::default(), 100));
+            assert_eq!(graph.edge_count(), 1);
+            graph.remove_single_vertices();
+            assert_eq!(graph.node_count(), 1);
+            assert_eq!(graph.edge_count(), 1);
+        }
 
-            describe! remove_single_vertices {
-                it "doesn't remove vertices" {
-                    graph.add_edge(x, y, (EdgeSlice::default(), 100));
-                    graph.add_edge(y, z, (EdgeSlice::default(), 1));
-                    assert_eq!(graph.edge_count(), 2);
-                    graph.remove_single_vertices();
-                    assert_eq!(graph.node_count(), 3);
-                    assert_eq!(graph.edge_count(), 2);
-                }
+        #[test]
+        fn removes_all_vertices() {
+            setup!(graph, x, y, z);
+            assert_eq!(graph.edge_count(), 0);
+            graph.remove_single_vertices();
+            assert_eq!(graph.node_count(), 0);
+            assert_eq!(graph.edge_count(), 0);
+        }
 
-                it "removes one vertex" {
-                    graph.add_edge(x, y, (EdgeSlice::default(), 100));
-                    assert_eq!(graph.edge_count(), 1);
-                    graph.remove_single_vertices();
-                    assert_eq!(graph.node_count(), 2);
-                    assert_eq!(graph.edge_count(), 1);
-                }
-
-                it "removes two vertices" {
-                    graph.add_edge(x, x, (EdgeSlice::default(), 100));
-                    assert_eq!(graph.edge_count(), 1);
-                    graph.remove_single_vertices();
-                    assert_eq!(graph.node_count(), 1);
-                    assert_eq!(graph.edge_count(), 1);
-                }
-
-                it "removes all vertices" {
-                    assert_eq!(graph.edge_count(), 0);
-                    graph.remove_single_vertices();
-                    assert_eq!(graph.node_count(), 0);
-                    assert_eq!(graph.edge_count(), 0);
-                }
-
-                it "removes after removal of edge" {
-                    graph.add_edge(x, y, (EdgeSlice::default(), 100));
-                    graph.add_edge(y, z, (EdgeSlice::default(), 1));
-                    assert_eq!(graph.edge_count(), 2);
-                    assert_eq!(graph.node_count(), 3);
-                    graph.remove_edge(EdgeIndex::new(1));
-                    assert_eq!(graph.edge_count(), 1);
-                    assert_eq!(graph.node_count(), 3);
-                    graph.remove_single_vertices();
-                    assert_eq!(graph.node_count(), 2);
-                    assert_eq!(graph.edge_count(), 1);
-                }
-            }
+        #[test]
+        fn removes_after_removal_of_edge() {
+            setup!(graph, x, y, z);
+            graph.add_edge(x, y, (EdgeSlice::default(), 100));
+            graph.add_edge(y, z, (EdgeSlice::default(), 1));
+            assert_eq!(graph.edge_count(), 2);
+            assert_eq!(graph.node_count(), 3);
+            graph.remove_edge(EdgeIndex::new(1));
+            assert_eq!(graph.edge_count(), 1);
+            assert_eq!(graph.node_count(), 3);
+            graph.remove_single_vertices();
+            assert_eq!(graph.node_count(), 2);
+            assert_eq!(graph.edge_count(), 1);
         }
     }
 }

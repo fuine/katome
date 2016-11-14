@@ -1,5 +1,3 @@
-#![feature(plugin)]
-#![plugin(stainless)]
 #![allow(non_snake_case)]
 
 #[macro_use]
@@ -17,11 +15,12 @@ pub use katome::prelude::K_SIZE;
 pub use katome::stats::{Counts, Opt, CollectionStats, Stats};
 pub use std::sync::Mutex;
 pub use std::f64;
+pub use std::panic::catch_unwind;
 
-describe! pruner {
-    before_each {
+macro_rules! before_each {
+    ($l:ident, $s:ident, $f:ident) => {
         // get global lock over sequences for testing
-        let _l = LOCK.lock().unwrap();
+        let $l = LOCK.lock().unwrap();
         // Clear up SEQUENCES
         {
             let mut s = SEQUENCES.write();
@@ -30,11 +29,13 @@ describe! pruner {
         }
         // hardcoded K_SIZE value for now :/
         assert_eq!(K_SIZE, 40);
-    }
-
-    describe! data1 {
-        before_each {
-            let correct_stats = vec![
+        let $f = vec![
+            "./tests/test_files/data1.txt".to_string(),
+            "./tests/test_files/data2.txt".to_string(),
+            "./tests/test_files/data3.txt".to_string(),
+        ];
+        let $s = vec![
+            vec![
                 CollectionStats {
                     capacity: (64, Opt::Full(64)),
                     counts: Counts {
@@ -63,54 +64,22 @@ describe! pruner {
                     incoming_vert_count: Opt::Full(0),
                     outgoing_vert_count: Opt::Full(0)
                 },
-                ];
-        }
-
-        describe! graph {
-            before_each {
-                let (mut graph, _) = PtGraph::create("./tests/test_files/data1.txt".to_string(), InputFileType::Fastq);
-            }
-
-            it "removes single vertices" {
-                // TODO remove some edges to show that vertices will get removed?
-                graph.remove_single_vertices();
-                assert_eq!(correct_stats[0], graph.stats());
-            }
-
-            it "removes weak edges" {
-                graph.remove_weak_edges(3);
-                assert_eq!(correct_stats[1].counts, graph.stats().counts);
-            }
-
-            it "removes dead paths" {
-                graph.remove_dead_paths();
-                assert_eq!(correct_stats[1].counts, graph.stats().counts);
-            }
-        }
-
-        describe! gir {
-            before_each {
-                let (mut gir, _) = HmGIR::create("./tests/test_files/data1.txt".to_string(), InputFileType::Fastq);
-            }
-
-            it "removes single vertices" {
-                gir.remove_single_vertices();
-                assert_eq!(correct_stats[0].counts, gir.stats().counts);
-                let graph = PtGraph::create_from(gir);
-                assert_eq!(correct_stats[0], graph.stats());
-            }
-
-            it "removes weak edges" {
-                gir.remove_weak_edges(3);
-                assert_eq!(correct_stats[1].counts, gir.stats().counts);
-            }
-        }
-
-    }
-
-    describe! data2 {
-        before_each {
-            let correct_stats = vec![
+                CollectionStats {
+                    capacity: (64, Opt::Full(64)),
+                    counts: Counts {
+                        node_count: 0,
+                        edge_count: 0
+                    },
+                    max_edge_weight: Opt::Full(0),
+                    avg_edge_weight: Opt::Full(f64::NAN),
+                    max_in_degree: Opt::Full(0),
+                    max_out_degree: Opt::Full(0),
+                    avg_out_degree: Opt::Full(f64::NAN),
+                    incoming_vert_count: Opt::Full(0),
+                    outgoing_vert_count: Opt::Full(0)
+                },
+            ],
+            vec![
                 CollectionStats {
                     capacity: (8192, Opt::Full(8192)),
                     counts: Counts {
@@ -138,53 +107,23 @@ describe! pruner {
                     avg_out_degree: Opt::Full(f64::NAN),
                     incoming_vert_count: Opt::Full(0),
                     outgoing_vert_count: Opt::Full(0)
-                }];
-        }
-        describe! graph {
-            before_each {
-                let (mut graph, _) = PtGraph::create("./tests/test_files/data2.txt".to_string(), InputFileType::Fastq);
-            }
-
-            it "removes single vertices" {
-                graph.remove_single_vertices();
-                assert_eq!(correct_stats[0], graph.stats());
-            }
-
-            it "removes weak edges" {
-                graph.remove_weak_edges(2);
-                assert_eq!(correct_stats[1].counts, graph.stats().counts);
-            }
-
-            it "removes dead paths" {
-                graph.remove_dead_paths();
-                assert_eq!(correct_stats[1].counts, graph.stats().counts);
-            }
-        }
-
-        /* describe! gir {
-            before_each {
-                let (mut gir, _) = HmGIR::create("./tests/test_files/data2.txt".to_string(), InputFileType::Fastq);
-            }
-
-            it "removes single vertices" {
-                gir.remove_single_vertices();
-                assert_eq!(correct_stats[0].counts, gir.stats().counts);
-                let graph = PtGraph::create_from(gir);
-                assert_eq!(correct_stats[0], graph.stats());
-            }
-
-            it "removes weak edges" {
-                gir.remove_weak_edges(2);
-                assert_eq!(correct_stats[1].counts, gir.stats().counts);
-            }
-        } */
-
-    }
-
-    describe! data3 {
-        // TODO change something in order to show better weak edges removal
-        before_each {
-            let correct_stats = vec![
+                },
+                CollectionStats {
+                    capacity: (64, Opt::Full(64)),
+                    counts: Counts {
+                        node_count: 0,
+                        edge_count: 0
+                    },
+                    max_edge_weight: Opt::Full(0),
+                    avg_edge_weight: Opt::Full(f64::NAN),
+                    max_in_degree: Opt::Full(0),
+                    max_out_degree: Opt::Full(0),
+                    avg_out_degree: Opt::Full(f64::NAN),
+                    incoming_vert_count: Opt::Full(0),
+                    outgoing_vert_count: Opt::Full(0)
+                }
+            ],
+            vec![
                 CollectionStats {
                     capacity: (16384, Opt::Full(16384)),
                     counts: Counts {
@@ -227,49 +166,119 @@ describe! pruner {
                     incoming_vert_count: Opt::Full(0),
                     outgoing_vert_count: Opt::Full(0)
                 },
+            ],
+        ];
+    }
+}
 
-            ];
-        }
-
-        describe! graph {
-            before_each {
-                let (mut graph, _) = PtGraph::create("./tests/test_files/data3.txt".to_string(), InputFileType::Fastq);
+macro_rules! test_graph_on_data {
+    ($t:tt, $n:ident, $i:expr, $w:expr) => {
+        mod $n {
+            use super::*;
+            #[test]
+            fn removes_single_vertices() {
+                // TODO remove some edges to show that vertices will get removed?
+                let result = {
+                    before_each!(_l, stats, filenames);
+                    catch_unwind(|| {
+                        let (mut graph, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq);
+                        graph.remove_single_vertices();
+                        assert_eq!(stats[$i][0], graph.stats());
+                    })
+                };
+                assert!(result.is_ok());
             }
 
-            it "removes single vertices" {
-                graph.remove_single_vertices();
-                assert_eq!(correct_stats[0], graph.stats());
+            #[test]
+            fn removes_weak_edges() {
+                let result = {
+                    before_each!(_l, stats, filenames);
+                    catch_unwind(|| {
+                        let (mut graph, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq);
+                        graph.remove_weak_edges($w);
+                        assert_eq!(stats[$i][1].counts, graph.stats().counts);
+                    })
+                };
+                assert!(result.is_ok());
             }
 
-            it "removes weak edges" {
-                graph.remove_weak_edges(1);
-                assert_eq!(correct_stats[1], graph.stats());
-            }
-
-            it "removes dead paths" {
-                graph.remove_dead_paths();
-                assert_eq!(correct_stats[2].counts, graph.stats().counts);
-            }
-        }
-
-        describe! gir {
-            before_each {
-                let (mut gir, _) = HmGIR::create("./tests/test_files/data3.txt".to_string(), InputFileType::Fastq);
-            }
-
-            it "removes single vertices" {
-                gir.remove_single_vertices();
-                assert_eq!(correct_stats[0].counts, gir.stats().counts);
-                let graph = PtGraph::create_from(gir);
-                assert_eq!(correct_stats[0], graph.stats());
-            }
-
-            it "removes weak edges" {
-                gir.remove_weak_edges(1);
-                assert_eq!(correct_stats[1].counts, gir.stats().counts);
-                let graph = PtGraph::create_from(gir);
-                assert_eq!(correct_stats[1], graph.stats());
+            #[test]
+            fn removes_dead_paths() {
+                let result = {
+                    before_each!(_l, stats, filenames);
+                    catch_unwind(|| {
+                        let (mut graph, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq);
+                        graph.remove_dead_paths();
+                        assert_eq!(stats[$i][2].counts, graph.stats().counts);
+                    })
+                };
+                assert!(result.is_ok());
             }
         }
     }
+}
+
+macro_rules! test_gir_on_data {
+    ($t:tt, $n:ident, $g:tt, $i:expr, $w:expr) => {
+        mod $n {
+            use super::*;
+            #[test]
+            fn removes_single_vertices() {
+                // TODO remove some edges to show that vertices will get removed?
+                let result = {
+                    before_each!(_l, stats, filenames);
+                    catch_unwind(|| {
+                        let (mut gir, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq);
+                        gir.remove_single_vertices();
+                        assert_eq!(stats[$i][0].counts, gir.stats().counts);
+                        let graph = $g::create_from(gir);
+                        assert_eq!(stats[$i][0], graph.stats());
+                    })
+                };
+                assert!(result.is_ok());
+            }
+
+            #[test]
+            fn removes_weak_edges() {
+                let result = {
+                    before_each!(_l, stats, filenames);
+                    catch_unwind(|| {
+                        let (mut gir, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq);
+                        gir.remove_weak_edges($w);
+                        assert_eq!(stats[$i][1].counts, gir.stats().counts);
+                    })
+                };
+                assert!(result.is_ok());
+            }
+        }
+    }
+}
+
+macro_rules! test_gir {
+    ($t:tt, $n:ident, $g:tt) => {
+        mod $n {
+            pub use super::*;
+            test_gir_on_data!($t, data_1, $g, 0, 3);
+            // test_gir_on_data!($t, data_2, $g, 1, 3);
+            test_gir_on_data!($t, data_3, $g, 2, 1);
+        }
+    }
+}
+
+macro_rules! test_graph {
+    ($t:tt, $n:ident) => {
+        mod $n {
+            pub use super::*;
+            test_graph_on_data!($t, data_1, 0, 3);
+            test_graph_on_data!($t, data_2, 1, 2);
+            test_graph_on_data!($t, data_3, 2, 1);
+        }
+    }
+}
+
+#[cfg(test)]
+mod prune {
+    pub use super::*;
+    test_gir!(HmGIR, hm_gir, PtGraph);
+    test_graph!(PtGraph, pt_graph);
 }

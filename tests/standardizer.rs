@@ -1,5 +1,3 @@
-#![feature(plugin)]
-#![plugin(stainless)]
 #![allow(non_snake_case)]
 
 #[macro_use]
@@ -18,7 +16,7 @@ pub use katome::stats::{Counts, Opt, CollectionStats, Stats};
 pub use katome::slices::EdgeSlice;
 pub use std::sync::Mutex;
 
-describe! tests {
+/* describe! tests {
     before_each {
         // get global lock over sequences for testing
         let _l = LOCK.lock().unwrap();
@@ -32,7 +30,7 @@ describe! tests {
         assert_eq!(K_SIZE, 40);
     }
 
-    /* describe! data1 {
+    describe! data1 {
         before_each {
             let (mut graph, _) = PtGraph::create("./tests/test_files/data1.txt".to_string(), InputFileType::Fastq);
             let correct_stats = vec![
@@ -123,7 +121,7 @@ describe! tests {
             graph.standardize_edges(65, 3);
             assert_eq!(correct_stats[1], graph.stats());
         }
-    } */
+    }
 
     // It's no use standardizing data3 as all edges have weight of 1.
-}
+} */

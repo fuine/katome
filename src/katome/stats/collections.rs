@@ -211,72 +211,73 @@ impl Stats<CollectionStats> for HmGIR {
 
 #[cfg(test)]
 mod tests {
-    pub use super::*;
-    describe! stats {
-        it "compares two CollectionStats" {
-            let st = CollectionStats {
-                capacity: (1024, Opt::Full(1024)),
-                counts: Counts {
-                    node_count: 1,
-                    edge_count: 1,
-                },
-                max_edge_weight: Opt::Full(806),
-                avg_edge_weight: Opt::Full(2.31),
-                max_in_degree: Opt::Full(5),
-                max_out_degree: Opt::Full(1),
-                avg_out_degree: Opt::Full(1.0),
-                incoming_vert_count: Opt::Full(25),
-                outgoing_vert_count: Opt::Full(0),
-            };
-            assert!(st == st);
-        }
+    use super::*;
+    #[test]
+    fn compares_two_collection_stats() {
+        let st = CollectionStats {
+            capacity: (1024, Opt::Full(1024)),
+            counts: Counts {
+                node_count: 1,
+                edge_count: 1,
+            },
+            max_edge_weight: Opt::Full(806),
+            avg_edge_weight: Opt::Full(2.31),
+            max_in_degree: Opt::Full(5),
+            max_out_degree: Opt::Full(1),
+            avg_out_degree: Opt::Full(1.0),
+            incoming_vert_count: Opt::Full(25),
+            outgoing_vert_count: Opt::Full(0),
+        };
+        assert!(st == st);
+    }
 
-        it "detects difference in counts" {
-            let st = CollectionStats {
-                capacity: (1024, Opt::Full(1024)),
-                counts: Counts {
-                    node_count: 1,
-                    edge_count: 1,
-                },
-                max_edge_weight: Opt::Full(806),
-                avg_edge_weight: Opt::Full(2.31),
-                max_in_degree: Opt::Full(5),
-                max_out_degree: Opt::Full(1),
-                avg_out_degree: Opt::Full(1.0),
-                incoming_vert_count: Opt::Full(25),
-                outgoing_vert_count: Opt::Full(0),
-            };
-            let mut st1 = st;
-            st1.counts.node_count += 1;
-            assert!(st != st1);
-            st1.counts.node_count -= 1;
-            assert!(st == st1);
-            st1.incoming_vert_count = Opt::Empty;
-            assert!(st != st1);
-        }
+    #[test]
+    fn detects_difference_in_counts() {
+        let st = CollectionStats {
+            capacity: (1024, Opt::Full(1024)),
+            counts: Counts {
+                node_count: 1,
+                edge_count: 1,
+            },
+            max_edge_weight: Opt::Full(806),
+            avg_edge_weight: Opt::Full(2.31),
+            max_in_degree: Opt::Full(5),
+            max_out_degree: Opt::Full(1),
+            avg_out_degree: Opt::Full(1.0),
+            incoming_vert_count: Opt::Full(25),
+            outgoing_vert_count: Opt::Full(0),
+        };
+        let mut st1 = st;
+        st1.counts.node_count += 1;
+        assert!(st != st1);
+        st1.counts.node_count -= 1;
+        assert!(st == st1);
+        st1.incoming_vert_count = Opt::Empty;
+        assert!(st != st1);
+    }
 
-        it "rounds floats properly" {
-            let st = CollectionStats {
-                capacity: (1024, Opt::Full(1024)),
-                counts: Counts {
-                    node_count: 1,
-                    edge_count: 1,
-                },
-                max_edge_weight: Opt::Full(806),
-                avg_edge_weight: Opt::Full(2.314),
-                max_in_degree: Opt::Full(5),
-                max_out_degree: Opt::Full(1),
-                avg_out_degree: Opt::Full(1.5),
-                incoming_vert_count: Opt::Full(25),
-                outgoing_vert_count: Opt::Full(0),
-            };
-            let mut st1 = st.clone();
-            st1.avg_edge_weight = Opt::Full(2.313);
-            assert!(st == st1);
-            st1.avg_out_degree = Opt::Full(1.51);
-            assert!(st != st1);
-            st1.avg_out_degree = Opt::Full(1.49);
-            assert!(st != st1);
-        }
+    #[test]
+    fn rounds_floats_properly() {
+        let st = CollectionStats {
+            capacity: (1024, Opt::Full(1024)),
+            counts: Counts {
+                node_count: 1,
+                edge_count: 1,
+            },
+            max_edge_weight: Opt::Full(806),
+            avg_edge_weight: Opt::Full(2.314),
+            max_in_degree: Opt::Full(5),
+            max_out_degree: Opt::Full(1),
+            avg_out_degree: Opt::Full(1.5),
+            incoming_vert_count: Opt::Full(25),
+            outgoing_vert_count: Opt::Full(0),
+        };
+        let mut st1 = st.clone();
+        st1.avg_edge_weight = Opt::Full(2.313);
+        assert!(st == st1);
+        st1.avg_out_degree = Opt::Full(1.51);
+        assert!(st != st1);
+        st1.avg_out_degree = Opt::Full(1.49);
+        assert!(st != st1);
     }
 }

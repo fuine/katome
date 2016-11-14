@@ -1,5 +1,3 @@
-#![feature(plugin)]
-#![plugin(stainless)]
 #![allow(non_snake_case)]
 
 #[macro_use]
@@ -14,11 +12,13 @@ pub use katome::collections::{Convert, HmGIR, HsGIR, PtGraph};
 pub use katome::prelude::K_SIZE;
 pub use katome::stats::{Counts, CollectionStats, Stats, Opt};
 pub use std::sync::Mutex;
+pub use std::panic::catch_unwind;
 
-describe! conversion {
-    before_each {
+
+macro_rules! before_each {
+    ($l:ident, $f:ident, $s:ident) => {
         // get global lock over sequences for testing
-        let _l = LOCK.lock().unwrap();
+        let $l = LOCK.lock().unwrap();
         // Clear up SEQUENCES
         {
             let mut s = SEQUENCES.write();
@@ -27,18 +27,18 @@ describe! conversion {
         }
         // hardcoded K_SIZE value for now :/
         assert_eq!(K_SIZE, 40);
-        let _correct_counts = vec![(62, 61), (5704, 5612), (14446, 14213)];
-        let filenames = vec![
+        let counts = vec![(62, 61), (5704, 5612), (14446, 14213)];
+        let $f = vec![
             "./tests/test_files/data1.txt".to_string(),
             "./tests/test_files/data2.txt".to_string(),
             "./tests/test_files/data3.txt".to_string(),
         ];
-        let _correct_stats = vec![
+        let $s = vec![
             CollectionStats {
                 capacity: (64, Opt::Full(64)),
                 counts: Counts {
-                    node_count: _correct_counts[0].0,
-                    edge_count: _correct_counts[0].1,
+                    node_count: counts[0].0,
+                    edge_count: counts[0].1,
                 },
                 max_edge_weight: Opt::Full(2),
                 avg_edge_weight: Opt::Full(2.0),
@@ -51,8 +51,8 @@ describe! conversion {
             CollectionStats {
                 capacity: (8192, Opt::Full(8192)),
                 counts: Counts {
-                    node_count: 5704 ,
-                    edge_count: 5612
+                    node_count: counts[1].0 ,
+                    edge_count: counts[1].1
                 },
                 max_edge_weight: Opt::Full(1),
                 avg_edge_weight: Opt::Full(1.0),
@@ -66,8 +66,8 @@ describe! conversion {
             CollectionStats {
                 capacity: (16384, Opt::Full(16384)),
                 counts: Counts {
-                    node_count: _correct_counts[2].0,
-                    edge_count: _correct_counts[2].1,
+                    node_count: counts[2].0,
+                    edge_count: counts[2].1,
                 },
                 max_edge_weight: Opt::Full(1),
                 avg_edge_weight: Opt::Full(1.0),
@@ -78,59 +78,41 @@ describe! conversion {
                 outgoing_vert_count: Opt::Full(233)
             }];
     }
+}
 
-    describe! to_PTGraph {
-
-        describe! from_HsGIR {
-            it "converts data1" {
-                let (gir, _) = HsGIR::create(filenames[0].clone(), InputFileType::Fastq);
-                let gir_counts = gir.stats().counts;
-                let graph = PtGraph::create_from(gir);
-                assert_eq!(gir_counts, graph.stats().counts);
-                assert_eq!(_correct_stats[0], graph.stats());
-            }
-
-            it "converts data2" {
-                let (gir, _) = HsGIR::create(filenames[1].clone(), InputFileType::Fastq);
-                let gir_counts = gir.stats().counts;
-                let graph = PtGraph::create_from(gir);
-                assert_eq!(gir_counts, graph.stats().counts);
-                assert_eq!(_correct_stats[1], graph.stats());
-            }
-
-            it "converts data3" {
-                let (gir, _) = HsGIR::create(filenames[2].clone(), InputFileType::Fastq);
-                let gir_counts = gir.stats().counts;
-                let graph = PtGraph::create_from(gir);
-                assert_eq!(gir_counts, graph.stats().counts);
-                assert_eq!(_correct_stats[2], graph.stats());
-            }
-        }
-
-        describe! from_HmGIR {
-            it "converts data1" {
-                let (gir, _) = HmGIR::create(filenames[0].clone(), InputFileType::Fastq);
-                let gir_counts = gir.stats().counts;
-                let graph = PtGraph::create_from(gir);
-                assert_eq!(gir_counts, graph.stats().counts);
-                assert_eq!(_correct_stats[0], graph.stats());
-            }
-
-            it "converts data2" {
-                let (gir, _) = HmGIR::create(filenames[1].clone(), InputFileType::Fastq);
-                let gir_counts = gir.stats().counts;
-                let graph = PtGraph::create_from(gir);
-                assert_eq!(gir_counts, graph.stats().counts);
-                assert_eq!(_correct_stats[1], graph.stats());
-            }
-
-            it "converts data3" {
-                let (gir, _) = HmGIR::create(filenames[2].clone(), InputFileType::Fastq);
-                let gir_counts = gir.stats().counts;
-                let graph = PtGraph::create_from(gir);
-                assert_eq!(gir_counts, graph.stats().counts);
-                assert_eq!(_correct_stats[2], graph.stats());
-            }
+macro_rules! converts_gir {
+    ($t:tt, $g:tt, $i:expr, $n:ident) => {
+        #[test]
+        fn $n() {
+            let result = {
+                before_each!(_l, filenames, stats);
+                catch_unwind(|| {
+                    let (gir, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq);
+                    let gir_counts = gir.stats().counts;
+                    let graph = $g::create_from(gir);
+                    assert_eq!(gir_counts, graph.stats().counts);
+                    assert_eq!(stats[$i], graph.stats());
+                })
+            };
+            assert!(result.is_ok());
         }
     }
+}
+
+macro_rules! test_gir {
+    ($t:tt, $g:tt, $i:ident) => {
+        mod $i {
+            use super::*;
+            converts_gir!($t, $g, 0, converts1);
+            converts_gir!($t, $g, 1, converts2);
+            converts_gir!($t, $g, 2, converts3);
+        }
+    }
+}
+
+#[cfg(test)]
+mod conversion {
+    pub use super::*;
+    test_gir!(HsGIR, PtGraph, hs_gir);
+    test_gir!(HmGIR, PtGraph, hm_gir);
 }

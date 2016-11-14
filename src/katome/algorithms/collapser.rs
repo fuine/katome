@@ -198,30 +198,31 @@ fn decrease_weight(graph: &mut PtGraph, edge: EdgeIndex) {
 
 #[cfg(test)]
 mod tests {
-    pub use ::asm::SEQUENCES;
-    pub use ::asm::lock::LOCK;
-    pub use ::collections::graphs::pt_graph::PtGraph;
-    pub use ::compress::compress_edge;
-    pub use ::prelude::{K1_SIZE, K_SIZE};
-    pub use ::slices::{BasicSlice, EdgeSlice};
-    pub use std::iter::repeat;
-    pub use super::*;
+    use ::asm::SEQUENCES;
+    use ::asm::lock::LOCK;
+    use ::collections::graphs::pt_graph::PtGraph;
+    use ::compress::compress_edge;
+    use ::prelude::{K1_SIZE, K_SIZE};
+    use ::slices::{BasicSlice, EdgeSlice};
+    use std::iter::repeat;
+    use super::*;
+    use std::panic::catch_unwind;
 
-    describe! collapse {
-        before_each {
+    macro_rules! setup {
+        ($l:ident, $g:ident, $n:ident, $s:ident, $w:ident, $x:ident) => {
             // global lock on sequences for test
-            let _l = LOCK.lock().unwrap();
-            let mut name = repeat('A')
+            let $l = LOCK.lock().unwrap();
+            let mut $n = repeat('A')
                 .take(K1_SIZE)
                 .collect::<String>();
-            let mut second = name.clone();
-            name.push_str("TGCT");
-            second.push_str("G");
-            let c1 = compress_edge(name[..K_SIZE].as_bytes());
-            let c2 = compress_edge(name[1..K_SIZE+1].as_bytes());
-            let c3 = compress_edge(name[2..K_SIZE+2].as_bytes());
-            let c4 = compress_edge(name[3..K_SIZE+3].as_bytes());
-            let c5 = compress_edge(second[..K_SIZE].as_bytes());
+            let mut $s = $n.clone();
+            $n.push_str("TGCT");
+            $s.push_str("G");
+            let c1 = compress_edge($n[..K_SIZE].as_bytes());
+            let c2 = compress_edge($n[1..K_SIZE+1].as_bytes());
+            let c3 = compress_edge($n[2..K_SIZE+2].as_bytes());
+            let c4 = compress_edge($n[3..K_SIZE+3].as_bytes());
+            let c5 = compress_edge($s[..K_SIZE].as_bytes());
             {
                 let mut seq = SEQUENCES.write();
                 seq.clear();
@@ -231,27 +232,48 @@ mod tests {
                 seq.push(c4.into_boxed_slice());
                 seq.push(c5.into_boxed_slice());
             }
-            let mut graph: PtGraph = PtGraph::default();
-            let _w = graph.add_node(());
-            let _x = graph.add_node(());
-            assert_eq!(graph.node_count(), 2);
+            let mut $g: PtGraph = PtGraph::default();
+            let $w = $g.add_node(());
+            let $x = $g.add_node(());
+            assert_eq!($g.node_count(), 2);
         }
+    }
 
-        it "doesn't create any contig" {
+    macro_rules! test {
+        ($n:ident, $b:block) => {
+            #[test]
+            fn $n() {
+                let result = {
+                    $b
+                };
+                assert!(result.is_ok());
+            }
+        }
+    }
+
+    test!(doesnt_create_any_contig, {
+        setup!(_l, graph, name, _second, _w, _x);
+        catch_unwind(|| {
             assert_eq!(graph.edge_count(), 0);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 0);
-        }
+        })
+    });
 
-        it "creates one small contig" {
+    test!(creates_one_small_contig, {
+        setup!(_l, graph, name, _second, _w, _x);
+        catch_unwind(|| {
             graph.add_edge(_w, _x, (EdgeSlice::new(0), 1));
             assert_eq!(graph.edge_count(), 1);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
             assert_eq!(contigs[0].as_str(), &name[..K_SIZE]);
-        }
+        })
+    });
 
-        it "creates one longer contig" {
+    test!(creates_one_longer_contig, {
+        setup!(_l, graph, name, _second, _w, _x);
+        catch_unwind(|| {
             let y = graph.add_node(());
             let z = graph.add_node(());
             graph.add_edge(_w, _x, (EdgeSlice::new(0), 1));
@@ -261,9 +283,12 @@ mod tests {
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
             assert_eq!(contigs[0].as_str(), &name[..K_SIZE+2]);
-        }
+        })
+    });
 
-        it "creates two contigs" {
+    test!(creates_two_contigs, {
+        setup!(_l, graph, name, _second, _w, _x);
+        catch_unwind(|| {
             let y = graph.add_node(());
             let z = graph.add_node(());
             graph.add_edge(_w, _x, (EdgeSlice::new(0), 1));
@@ -273,9 +298,12 @@ mod tests {
             assert_eq!(contigs.len(), 2);
             assert_eq!(contigs[0].as_str(), &name[..K_SIZE]);
             assert_eq!(contigs[1].as_str(), &name[2..K_SIZE+2]);
-        }
+        })
+    });
 
-        it "creates two longer contigs" {
+    test!(creates_two_longer_contigs, {
+        setup!(_l, graph, name, second, _w, _x);
+        catch_unwind(|| {
             let y = graph.add_node(());
             let z = graph.add_node(());
             graph.add_edge(_w, _x, (EdgeSlice::new(0), 2));
@@ -287,9 +315,12 @@ mod tests {
             assert_eq!(contigs[0].as_str(), &name[..K_SIZE]);
             assert_eq!(contigs[2].as_str(), &name[..K_SIZE+1]);
             assert_eq!(contigs[1], second);
-        }
+        })
+    });
 
-        it "deals with simple cycle" {
+    test!(deals_with_simple_cycle, {
+        setup!(_l, graph, name, _second, _w, _x);
+        catch_unwind(|| {
             let y = graph.add_node(());
             let z = graph.add_node(());
             graph.add_edge(_w, _x, (EdgeSlice::new(0), 1));
@@ -300,8 +331,8 @@ mod tests {
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
             assert_eq!(contigs[0], name);
-        }
+        })
+    });
 
-        // TODO add more tessts for self_loop and simple_loop
-    }
+    // TODO add more tessts for self_loop and simple_loop
 }

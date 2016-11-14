@@ -28,7 +28,6 @@ fixedbitset = "0.1.5"
 log4rs = "^0.5.0"
 
 [dev-dependencies]
-stainless = "*"
 rand = "*"
 
 # The development profile, used for `cargo build`.

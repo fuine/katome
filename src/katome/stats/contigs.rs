@@ -83,59 +83,58 @@ fn n_metrics(collection: &[usize], tipping_point: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
-    pub use algorithms::collapser::SerializedContigs;
-    pub use asm::Contigs;
-    pub use stats::Stats;
-    pub use std::iter::repeat;
-    pub use super::*;
-
-    describe! cont_stats {
-        it "checks basic stats" {
-            let correct_stats = ContigsStats {
-                n50: 7,
-                l50: 3,
-                n90: 3,
-                ng50: 7,
-            };
-            let vec1 = vec![2,3,4,5,6,7,8,9,10];
-            let original_length = vec1.iter().sum();
-            let mut serialized_conts: SerializedContigs = Vec::new();
-            for i in vec1 {
-                serialized_conts.push(repeat("a").take(i).collect::<String>());
-            }
-            let conts = Contigs::new(original_length, serialized_conts);
-            assert_eq!(correct_stats, conts.stats());
+    use algorithms::collapser::SerializedContigs;
+    use asm::Contigs;
+    use stats::Stats;
+    use std::iter::repeat;
+    use super::*;
+    #[test]
+    fn checks_basic_stats() {
+        let correct_stats = ContigsStats {
+            n50: 7,
+            l50: 3,
+            n90: 3,
+            ng50: 7,
+        };
+        let vec1 = vec![2,3,4,5,6,7,8,9,10];
+        let original_length = vec1.iter().sum();
+        let mut serialized_conts: SerializedContigs = Vec::new();
+        for i in vec1 {
+            serialized_conts.push(repeat("a").take(i).collect::<String>());
         }
+        let conts = Contigs::new(original_length, serialized_conts);
+        assert_eq!(correct_stats, conts.stats());
+    }
 
-        it "checks example from wiki" {
-            let correct_stats_a = ContigsStats {
-                n50: 70,
-                l50: 2,
-                n90: 30,
-                ng50: 70,
-            };
-            let correct_stats_b = ContigsStats {
-                n50: 50,
-                l50: 3,
-                n90: 20,
-                ng50: 50,
-            };
-            let a = vec![80,70,50,40,30,20];
-            let b = vec![80,70,50,40,30,20,10,5];
-            let original_length_a = a.iter().sum();
-            let original_length_b = b.iter().sum();
-            let mut serialized_conts_a: SerializedContigs = Vec::new();
-            let mut serialized_conts_b: SerializedContigs = Vec::new();
-            for i in a {
-                serialized_conts_a.push(repeat("a").take(i).collect::<String>());
-            }
-            for i in b {
-                serialized_conts_b.push(repeat("b").take(i).collect::<String>());
-            }
-            let conts_a = Contigs::new(original_length_a, serialized_conts_a);
-            let conts_b = Contigs::new(original_length_b, serialized_conts_b);
-            assert_eq!(correct_stats_a, conts_a.stats());
-            assert_eq!(correct_stats_b, conts_b.stats());
+    #[test]
+    fn checks_example_from_wiki() {
+        let correct_stats_a = ContigsStats {
+            n50: 70,
+            l50: 2,
+            n90: 30,
+            ng50: 70,
+        };
+        let correct_stats_b = ContigsStats {
+            n50: 50,
+            l50: 3,
+            n90: 20,
+            ng50: 50,
+        };
+        let a = vec![80,70,50,40,30,20];
+        let b = vec![80,70,50,40,30,20,10,5];
+        let original_length_a = a.iter().sum();
+        let original_length_b = b.iter().sum();
+        let mut serialized_conts_a: SerializedContigs = Vec::new();
+        let mut serialized_conts_b: SerializedContigs = Vec::new();
+        for i in a {
+            serialized_conts_a.push(repeat("a").take(i).collect::<String>());
         }
+        for i in b {
+            serialized_conts_b.push(repeat("b").take(i).collect::<String>());
+        }
+        let conts_a = Contigs::new(original_length_a, serialized_conts_a);
+        let conts_b = Contigs::new(original_length_b, serialized_conts_b);
+        assert_eq!(correct_stats_a, conts_a.stats());
+        assert_eq!(correct_stats_b, conts_b.stats());
     }
 }

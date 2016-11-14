@@ -1,4 +1,4 @@
-//! Algorithms for standardization of edges/contigs in the `Graph`.
+//! fn for standardization of edges/contigs in the `Graph`.
 
 use algorithms::pruner::Clean;
 use collections::Graph;
@@ -120,8 +120,10 @@ mod tests {
         assert_eq!(p, 1.0);
     }
 
-    describe! standardize_contig {
-        it "standardizes contigs in empty graph" {
+    mod standardize_contig {
+        use super::*;
+        #[test]
+        fn standardizes_contigs_in_empty_graph() {
             let mut g = PtGraph::default();
             assert_eq!(g.node_count(), 0);
             assert_eq!(g.edge_count(), 0);
@@ -130,7 +132,8 @@ mod tests {
             assert_eq!(g.edge_count(), 0);
         }
 
-        it "standardizes single contig" {
+        #[test]
+        fn standardizes_single_contig() {
             let mut graph = PtGraph::default();
             let x = graph.add_node(());
             let y = graph.add_node(());
@@ -146,13 +149,15 @@ mod tests {
             assert_eq!(graph.edge_weight(e2).unwrap().1, 51);
         }
 
-        it "standardizes contig one in two out" {
-            let mut graph = PtGraph::from_edges(&[
-                (0, 1, (EdgeSlice::default(), 8)), (1, 2, (EdgeSlice::default(), 4)),
-                (2, 3, (EdgeSlice::default(), 115)), (3, 4, (EdgeSlice::default(), 1)),
-                (2, 5, (EdgeSlice::default(), 2)), (5, 6, (EdgeSlice::default(), 4)),
-                (6, 7, (EdgeSlice::default(), 9))
-            ]);
+        #[test]
+        fn standardizes_contig_one_in_two_out() {
+            let mut graph = PtGraph::from_edges(&[(0, 1, (EdgeSlice::default(), 8)),
+                                                  (1, 2, (EdgeSlice::default(), 4)),
+                                                  (2, 3, (EdgeSlice::default(), 115)),
+                                                  (3, 4, (EdgeSlice::default(), 1)),
+                                                  (2, 5, (EdgeSlice::default(), 2)),
+                                                  (5, 6, (EdgeSlice::default(), 4)),
+                                                  (6, 7, (EdgeSlice::default(), 9))]);
             graph.standardize_contigs();
             assert_eq!(graph.edge_count(), 7);
             assert_eq!(graph.edge_weight(EdgeIndex::new(0)).unwrap().1, 6);
@@ -164,13 +169,15 @@ mod tests {
             }
         }
 
-        it "standardizes contigs two in one out" {
-            let mut graph = PtGraph::from_edges(&[
-                (0, 1, (EdgeSlice::default(), 8)), (1, 2, (EdgeSlice::default(), 4)),
-                (2, 3, (EdgeSlice::default(), 115)), (3, 4, (EdgeSlice::default(), 1)),
-                (7, 2, (EdgeSlice::default(), 2)), (5, 6, (EdgeSlice::default(), 4)),
-                (6, 7, (EdgeSlice::default(), 9))
-            ]);
+        #[test]
+        fn standardizes_contigs_two_in_one_out() {
+            let mut graph = PtGraph::from_edges(&[(0, 1, (EdgeSlice::default(), 8)),
+                                                  (1, 2, (EdgeSlice::default(), 4)),
+                                                  (2, 3, (EdgeSlice::default(), 115)),
+                                                  (3, 4, (EdgeSlice::default(), 1)),
+                                                  (7, 2, (EdgeSlice::default(), 2)),
+                                                  (5, 6, (EdgeSlice::default(), 4)),
+                                                  (6, 7, (EdgeSlice::default(), 9))]);
             graph.standardize_contigs();
             assert_eq!(graph.edge_count(), 7);
             assert_eq!(graph.edge_weight(EdgeIndex::new(0)).unwrap().1, 6);
@@ -182,15 +189,19 @@ mod tests {
             }
         }
 
-        it "standardizes contigs two in two out" {
-            let mut graph = PtGraph::from_edges(&[
-                (0, 1, (EdgeSlice::default(), 8)), (1, 2, (EdgeSlice::default(), 4)),
-                (2, 3, (EdgeSlice::default(), 115)), (3, 4, (EdgeSlice::default(), 1)),
-                (7, 2, (EdgeSlice::default(), 2)), (5, 6, (EdgeSlice::default(), 4)),
-                (6, 7, (EdgeSlice::default(), 9)), (2, 8, (EdgeSlice::default(), 178)),
-                (8, 9, (EdgeSlice::default(), 298)), (9, 10, (EdgeSlice::default(), 123)),
-                (10, 11, (EdgeSlice::default(), 9128))
-            ]);
+        #[test]
+        fn standardizes_contigs_two_in_two_out() {
+            let mut graph = PtGraph::from_edges(&[(0, 1, (EdgeSlice::default(), 8)),
+                                                  (1, 2, (EdgeSlice::default(), 4)),
+                                                  (2, 3, (EdgeSlice::default(), 115)),
+                                                  (3, 4, (EdgeSlice::default(), 1)),
+                                                  (7, 2, (EdgeSlice::default(), 2)),
+                                                  (5, 6, (EdgeSlice::default(), 4)),
+                                                  (6, 7, (EdgeSlice::default(), 9)),
+                                                  (2, 8, (EdgeSlice::default(), 178)),
+                                                  (8, 9, (EdgeSlice::default(), 298)),
+                                                  (9, 10, (EdgeSlice::default(), 123)),
+                                                  (10, 11, (EdgeSlice::default(), 9128))]);
             graph.standardize_contigs();
             assert_eq!(graph.edge_count(), 11);
             assert_eq!(graph.edge_weight(EdgeIndex::new(0)).unwrap().1, 6);
@@ -205,11 +216,12 @@ mod tests {
             }
         }
 
-        it "standardizes contigs in cycle" {
-            let mut graph = PtGraph::from_edges(&[
-                (0, 1, (EdgeSlice::default(), 8)), (1, 2, (EdgeSlice::default(), 4)),
-                (2, 3, (EdgeSlice::default(), 115)), (3, 1, (EdgeSlice::default(), 1)),
-            ]);
+        #[test]
+        fn standardizes_contigs_in_cycle() {
+            let mut graph = PtGraph::from_edges(&[(0, 1, (EdgeSlice::default(), 8)),
+                                                  (1, 2, (EdgeSlice::default(), 4)),
+                                                  (2, 3, (EdgeSlice::default(), 115)),
+                                                  (3, 1, (EdgeSlice::default(), 1))]);
             graph.standardize_contigs();
             assert_eq!(graph.edge_count(), 4);
             assert_eq!(graph.edge_weight(EdgeIndex::new(0)).unwrap().1, 8);
