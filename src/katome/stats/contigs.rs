@@ -96,7 +96,7 @@ mod tests {
             n90: 3,
             ng50: 7,
         };
-        let vec1 = vec![2,3,4,5,6,7,8,9,10];
+        let vec1 = vec![2, 3, 4, 5, 6, 7, 8, 9, 10];
         let original_length = vec1.iter().sum();
         let mut serialized_conts: SerializedContigs = Vec::new();
         for i in vec1 {
@@ -120,8 +120,8 @@ mod tests {
             n90: 20,
             ng50: 50,
         };
-        let a = vec![80,70,50,40,30,20];
-        let b = vec![80,70,50,40,30,20,10,5];
+        let a = vec![80, 70, 50, 40, 30, 20];
+        let b = vec![80, 70, 50, 40, 30, 20, 10, 5];
         let original_length_a = a.iter().sum();
         let original_length_b = b.iter().sum();
         let mut serialized_conts_a: SerializedContigs = Vec::new();

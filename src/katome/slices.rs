@@ -271,11 +271,11 @@ mod tests {
             setup!(_l, name);
             catch_unwind(|| {
                 let ns = NodeSlice::new(0);
-                let st = unsafe{ String::from_utf8_unchecked(name[..K1_SIZE].to_vec()) };
+                let st = unsafe { String::from_utf8_unchecked(name[..K1_SIZE].to_vec()) };
                 assert_eq!(ns.name(), st);
                 let ns = NodeSlice::new(1);
-                assert_eq!(ns.name(), unsafe{
-                    String::from_utf8_unchecked(name[1..1+K1_SIZE].to_vec())});
+                assert_eq!(ns.name(),
+                           unsafe { String::from_utf8_unchecked(name[1..1 + K1_SIZE].to_vec()) });
             })
         });
 
@@ -324,7 +324,7 @@ mod tests {
             setup!(_l, name);
             catch_unwind(|| {
                 let es = EdgeSlice::new(3);
-                assert_eq!(es.name(), unsafe{ String::from_utf8_unchecked(name)});
+                assert_eq!(es.name(), unsafe { String::from_utf8_unchecked(name) });
             })
         });
 

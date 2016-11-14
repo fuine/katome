@@ -6,7 +6,7 @@ extern crate rustc_serialize;
 extern crate log4rs;
 
 use katome::{Assemble, BasicAsm, Config};
-use katome::collections::{PtGraph, HsGIR};
+use katome::collections::{PtGraph, HmGIR};
 use std::fs::File;
 use std::io::Read;
 use toml::{Parser, Value};
@@ -16,7 +16,7 @@ fn main() {
     let config = parse_config("./config/settings.toml".to_string());
     println!("{:?}", config);
     // BasicAsm::assemble::<String, PtGraph>(config);
-    BasicAsm::assemble_with_gir::<String, PtGraph, HsGIR>(config);
+    BasicAsm::assemble_with_gir::<String, PtGraph, HmGIR>(config);
 }
 
 /// Attempt to load and parse the config file into our Config struct.

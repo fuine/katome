@@ -181,7 +181,10 @@ impl Init for PtGraphBuilder {
 impl Build for PtGraphBuilder {
     fn add_read_fastaq(&mut self, read: &[u8]) {
         assert!(read.len() as Idx >= K_SIZE, "Read is too short!");
-        for window in read.windows(K_SIZE as usize) {
+        let mut target;
+        let mut s = NodeIndex::default();
+        let mut t;
+        for (cnt, window) in read.windows(K_SIZE as usize).enumerate() {
             let compressed_kmer = compress_kmer(window);
             let offset;
             {
@@ -189,16 +192,13 @@ impl Build for PtGraphBuilder {
                 offset = s.len();
                 s.push(compressed_kmer.into_boxed_slice());
             }
-            let source = NodeSlice::new(2 * offset);
-            let target = NodeSlice::new(2 * offset + 1);
-            let s = self.add_fasta_node(source);
-            let t = self.add_fasta_node(target);
-            // this omits immutable borrow on graph
-            let mut exists = None;
-            if let Some(e) = self.graph.find_edge(s, t) {
-                exists = Some(e);
+            if cnt == 0 {
+                let source = NodeSlice::new(2 * offset);
+                s = self.add_fasta_node(source);
             }
-            match exists {
+            target = NodeSlice::new(2 * offset + 1);
+            t = self.add_fasta_node(target);
+            match self.graph.find_edge(s, t) {
                 // edge already in the graph, update it's weight
                 Some(e) => {
                     SEQUENCES.write().pop();
@@ -206,9 +206,10 @@ impl Build for PtGraphBuilder {
                 }
                 // insert new edge
                 None => {
-                    self.graph.add_edge(s, t, (EdgeSlice::from(source), 1));
+                    self.graph.add_edge(s, t, (EdgeSlice::from(NodeSlice::new(2 * offset)), 1));
                 }
             }
+            s = t;
         }
     }
 

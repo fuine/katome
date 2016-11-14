@@ -38,36 +38,38 @@ impl Build for HmGIR {
     /// Add new reads to `HmGIR`, modify weights of existing edges.
     fn add_read_fastaq(&mut self, read: &[u8]) {
         assert!(read.len() as Idx >= K_SIZE, "Read is too short!");
-        let mut source_node;
+        let mut source_node = NodeSlice::new(0);
         let mut target_node;
         let mut insert = false;
-        for window in read.windows(K_SIZE as usize) {
+        for (cnt, window) in read.windows(K_SIZE as usize).enumerate() {
             {
                 let mut s = SEQUENCES.write();
                 s[0] = compress_kmer(window).into_boxed_slice();
             }
-            source_node = NodeSlice::new(0);
-            target_node = NodeSlice::new(1);
-            source_node = {
-                // get a proper key to the hashmap
-                match self.entry(source_node) {
-                    Entry::Occupied(oe) => *oe.key(),
-                    Entry::Vacant(_) => {
-                        // push to vector
-                        let mut s = SEQUENCES.write();
-                        let tmp = s[0].clone();
-                        let offset = s.len();
-                        s.push(tmp);
-                        insert = true;
-                        NodeSlice::new(2 * offset)
+            // insert source on the first pass of the loop
+            if cnt == 0 {
+                source_node = {
+                    // get a proper key to the hashmap
+                    match self.entry(source_node) {
+                        Entry::Occupied(oe) => *oe.key(),
+                        Entry::Vacant(_) => {
+                            // push to vector
+                            let mut s = SEQUENCES.write();
+                            let tmp = s[0].clone();
+                            let offset = s.len();
+                            s.push(tmp);
+                            insert = true;
+                            NodeSlice::new(2 * offset)
+                        }
                     }
-                }
-            };
+                };
 
-            if insert {
-                self.insert(source_node, Box::new([]));
+                if insert {
+                    self.insert(source_node, Box::new([]));
+                }
             }
 
+            target_node = NodeSlice::new(1);
             target_node = {
                 // get a proper key to the hashmap
                 match self.entry(target_node) {
@@ -98,6 +100,7 @@ impl Build for HmGIR {
             }
             let e: &mut Outgoing = unwrap!(self.get_mut(&source_node), "Node disappeared");
             create_or_modify_edge(e, target_node.offset(), window[window.len() - 1]);
+            source_node = target_node;
         }
     }
 }

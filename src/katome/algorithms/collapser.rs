@@ -282,7 +282,7 @@ mod tests {
             assert_eq!(graph.edge_count(), 3);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
-            assert_eq!(contigs[0].as_str(), &name[..K_SIZE+2]);
+            assert_eq!(contigs[0].as_str(), &name[..K_SIZE + 2]);
         })
     });
 
@@ -297,7 +297,7 @@ mod tests {
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 2);
             assert_eq!(contigs[0].as_str(), &name[..K_SIZE]);
-            assert_eq!(contigs[1].as_str(), &name[2..K_SIZE+2]);
+            assert_eq!(contigs[1].as_str(), &name[2..K_SIZE + 2]);
         })
     });
 
@@ -313,7 +313,7 @@ mod tests {
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 3);
             assert_eq!(contigs[0].as_str(), &name[..K_SIZE]);
-            assert_eq!(contigs[2].as_str(), &name[..K_SIZE+1]);
+            assert_eq!(contigs[2].as_str(), &name[..K_SIZE + 1]);
             assert_eq!(contigs[1], second);
         })
     });

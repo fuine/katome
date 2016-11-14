@@ -24,7 +24,7 @@ use std::mem;
 /// Single node and its outgoing edges.
 ///
 /// Used for serialization/deserialization during `GIR` -> `Graph` conversion
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Vertex {
     /// Node's `ReadSlice` representing k-mer.
     pub ns: NodeSlice,
@@ -79,33 +79,36 @@ impl Build for HsGIR {
     /// Add new reads to `HmGIR`, modify weights of existing edges.
     fn add_read_fastaq(&mut self, read: &[u8]) {
         assert!(read.len() as Idx >= K_SIZE, "Read is too short!");
-        let mut source_vert: Box<Vertex>;
+        let mut source_vert: Box<Vertex> = Box::new(Vertex::default());
         let mut target_vert: Box<Vertex>;
         let mut idx = self.len();
         let mut insert = false;
 
-        for window in read.windows(K_SIZE as usize) {
+        for (cnt, window) in read.windows(K_SIZE as usize).enumerate() {
             {
                 let mut s = SEQUENCES.write();
                 s[0] = compress_kmer(window).into_boxed_slice();
             }
-            source_vert = Box::new(Vertex::new(NodeSlice::new(0), Edges::empty(idx)));
-            target_vert = Box::new(Vertex::new(NodeSlice::new(1), Edges::empty(idx + 1)));
-            if let Some(v) = self.get(&source_vert) {
-                source_vert = v.clone();
-            }
-            else {
-                let mut s = SEQUENCES.write();
-                let tmp = s[0].clone();
-                source_vert.ns = NodeSlice::new(2 * s.len());
-                s.push(tmp);
-                insert = true;
-                idx += 1;
-            }
-            if insert {
-                self.insert(source_vert.clone());
+            // insert source on the first pass
+            if cnt == 0 {
+                source_vert = Box::new(Vertex::new(NodeSlice::new(0), Edges::empty(idx)));
+                if let Some(v) = self.get(&source_vert) {
+                    source_vert = v.clone();
+                }
+                else {
+                    let mut s = SEQUENCES.write();
+                    let tmp = s[0].clone();
+                    source_vert.ns = NodeSlice::new(2 * s.len());
+                    s.push(tmp);
+                    insert = true;
+                    idx += 1;
+                }
+                if insert {
+                    self.insert(source_vert.clone());
+                }
             }
 
+            target_vert = Box::new(Vertex::new(NodeSlice::new(1), Edges::empty(idx + 1)));
             if let Some(v) = self.get(&target_vert) {
                 target_vert = v.clone();
                 insert = false;
@@ -133,6 +136,7 @@ impl Build for HsGIR {
                                   target_vert.edges.idx,
                                   window[window.len() - 1]);
             self.replace(source_vert);
+            source_vert = target_vert;
         }
     }
 }
