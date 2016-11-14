@@ -21,6 +21,10 @@ impl EdgeSlice {
         let self_idx = self.idx();
         let other_idx = other.idx();
         let mut s = SEQUENCES.write();
+        if s[other_idx].len() == 0 {
+            println!("{}", other_idx);
+            panic!("WOOPSIE");
+        }
         let last_char = decompress_last_char_edge(&*s[other_idx]) as u8;
         let tmp = add_char_to_edge(&*s[self_idx], last_char);
         // clear other as we won't use it anymore

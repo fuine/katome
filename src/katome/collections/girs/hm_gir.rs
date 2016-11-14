@@ -12,6 +12,7 @@ use slices::{BasicSlice, EdgeSlice, NodeSlice};
 use super::hs_gir::create_or_modify_edge;
 
 use metrohash::MetroHash;
+use fixedbitset::FixedBitSet;
 
 use std::collections::HashMap as HM;
 use std::collections::hash_map::Entry;
@@ -121,6 +122,7 @@ impl Convert<HmGIR> for PtGraph {
         }
         let mut graph = PtGraph::default();
         let mut s = SEQUENCES.write();
+        let mut fb = FixedBitSet::with_capacity(s.len());
         for (idx, (ns, mut _edges)) in gir.drain().enumerate() {
             let source = NodeIndex::new(idx);
             while source.index() >= graph.node_count() {
@@ -134,17 +136,28 @@ impl Convert<HmGIR> for PtGraph {
                 s[id] = Box::new([]);
                 continue;
             }
-            // first edge slice will be pointing at the original place of source
-            // node, next edges will be appended to the global SEQUENCEs after
-            // having their last symbol changed
-            let tmp = kmer_to_edge(&s[id]);
-            s[id] = tmp.clone().into_boxed_slice();
             // at least one edge going out
-            let (target, weight, _) = _edges[0];
+            let (target, weight, last_char) = _edges[0];
+            let prev = fb.put(id);
+            let (slice, tmp) = if prev {
+                // this slice uses already taken slot with compressed edge - we
+                // can't link them both to the same id
+                let new_compressed = change_last_char_in_edge(&s[id], last_char);
+                s.push(new_compressed.clone().into_boxed_slice());
+                (EdgeSlice::new(s.len() - 1), new_compressed)
+            }
+            else {
+                // first edge slice will be pointing at the original place of source
+                // node, next edges will be appended to the global SEQUENCEs after
+                // having their last symbol changed
+                let tmp = kmer_to_edge(&s[id]);
+                s[id] = tmp.clone().into_boxed_slice();
+                (EdgeSlice::new(id), tmp)
+            };
             while target >= graph.node_count() {
                 graph.add_node(());
             }
-            graph.add_edge(source, NodeIndex::new(target), (EdgeSlice::new(id), weight));
+            graph.add_edge(source, NodeIndex::new(target), (slice, weight));
             for edge in _edges.into_iter().skip(1) {
                 while edge.0 >= graph.node_count() {
                     graph.add_node(());

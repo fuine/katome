@@ -310,4 +310,11 @@ mod tests {
         let added = add_char_to_edge(&compressed, b'G');
         assert_eq!(vec![2u8, 0b00101011, 0b01100000], added);
     }
+
+    #[test]
+    fn change_last_char_edge() {
+        let in_ = vec![3u8, 0b00101011, 0b11000000];
+        let out = change_last_char_in_edge(&in_, b'A');
+        assert_eq!(vec![3u8, 0b00101011, 0b00000000], out);
+    }
 }

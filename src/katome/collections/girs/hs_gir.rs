@@ -12,6 +12,7 @@ use slices::{BasicSlice, EdgeSlice, NodeSlice};
 
 use metrohash::MetroHash;
 use self::itertools::Itertools;
+use fixedbitset::FixedBitSet;
 
 use std::cmp;
 use std::collections::HashSet as HS;
@@ -154,42 +155,52 @@ impl Convert<HsGIR> for PtGraph {
     fn create_from(mut h: HsGIR) -> Self {
         let mut graph = PtGraph::default();
         let mut s = SEQUENCES.write();
+        let mut fb = FixedBitSet::with_capacity(s.len());
         for vertex in h.drain() {
             let source = NodeIndex::new(vertex.edges.idx);
             while source.index() >= graph.node_count() {
                 graph.add_node(());
             }
             let id = vertex.ns.idx();
-            let out_len = vertex.edges.outgoing.len();
-            if out_len == 0 {
+            if vertex.edges.outgoing.is_empty() {
                 // clear the underlying box as it will no longer be used. We
                 // can't pop it out of the global vector cause it would ruin our
                 // existing indices that are already in the graph.
                 s[id] = Box::new([]);
                 continue;
             }
-            // first edge slice will be pointing at the original place of source
-            // node, next edges will be appended to the global SEQUENCEs after
-            // having their last symbol changed
-            let tmp = kmer_to_edge(&s[id]);
-            s[id] = tmp.clone().into_boxed_slice();
             // at least one edge going out
-            let (target, weight, _) = vertex.edges.outgoing[0];
+            let (target, weight, last_char) = vertex.edges.outgoing[0];
+            // if previous slice has different offset by 1, that means we need
+            // to push the current edge to the end of the SEQUENCES
+            let prev = fb.put(id);
+            let (slice, tmp) = if prev {
+                // this slice uses already taken slot with compressed edge - we
+                // can't link them both to the same id
+                let new_compressed = change_last_char_in_edge(&s[id], last_char);
+                s.push(new_compressed.clone().into_boxed_slice());
+                (EdgeSlice::new(s.len() - 1), new_compressed)
+            }
+            else {
+                // first edge slice will be pointing at the original place of source
+                // node, next edges will be appended to the global SEQUENCEs after
+                // having their last symbol changed
+                let tmp = kmer_to_edge(&s[id]);
+                s[id] = tmp.clone().into_boxed_slice();
+                (EdgeSlice::new(id), tmp)
+            };
             while target >= graph.node_count() {
                 graph.add_node(());
             }
-            graph.add_edge(source, NodeIndex::new(target), (EdgeSlice::new(id), weight));
-            if out_len > 1 {
-                for edge in &vertex.edges.outgoing[1..] {
-                    while edge.0 >= graph.node_count() {
-                        graph.add_node(());
-                    }
-                    let new_compressed = change_last_char_in_edge(&tmp, edge.2);
-                    s.push(new_compressed.into_boxed_slice());
-                    graph.add_edge(source,
-                                   NodeIndex::new(edge.0),
-                                   (EdgeSlice::new(s.len() - 1), edge.1));
+            graph.add_edge(source, NodeIndex::new(target), (slice, weight));
+            for edge in vertex.edges.outgoing.iter().skip(1) {
+                while edge.0 >= graph.node_count() {
+                    graph.add_node(());
                 }
+                let new_compressed = change_last_char_in_edge(&tmp, edge.2);
+                s.push(new_compressed.into_boxed_slice());
+                let slice = EdgeSlice::new(s.len() - 1);
+                graph.add_edge(source, NodeIndex::new(edge.0), (slice, edge.1));
             }
             // deallocate box such that it does not occupy memory
             let raw = Box::into_raw(vertex);
