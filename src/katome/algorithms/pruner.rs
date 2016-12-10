@@ -121,7 +121,7 @@ fn has_incoming_edges(gir: &mut HmGIR, node: &NodeSlice) -> bool {
     // copy current sequence to register
     let mut vec = node.byte_name();
     // shift the register one character to the right
-    vec.truncate(K1_SIZE - 1);
+    vec.truncate(unsafe { K1_SIZE } - 1);
     vec.insert(0, b'A');
     let mut v = Vec::new();
     compress_node(&vec, &mut v);
@@ -204,7 +204,7 @@ fn check_dead_path(graph: &PtGraph, vertex: NodeIndex, first_direction: EdgeDire
     let mut cnt = 0;
     loop {
         cnt += 1;
-        if cnt >= 2 * (K_SIZE) {
+        if cnt >= 2 * (unsafe { K_SIZE }) {
             // this path is not dead
             return None;
         }

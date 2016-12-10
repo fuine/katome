@@ -48,27 +48,27 @@ pub fn compress_node(slice: &[u8], collection: &mut Vec<u8>) {
 /// Decompress node representation from the compressed form. Returns vector of
 /// symbols.
 pub fn decompress_node(node: &[u8]) -> Vec<u8> {
-    let mut output: Vec<u8> = Vec::with_capacity(K1_SIZE);
+    let mut output: Vec<u8> = Vec::with_capacity(unsafe { K1_SIZE });
     for chunk in node {
         output.extend(decode_compressed_chunk(*chunk).iter().cloned());
     }
-    output.truncate(K1_SIZE);
+    output.truncate(unsafe { K1_SIZE });
     output
 }
 
 /// Decompress kmer representation from the compressed form. Returns vector of
 /// symbols.
 pub fn decompress_kmer(kmer: &[u8]) -> Vec<u8> {
-    let mut output: Vec<u8> = Vec::with_capacity(K_SIZE);
-    let slice_ = &kmer[..COMPRESSED_K1_SIZE];
+    let mut output: Vec<u8> = Vec::with_capacity(unsafe { K_SIZE });
+    let slice_ = &kmer[..unsafe { COMPRESSED_K1_SIZE }];
     let dec = decompress_node(slice_);
     output.extend_from_slice(&dec);
-    output.push(get_last_char_from_node(&kmer[COMPRESSED_K1_SIZE..]));
+    output.push(get_last_char_from_node(&kmer[unsafe { COMPRESSED_K1_SIZE }..]));
     output
 }
 
 fn get_last_char_from_node(node: &[u8]) -> u8 {
-    let padding = K1_SIZE % CHARS_PER_BYTE;
+    let padding = unsafe { K1_SIZE } % CHARS_PER_BYTE;
     let last_byte: u8 = node[node.len() - 1];
     let padding = (CHARS_PER_BYTE - padding) % CHARS_PER_BYTE;
     decompress_char(last_byte, padding) as u8
@@ -268,7 +268,7 @@ mod tests {
     fn properly_compresses_vertex() {
         let name = thread_rng()
             .gen_iter::<u8>()
-            .take(K_SIZE)
+            .take(unsafe { K_SIZE })
             .map(|x| {
                 match x % 4 {
                     0 => 65u8,

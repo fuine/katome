@@ -3,7 +3,7 @@
 use asm::{Assemble, Contigs, SEQUENCES};
 use collections::{GIR, Graph, Convert};
 use config::Config;
-use prelude::EdgeWeight;
+use prelude::{EdgeWeight, set_global_k_sizes};
 use stats::Stats;
 
 use std::path::Path;
@@ -14,6 +14,9 @@ pub struct BasicAsm {}
 impl Assemble for BasicAsm {
     fn assemble<P: AsRef<Path>, G: Graph>(config: Config<P>) {
         info!("Starting assembler!");
+        unsafe {
+            set_global_k_sizes(config.k_mer_size);
+        }
         let (graph, number_of_read_bytes) = G::create(config.input_path, config.input_file_type);
         let saved: usize = SEQUENCES.read().iter().map(|x| x.len()).sum();
         let total: usize = SEQUENCES.read().len();
@@ -30,6 +33,9 @@ impl Assemble for BasicAsm {
 
     fn assemble_with_gir<P: AsRef<Path>, G, T: GIR>(config: Config<P>) where G: Graph + Convert<T> {
         info!("Starting assembler!");
+        unsafe {
+            set_global_k_sizes(config.k_mer_size);
+        }
         let (gir, number_of_read_bytes) = T::create(config.input_path, config.input_file_type);
         let saved: usize = SEQUENCES.read().iter().map(|x| x.len()).sum();
         let total: usize = SEQUENCES.read().len();

@@ -180,11 +180,11 @@ impl Init for PtGraphBuilder {
 
 impl Build for PtGraphBuilder {
     fn add_read_fastaq(&mut self, read: &[u8]) {
-        assert!(read.len() as Idx >= K_SIZE, "Read is too short!");
+        assert!(read.len() as Idx >= unsafe { K_SIZE }, "Read is too short!");
         let mut target;
         let mut s = NodeIndex::default();
         let mut t;
-        for (cnt, window) in read.windows(K_SIZE as usize).enumerate() {
+        for (cnt, window) in read.windows(unsafe { K_SIZE } as usize).enumerate() {
             let compressed_kmer = compress_kmer(window);
             let offset;
             {
@@ -214,7 +214,7 @@ impl Build for PtGraphBuilder {
     }
 
     fn add_read_bfc(&mut self, read: &[u8], weight: EdgeWeight) {
-        assert!(read.len() as Idx >= K_SIZE, "Read is too short!");
+        assert!(read.len() as Idx >= unsafe { K_SIZE }, "Read is too short!");
         let compressed_kmer = compress_kmer(read);
         let offset;
         {

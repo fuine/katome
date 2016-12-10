@@ -213,16 +213,16 @@ mod tests {
             // global lock on sequences for test
             let $l = LOCK.lock().unwrap();
             let mut $n = repeat('A')
-                .take(K1_SIZE)
+                .take(unsafe{K1_SIZE})
                 .collect::<String>();
             let mut $s = $n.clone();
             $n.push_str("TGCT");
             $s.push_str("G");
-            let c1 = compress_edge($n[..K_SIZE].as_bytes());
-            let c2 = compress_edge($n[1..K_SIZE+1].as_bytes());
-            let c3 = compress_edge($n[2..K_SIZE+2].as_bytes());
-            let c4 = compress_edge($n[3..K_SIZE+3].as_bytes());
-            let c5 = compress_edge($s[..K_SIZE].as_bytes());
+            let c1 = compress_edge($n[..unsafe{K_SIZE}].as_bytes());
+            let c2 = compress_edge($n[1..unsafe{K_SIZE}+1].as_bytes());
+            let c3 = compress_edge($n[2..unsafe{K_SIZE}+2].as_bytes());
+            let c4 = compress_edge($n[3..unsafe{K_SIZE}+3].as_bytes());
+            let c5 = compress_edge($s[..unsafe{K_SIZE}].as_bytes());
             {
                 let mut seq = SEQUENCES.write();
                 seq.clear();
@@ -267,7 +267,7 @@ mod tests {
             assert_eq!(graph.edge_count(), 1);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
-            assert_eq!(contigs[0].as_str(), &name[..K_SIZE]);
+            assert_eq!(contigs[0].as_str(), &name[..unsafe { K_SIZE }]);
         })
     });
 
@@ -282,7 +282,7 @@ mod tests {
             assert_eq!(graph.edge_count(), 3);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
-            assert_eq!(contigs[0].as_str(), &name[..K_SIZE + 2]);
+            assert_eq!(contigs[0].as_str(), &name[..unsafe { K_SIZE } + 2]);
         })
     });
 
@@ -296,8 +296,8 @@ mod tests {
             assert_eq!(graph.edge_count(), 2);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 2);
-            assert_eq!(contigs[0].as_str(), &name[..K_SIZE]);
-            assert_eq!(contigs[1].as_str(), &name[2..K_SIZE + 2]);
+            assert_eq!(contigs[0].as_str(), &name[..unsafe { K_SIZE }]);
+            assert_eq!(contigs[1].as_str(), &name[2..unsafe { K_SIZE } + 2]);
         })
     });
 
@@ -312,8 +312,8 @@ mod tests {
             assert_eq!(graph.edge_count(), 3);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 3);
-            assert_eq!(contigs[0].as_str(), &name[..K_SIZE]);
-            assert_eq!(contigs[2].as_str(), &name[..K_SIZE + 1]);
+            assert_eq!(contigs[0].as_str(), &name[..unsafe { K_SIZE }]);
+            assert_eq!(contigs[2].as_str(), &name[..unsafe { K_SIZE } + 1]);
             assert_eq!(contigs[1], second);
         })
     });

@@ -13,3 +13,6 @@ minimal_weight_threshold = 0
 # input file type, currently can have one of threes values:
 # BFCounter, Fasta, Fastq
 input_file_type = "Fastq"
+
+# size of the k-mer
+k_mer_size = 40

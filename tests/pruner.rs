@@ -11,7 +11,7 @@ pub use katome::algorithms::pruner::{Clean, Prunable};
 pub use katome::asm::SEQUENCES;
 pub use katome::asm::lock::LOCK;
 pub use katome::collections::{Convert, HmGIR, PtGraph};
-pub use katome::prelude::K_SIZE;
+pub use katome::prelude::set_global_k_sizes;
 pub use katome::stats::{Counts, Opt, CollectionStats, Stats};
 pub use std::sync::Mutex;
 pub use std::f64;
@@ -27,8 +27,7 @@ macro_rules! before_each {
             s.clear();
             s.push(vec![].into_boxed_slice());
         }
-        // hardcoded K_SIZE value for now :/
-        assert_eq!(K_SIZE, 40);
+        unsafe { set_global_k_sizes(40); }
         let $f = vec![
             "./tests/test_files/data1.txt".to_string(),
             "./tests/test_files/data2.txt".to_string(),

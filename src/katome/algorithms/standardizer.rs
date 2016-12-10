@@ -33,9 +33,16 @@ impl Standardizable for PtGraph {
                     (acc.0 + e.weight.1 as usize, acc.1)
                 }
             });
-        let p: f64 =
-            calculate_standardization_ratio(original_genome_length, K_SIZE, s as usize, l as usize);
-        info!("Ratio: {} for g: {} k: {} s: {} l: {}", p, original_genome_length, K_SIZE, s, l);
+        let p: f64 = calculate_standardization_ratio(original_genome_length,
+                                                     unsafe { K_SIZE },
+                                                     s as usize,
+                                                     l as usize);
+        info!("Ratio: {} for g: {} k: {} s: {} l: {}",
+              p,
+              original_genome_length,
+              unsafe { K_SIZE },
+              s,
+              l);
         // normalize edges across the graph
         for weight in self.edge_weights_mut() {
             let new_weight = (weight.1 as f64 * p).round() as EdgeWeight;

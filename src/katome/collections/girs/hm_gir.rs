@@ -37,11 +37,11 @@ impl Init for HmGIR {
 impl Build for HmGIR {
     /// Add new reads to `HmGIR`, modify weights of existing edges.
     fn add_read_fastaq(&mut self, read: &[u8]) {
-        assert!(read.len() as Idx >= K_SIZE, "Read is too short!");
+        assert!(read.len() as Idx >= unsafe { K_SIZE }, "Read is too short!");
         let mut source_node = NodeSlice::new(0);
         let mut target_node;
         let mut insert = false;
-        for (cnt, window) in read.windows(K_SIZE as usize).enumerate() {
+        for (cnt, window) in read.windows(unsafe { K_SIZE } as usize).enumerate() {
             {
                 let mut s = SEQUENCES.write();
                 s[0] = compress_kmer(window).into_boxed_slice();

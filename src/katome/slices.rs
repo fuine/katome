@@ -35,7 +35,7 @@ impl EdgeSlice {
 
     pub fn remainder(&self) -> String {
         let mut name = self.name();
-        name.drain(..K1_SIZE);
+        name.drain(..unsafe { K1_SIZE });
         name
     }
 }
@@ -128,8 +128,8 @@ macro_rules! get_slice {
 macro_rules! get_slice_node {
     ($i:ident, $s:ident) => {{
         let node_offset = $i.offset() % 2;
-        let s = COMPRESSED_K1_SIZE*node_offset;
-        let t = COMPRESSED_K1_SIZE+s;
+        let s = unsafe{ COMPRESSED_K1_SIZE } * node_offset;
+        let t = unsafe{ COMPRESSED_K1_SIZE } + s;
         &$s[$i.idx()][s..t]
     }};
 }
@@ -226,7 +226,7 @@ mod tests {
             // initialize with random data
             let $n = thread_rng()
                 .gen_iter::<u8>()
-                .take(K_SIZE)
+                .take(unsafe{K_SIZE})
                 .map(|x| {
                     match x % 4 {
                         0 => 65u8,

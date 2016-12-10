@@ -8,7 +8,7 @@ pub use katome::algorithms::builder::Build;
 pub use katome::asm::SEQUENCES;
 pub use katome::asm::lock::LOCK;
 pub use katome::collections::{HmGIR, HsGIR, PtGraph};
-pub use katome::prelude::K_SIZE;
+pub use katome::prelude::set_global_k_sizes;
 pub use katome::stats::{Counts, CollectionStats, Stats, Opt};
 pub use std::sync::Mutex;
 pub use std::panic::catch_unwind;
@@ -23,8 +23,7 @@ macro_rules! before_each {
             s.clear();
             s.push(vec![].into_boxed_slice());
         }
-        // hardcoded K_SIZE value for now :/
-        assert_eq!(K_SIZE, 40);
+        unsafe { set_global_k_sizes(40); }
         let $r = vec![200, 9200, 23300];
         let $c = vec![(62, 61), (5704, 5612), (14446, 14213)];
         let $f = vec![

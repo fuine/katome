@@ -22,4 +22,6 @@ pub struct Config<P: AsRef<Path>> {
     pub original_genome_length: usize,
     /// Minimal weight of the edge in de Bruijn graph.
     pub minimal_weight_threshold: usize,
+    /// Size of the k-mer.
+    pub k_mer_size: usize,
 }
