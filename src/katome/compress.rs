@@ -82,6 +82,23 @@ pub fn change_char_in_chunk(mut chunk: u8, padding: usize, to: u8) -> u8 {
     chunk
 }
 
+pub fn extend_edge(edge: &[u8], with: &[u8]) -> Vec<u8> {
+    let padding = edge[0];
+    let mut vec: Vec<u8> = Vec::new();
+    vec.extend_from_slice(edge);
+    let mut new_remainder = Vec::new();
+    if padding != 0 {
+        let padding = (CHARS_PER_BYTE - edge[0] as usize) % CHARS_PER_BYTE;
+        new_remainder.extend_from_slice(&decode_compressed_chunk(unwrap!(vec.pop())));
+        new_remainder.truncate(padding);
+    }
+    new_remainder.extend_from_slice(with);
+    let compressed = compress_edge(&new_remainder);
+    vec[0] = compressed[0];
+    vec.extend_from_slice(&compressed[1..]);
+    vec
+}
+
 /// Change last character in the compressed edge representation.
 pub fn change_last_char_in_edge(edge: &[u8], to: u8) -> Vec<u8> {
     let mut output = edge.to_vec();
@@ -137,7 +154,7 @@ pub fn kmer_to_edge(kmer: &[u8]) -> Vec<u8> {
 /// assert_eq!(vec![2u8, 0b00101011, 0b01100000], compressed);
 /// ```
 pub fn compress_edge(edge: &[u8]) -> Vec<u8> {
-    assert!(edge.len() > 2);
+    assert!(edge.len() > 0);
     let compressed_size = 1 + ((edge.len() as f64) / 4.0).ceil() as usize;
     let mut compressed = Vec::with_capacity(compressed_size);
     let mut byte = 0u8;
@@ -173,7 +190,7 @@ pub fn decompress_edge(edge: &[u8]) -> Vec<u8> {
     let mut output: Vec<u8> = Vec::with_capacity(((edge.len() - 1) * CHARS_PER_BYTE) - padding);
     let slice_ = &edge[1..];
     for chunk in slice_ {
-        output.extend(decode_compressed_chunk(*chunk).iter().cloned());
+        output.extend_from_slice(&decode_compressed_chunk(*chunk));
     }
     let len = output.len() - padding;
     output.truncate(len);
@@ -316,5 +333,32 @@ mod tests {
         let in_ = vec![3u8, 0b00101011, 0b11000000];
         let out = change_last_char_in_edge(&in_, b'A');
         assert_eq!(vec![3u8, 0b00101011, 0b00000000], out);
+    }
+
+    #[test]
+    fn extend_edge_test() {
+        // pad 1
+        let compressed = compress_edge(b"AGGT");
+        assert_eq!(vec![0u8, 0b00101011], compressed);
+        let added = extend_edge(&compressed, b"GTC");
+        assert_eq!(vec![1u8, 0b00101011, 0b10110100], added);
+
+        // pad 2
+        let compressed = compress_edge(b"AGGTCGG");
+        assert_eq!(vec![1u8, 0b00101011, 0b01101000], compressed);
+        let added = extend_edge(&compressed, b"GTC");
+        assert_eq!(vec![2u8, 0b00101011, 0b01101010, 0b11010000], added);
+
+        // pad 3
+        let compressed = compress_edge(b"AGGTCG");
+        assert_eq!(vec![2u8, 0b00101011, 0b01100000], compressed);
+        let added = extend_edge(&compressed, b"GTC");
+        assert_eq!(vec![3u8, 0b00101011, 0b01101011, 0b01000000], added);
+
+        // pad 0
+        let compressed = compress_edge(b"AGGTC");
+        assert_eq!(vec![3u8, 0b00101011, 0b01000000], compressed);
+        let added = extend_edge(&compressed, b"GTC");
+        assert_eq!(vec![0u8, 0b00101011, 0b01101101], added);
     }
 }

@@ -12,6 +12,8 @@ use petgraph::visit::EdgeRef;
 pub trait Shrinkable {
     /// Edge index associated with collection.
     type EdgeIdx;
+    /// Node index associated with collection.
+    type NodeIdx;
     /// Shrink graph.
     ///
     /// This operation should shrink all straight paths (paths in which all
@@ -23,6 +25,10 @@ pub trait Shrinkable {
     /// to a valid edge, which target has a single outgoing edge.
     /// Returns index of the shrinked path represented by edge.
     fn shrink_single_path(&mut self, base_edge: Self::EdgeIdx) -> Self::EdgeIdx;
+    /// Checks only specified points. Note that these points are not meant to be
+    /// the starting points of the straight path, but rather the middle point in
+    /// them.
+    fn shrink_points(&mut self, possible_inc_points: Vec<Self::NodeIdx>);
 }
 
 pub struct ShrinkTraverse {
@@ -88,14 +94,31 @@ impl ShrinkTraverse {
 
 impl Shrinkable for PtGraph {
     type EdgeIdx = EdgeIndex;
-    fn shrink(&mut self) {
-        let mut t = ShrinkTraverse::new(self);
-        while let Some(base_edge) = t.next(self) {
-            self.shrink_single_path(base_edge);
+    type NodeIdx = NodeIndex;
+    #[inline]
+    fn shrink_points(&mut self, possible_inc_points: Vec<Self::NodeIdx>) {
+        for n in possible_inc_points {
+            if self.out_degree(n) == 1 && self.in_degree(n) == 1 {
+                let edge_to_shrink = unwrap!(self.edges_directed(n, Incoming).next()).id();
+                self.shrink_single_path(edge_to_shrink);
+            }
         }
         self.remove_single_vertices();
     }
+    fn shrink(&mut self) {
+        debug!("Start shrinking");
+        let mut t = ShrinkTraverse::new(self);
+        let mut count = 0;
+        while let Some(base_edge) = t.next(self) {
+            self.shrink_single_path(base_edge);
+            count += 1;
+        }
+        debug!("Shrinked: {}", count);
+        self.remove_single_vertices();
+        debug!("End shrinking");
+    }
 
+    #[inline]
     fn shrink_single_path(&mut self, mut base_edge: EdgeIndex) -> EdgeIndex {
         let (start_node, mut mid_node) = unwrap!(self.edge_endpoints(base_edge));
         loop {
@@ -108,6 +131,10 @@ impl Shrinkable for PtGraph {
                 let tmp = unwrap!(self.remove_edge(next_edge)).0;
                 self.remove_edge(base_edge);
                 tmp
+            }
+            else if base_edge == next_edge {
+                debug!("Self-referencing loop found");
+                return base_edge;
             }
             else {
                 self.remove_edge(base_edge);
@@ -149,11 +176,22 @@ mod tests {
 
     macro_rules! setup (
         () => (
-            let c1 = compress_edge(b"ACG");
-            let c2 = compress_edge(b"CGT");
-            let c3 = compress_edge(b"GTA");
-            let c4 = compress_edge(b"TAA");
-            let c5 = compress_edge(b"AAC");
+            let basic_ = (0..37).into_iter().map(|_| b'A').collect::<Vec<u8>>();
+            let mut l1 = basic_.clone();
+            l1.extend(b"ACG");
+            let c1 = compress_edge(&l1);
+            let mut l2 = basic_.clone();
+            l2.extend(b"CGT");
+            let c2 = compress_edge(&l2);
+            let mut l3 = basic_.clone();
+            l3.extend(b"GTA");
+            let c3 = compress_edge(&l3);
+            let mut l4 = basic_.clone();
+            l4.extend(b"TAA");
+            let c4 = compress_edge(&l4);
+            let mut l5 = basic_.clone();
+            l5.extend(b"AAC");
+            let c5 = compress_edge(&l5);
     // lock here
             let _l = LOCK.lock().unwrap();
             SEQUENCES.write().clear();
@@ -178,7 +216,7 @@ mod tests {
             assert!(maybe_edge.is_some());
             let edge = maybe_edge.unwrap();
             let weight = unwrap!($g.edge_weight(edge)).0.name();
-            assert_eq!(weight, $s.to_string());
+            assert_eq!(&weight.as_bytes()[37..], $s.as_bytes());
         )
     );
 
@@ -195,7 +233,6 @@ mod tests {
         check_node!(g, 0, 0, 1);
         check_node!(g, 1, 0, 0);
         check_node!(g, 2, 1, 0);
-        assert_eq!(EdgeSlice::new(0).name(), "ACGT".to_string());
         check_edge!(g, 0, 2, "ACGT");
     }
 

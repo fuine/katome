@@ -1,7 +1,7 @@
 //! Representation of string for vertex in De Bruijn Graph.
 
 use asm::SEQUENCES;
-use compress::{decompress_edge, decompress_last_char_edge, decompress_node, add_char_to_edge};
+use compress::{decompress_edge, decompress_last_char_edge, decompress_node, extend_edge};
 use prelude::{COMPRESSED_K1_SIZE, K1_SIZE, Idx};
 
 use std::cmp;
@@ -21,12 +21,8 @@ impl EdgeSlice {
         let self_idx = self.idx();
         let other_idx = other.idx();
         let mut s = SEQUENCES.write();
-        if s[other_idx].len() == 0 {
-            println!("{}", other_idx);
-            panic!("WOOPSIE");
-        }
-        let last_char = decompress_last_char_edge(&*s[other_idx]) as u8;
-        let tmp = add_char_to_edge(&*s[self_idx], last_char);
+        let other_uncompressed = decompress_edge(&*s[other_idx]);
+        let tmp = extend_edge(&*s[self_idx], &other_uncompressed[unsafe { K1_SIZE }..]);
         // clear other as we won't use it anymore
         s[other_idx] = Vec::new().into_boxed_slice();
         // swap to the new value

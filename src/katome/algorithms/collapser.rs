@@ -22,34 +22,37 @@ pub type SerializedContigs = Vec<String>;
 impl Collapsable for PtGraph {
     fn collapse(mut self) -> SerializedContigs {
         let mut contigs: SerializedContigs = vec![];
-        loop {
-            // ensure that we don't end up with straight paths longer than
-            // one edge
-            self.shrink();
-            if let Some(n) = self.externals(EdgeDirection::Incoming).next() {
-                contigs.extend(contigs_from_vertex(&mut self, n));
-            }
-            else {
-                break;
-            }
+        // ensure that we don't end up with straight paths longer than
+        // one edge
+        self.shrink();
+        // this loop can't be written as for loop, because on each iteration we
+        // want to create a new iterator over externals -- shrinker can change
+        // indices of nodes, and so one iterator would get invalidated
+        while let Some(n) = self.externals(EdgeDirection::Incoming).next() {
+            let (contigs_, possible_inc_points) = contigs_from_vertex(&mut self, n);
+            contigs.extend(contigs_);
+            self.shrink_points(possible_inc_points);
         }
         contigs.retain(|x| !x.is_empty());
         contigs
     }
 }
 
-fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex) -> SerializedContigs {
+fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex) -> (SerializedContigs, Vec<NodeIndex>) {
     let mut contigs: SerializedContigs = vec![];
     let mut contig: SerializedContig = String::new();
     let mut current_vertex = v;
     let mut current_edge_index;
     let mut single_loop;
+    // vector which stores possibly inconsistent points (points lying in the
+    // middle of a sequence, which might be shrunk)
+    let mut possible_inc_points: Vec<NodeIndex> = vec![];
     loop {
         single_loop = None;
         let number_of_edges = graph.out_degree(current_vertex);
         if number_of_edges == 0 {
             contigs.push(contig.clone());
-            return contigs;
+            return (contigs, possible_inc_points);
         }
         current_edge_index = unwrap!(graph.first_edge(current_vertex, EdgeDirection::Outgoing));
         match number_of_edges {
@@ -109,16 +112,16 @@ fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex) -> SerializedContigs {
             // will switch the index of the last edge is anything prior to it is
             // removed)
             if current_edge_index < e {
-                decrease_weight(graph, e);
-                decrease_weight(graph, current_edge_index);
+                decrease_weight(graph, e, &mut possible_inc_points);
+                decrease_weight(graph, current_edge_index, &mut possible_inc_points);
             }
             else {
-                decrease_weight(graph, current_edge_index);
-                decrease_weight(graph, e);
+                decrease_weight(graph, current_edge_index, &mut possible_inc_points);
+                decrease_weight(graph, e, &mut possible_inc_points);
             }
         }
         else {
-            decrease_weight(graph, current_edge_index);
+            decrease_weight(graph, current_edge_index, &mut possible_inc_points);
         }
         current_vertex = target;
     }
@@ -183,7 +186,7 @@ fn simple_loop(graph: &PtGraph, edge: EdgeIndex) -> Option<EdgeIndex> {
     None
 }
 
-fn decrease_weight(graph: &mut PtGraph, edge: EdgeIndex) {
+fn decrease_weight(graph: &mut PtGraph, edge: EdgeIndex, inc_points: &mut Vec<NodeIndex>) {
     {
         let edge_mut = unwrap!(graph.edge_weight_mut(edge),
                                "Trying to decrease weight of non-existent edge");
@@ -193,6 +196,9 @@ fn decrease_weight(graph: &mut PtGraph, edge: EdgeIndex) {
         }
     }
     // weight is equal to zero - edge should be removed
+    let endpoints = unwrap!(graph.edge_endpoints(edge));
+    // add possible inconsistency points for shrinker to check
+    inc_points.extend_from_slice(&[endpoints.0, endpoints.1]);
     graph.remove_edge(edge);
 }
 
