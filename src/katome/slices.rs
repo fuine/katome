@@ -17,11 +17,15 @@ pub struct EdgeSlice {
 }
 
 impl EdgeSlice {
+    /// Merges two compressed edges. It takes all data after K1_SIZE from the
+    /// second edge and adds to the first edge. Second edge must be of length
+    /// K_SIZE or higher.
     pub fn merge(&self, other: EdgeSlice) {
         let self_idx = self.idx();
         let other_idx = other.idx();
         let mut s = SEQUENCES.write();
         let other_uncompressed = decompress_edge(&*s[other_idx]);
+        assert!(other_uncompressed.len() > unsafe{ K1_SIZE });
         let tmp = extend_edge(&*s[self_idx], &other_uncompressed[unsafe { K1_SIZE }..]);
         // clear other as we won't use it anymore
         s[other_idx] = Vec::new().into_boxed_slice();
@@ -29,6 +33,8 @@ impl EdgeSlice {
         s[self_idx] = tmp.into_boxed_slice();
     }
 
+    /// Get the remainder of the uncompressed edge. Remainder is slice
+    /// `edge[K1_SIZE..]`.
     pub fn remainder(&self) -> String {
         let mut name = self.name();
         name.drain(..unsafe { K1_SIZE });
@@ -39,6 +45,7 @@ impl EdgeSlice {
 #[derive(Copy, Clone, Default, Debug)]
 /// View of the compressed node (string of length `K1_SIZE`).
 pub struct NodeSlice {
+    // TODO better document memory layout of SEQUENCES
     offset: Idx,
 }
 
@@ -65,7 +72,14 @@ pub trait BasicSlice {
     /// Gets last `char` of the slice.
     fn last_char(&self) -> char;
 
+    /// Gets index on the global vector of sequences.
     fn idx(&self) -> usize;
+
+    /// Gets offset of the slice. Offset differs from index for `NodeSlice`s -
+    /// offset represents both position in the `SEQUENCES`, as well as denotes
+    /// node's position - first or second.
+    ///
+    /// More information can be seen in the `NodeSlice` documentation.
     fn offset(&self) -> usize;
 }
 

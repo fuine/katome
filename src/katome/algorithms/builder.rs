@@ -17,6 +17,8 @@ use self::bio::io::{fasta, fastq};
 
 /// Custom init function for collections
 pub trait Init: Default {
+    /// Initialize collection. Arguments are estimated maximum counts of nodes and
+    /// edges, as well as type of the input file.
     fn init(_edges_count: Option<usize>, _nodes_count: Option<usize>, _ft: InputFileType) -> Self {
         Self::default()
     }

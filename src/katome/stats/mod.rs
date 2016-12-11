@@ -1,3 +1,4 @@
+//! Statistics for created contigs and collections.
 use std::fmt::Display;
 /// Create stats for contigs.
 pub trait Stats<T: Display> {

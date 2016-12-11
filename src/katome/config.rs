@@ -2,10 +2,15 @@
 
 use std::path::Path;
 
-config_option_enum! { InputFileType:
-    Fasta,
-    Fastq,
-    BFCounter,
+config_option_enum! {
+    /// Format of the input file.
+    InputFileType:
+        /// Fasta format
+        Fasta,
+        /// Fastq format
+        Fastq,
+        /// BFCounter format
+        BFCounter,
 }
 
 /// Config for assembler.

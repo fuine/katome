@@ -31,7 +31,7 @@ pub trait Shrinkable {
     fn shrink_points(&mut self, possible_inc_points: Vec<Self::NodeIdx>);
 }
 
-pub struct ShrinkTraverse {
+struct ShrinkTraverse {
     fb: FixedBitSet,
     stack: Vec<NodeIndex>,
 }

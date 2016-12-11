@@ -38,10 +38,11 @@ macro_rules! impl_enum_decodable {
 
 /// Create config enum
 macro_rules! config_option_enum {
-    ($e:ident: $( $x:ident ),+ $(,)*) => {
+    ($(#[$str_attr:meta])+ $e:ident: $( $(#[$attr:meta])+  $x:ident ),+ $(,)*) => {
         #[derive(Copy, Clone, Eq, PartialEq, Debug)]
+        $(#[$str_attr]),+
         pub enum $e {
-            $( $x ),+
+            $( $(#[$attr]),+ $x ),+
         }
 
         impl_enum_decodable!($e, $( $x ),+);

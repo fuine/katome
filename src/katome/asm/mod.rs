@@ -29,12 +29,19 @@ pub mod lock {
     }
 }
 
+/// Output from the assembler.
 pub struct Contigs {
+    /// Length of the original genome.
+    ///
+    /// Used to compute statistics.
     pub original_genome_length: usize,
+
+    /// Serialized contigs.
     pub serialized_contigs: SerializedContigs,
 }
 
 impl Contigs {
+    /// Create new `Contigs`.
     pub fn new(length_: usize, serialized: SerializedContigs) -> Contigs {
         Contigs {
             original_genome_length: length_,

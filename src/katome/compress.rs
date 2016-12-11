@@ -74,14 +74,17 @@ fn get_last_char_from_node(node: &[u8]) -> u8 {
     decompress_char(last_byte, padding) as u8
 }
 
-pub fn change_char_in_chunk(mut chunk: u8, padding: usize, to: u8) -> u8 {
-    let mask = 0b11111100 << (2 * padding);
-    let compressed_char = encode_fasta_symbol(to, 0u8) << (2 * padding);
+/// Change a single character in the chunk at the given offset.
+pub fn change_char_in_chunk(mut chunk: u8, offset: usize, to: u8) -> u8 {
+    let mask = 0b11111100 << (2 * offset);
+    let compressed_char = encode_fasta_symbol(to, 0u8) << (2 * offset);
     chunk &= mask;
     chunk |= compressed_char;
     chunk
 }
 
+/// Extend edge with the given data. Edge should be compressed, whereas data
+/// should be uncompressed.
 pub fn extend_edge(edge: &[u8], with: &[u8]) -> Vec<u8> {
     let padding = edge[0];
     let mut vec: Vec<u8> = Vec::new();
@@ -110,6 +113,7 @@ pub fn change_last_char_in_edge(edge: &[u8], to: u8) -> Vec<u8> {
     output
 }
 
+/// Append a single character to the compressed edge.
 pub fn add_char_to_edge(edge: &[u8], mut chr: u8) -> Vec<u8> {
     assert!(edge.len() > 1);
     let padding = edge[0];
@@ -197,6 +201,7 @@ pub fn decompress_edge(edge: &[u8]) -> Vec<u8> {
     output
 }
 
+/// Get last character from the compressed edge.
 pub fn decompress_last_char_edge(edge: &[u8]) -> char {
     let padding = edge[0] as usize;
     decompress_char(edge[edge.len() - 1], padding)
