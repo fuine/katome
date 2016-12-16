@@ -1,11 +1,13 @@
 //! Create string representation of contigs out of `Graph`.
 
 use algorithms::shrinker::Shrinkable;
+use algorithms::pruner::Clean;
 use collections::Graph;
 use collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
 use slices::BasicSlice;
 
 use petgraph::EdgeDirection;
+use petgraph::algo::connected_components;
 use petgraph::visit::EdgeRef;
 
 /// Collapse `Graph` into `SerializedContigs`.
@@ -22,37 +24,51 @@ pub type SerializedContigs = Vec<String>;
 impl Collapsable for PtGraph {
     fn collapse(mut self) -> SerializedContigs {
         let mut contigs: SerializedContigs = vec![];
+        info!("Starting collapse of the graph");
         // ensure that we don't end up with straight paths longer than
         // one edge
         self.shrink();
-        // this loop can't be written as for loop, because on each iteration we
-        // want to create a new iterator over externals -- shrinker can change
-        // indices of nodes, and so one iterator would get invalidated
-        while let Some(n) = self.externals(EdgeDirection::Incoming).next() {
-            let (contigs_, possible_inc_points) = contigs_from_vertex(&mut self, n);
-            contigs.extend(contigs_);
-            self.shrink_points(possible_inc_points);
+        info!("Graph has {} weakly connected components", connected_components(&self));
+        loop {
+            // get all starting nodes
+            let externals = self.externals(EdgeDirection::Incoming).collect::<Vec<NodeIndex>>();
+            if externals.is_empty() {
+                break;
+            }
+            // create contigs from each starting node
+            for n in externals {
+                let contigs_ = contigs_from_vertex(&mut self, n);
+                contigs.extend(contigs_);
+            }
+            // remove fake starting nodes (nodes with in_degree == out_degree == 0
+            self.remove_single_vertices();
         }
-        contigs.retain(|x| !x.is_empty());
+        debug!("{} nodes left in the graph after collapse", self.node_count());
+        info!("Collapse ended. Created {} contigs which have {} nucleotides",
+              contigs.len(),
+              contigs.iter().map(|x| x.len()).sum::<usize>());
         contigs
     }
 }
 
-fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex) -> (SerializedContigs, Vec<NodeIndex>) {
+#[inline]
+fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex) -> SerializedContigs {
     let mut contigs: SerializedContigs = vec![];
     let mut contig: SerializedContig = String::new();
     let mut current_vertex = v;
     let mut current_edge_index;
-    let mut single_loop;
+    let mut simple_loop_;
     // vector which stores possibly inconsistent points (points lying in the
     // middle of a sequence, which might be shrunk)
-    let mut possible_inc_points: Vec<NodeIndex> = vec![];
+    let mut possible_inc_points: Vec<NodeIndex> = Vec::with_capacity(2);
     loop {
-        single_loop = None;
+        simple_loop_ = None;
         let number_of_edges = graph.out_degree(current_vertex);
         if number_of_edges == 0 {
-            contigs.push(contig.clone());
-            return (contigs, possible_inc_points);
+            if !contig.is_empty() {
+                contigs.push(contig.clone());
+            }
+            return contigs;
         }
         current_edge_index = unwrap!(graph.first_edge(current_vertex, EdgeDirection::Outgoing));
         match number_of_edges {
@@ -60,43 +76,29 @@ fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex) -> (SerializedContigs,
                 unreachable!();
             }
             1 => {
-                if requires_shrink(graph, current_edge_index) {
-                    // shrink single path and save newly shrinked path as
-                    // current edge. This if ensures that loop-recognition
-                    // algorithms can work -- they assume that graph is fully
-                    // shrinked.
-                    current_edge_index = graph.shrink_single_path(current_edge_index);
-                    current_vertex = unwrap!(graph.edge_endpoints(current_edge_index)).0;
-                }
                 // make sure that we are not dealing with the loopy end
                 if self_loop(graph, current_vertex).is_none() {
-                    single_loop = simple_loop(graph, current_edge_index);
+                    simple_loop_ = simple_loop(graph, current_edge_index);
                 }
             }
             2 => {
-                if requires_shrink(graph, current_edge_index) {
-                    // shrink single path and save newly shrinked path as
-                    // current edge. This if ensures that loop-recognition
-                    // algorithms can work -- they assume that graph is fully
-                    // shrinked.
-                    current_edge_index = graph.shrink_single_path(current_edge_index);
-                    current_vertex = unwrap!(graph.edge_endpoints(current_edge_index)).0;
-                }
                 // because we handle simple loops in the match arm for 1 then
                 // any vertex with 2 outgoing edges has either a self-loop or
                 // is ambiguous
                 if let Some(e) = self_loop(graph, current_vertex) {
                     current_edge_index = e;
                 }
-                else {
+                else if !contig.is_empty() {
                     contigs.push(contig.clone());
                     contig.clear();
                 }
             }
             _ => {
                 // ambiguous edge
-                contigs.push(contig.clone());
-                contig.clear();
+                if !contig.is_empty() {
+                    contigs.push(contig.clone());
+                    contig.clear();
+                }
             }
         }
         if contig.is_empty() {
@@ -106,36 +108,27 @@ fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex) -> (SerializedContigs,
             contig.push_str(&unwrap!(graph.edge_weight(current_edge_index)).0.remainder());
         }
         let (_, target) = unwrap!(graph.edge_endpoints(current_edge_index));
-        if let Some(e) = single_loop {
+        if let Some(e) = simple_loop_ {
             contig.push_str(&unwrap!(graph.edge_weight(e)).0.remainder());
             // make sure to possibly remove edges in the right order (petgraph
             // will switch the index of the last edge is anything prior to it is
             // removed)
             if current_edge_index < e {
-                decrease_weight(graph, e, &mut possible_inc_points);
-                decrease_weight(graph, current_edge_index, &mut possible_inc_points);
+                decrease_weight(graph, e);
+                decrease_weight(graph, current_edge_index);
             }
             else {
-                decrease_weight(graph, current_edge_index, &mut possible_inc_points);
-                decrease_weight(graph, e, &mut possible_inc_points);
+                decrease_weight(graph, current_edge_index);
+                decrease_weight(graph, e);
             }
         }
         else {
-            decrease_weight(graph, current_edge_index, &mut possible_inc_points);
+            decrease_weight(graph, current_edge_index);
         }
+        graph.shrink_point(current_vertex);
+        possible_inc_points.clear();
         current_vertex = target;
     }
-}
-
-/// Sometimes when collapser creates contigs and removes edges there might be
-/// situation, where we have some paths that are not fully shrinked, i.e. they
-/// look like x -> y -> ... This function checks if path starting with given
-/// edge requires additional shrinkage.
-fn requires_shrink(graph: &PtGraph, edge: EdgeIndex) -> bool {
-    let (source, target) = unwrap!(graph.edge_endpoints(edge));
-    let in_target = graph.in_degree(target);
-    let out_target = graph.out_degree(target);
-    in_target == 1 && out_target == 1 && source != target
 }
 
 /// Check if node has self-loop.
@@ -145,6 +138,7 @@ fn requires_shrink(graph: &PtGraph, edge: EdgeIndex) -> bool {
 /// a -> b, b -> b
 /// It is assumed that node has 1 or 2 outgoing edges
 /// TODO add simple diagram to illustrate
+#[inline]
 fn self_loop(graph: &PtGraph, node: NodeIndex) -> Option<EdgeIndex> {
     if graph.in_degree(node) > 2 {
         return None;
@@ -164,6 +158,7 @@ fn self_loop(graph: &PtGraph, node: NodeIndex) -> Option<EdgeIndex> {
 /// Note that shrinking enforces only two nodes in the loop.
 /// Edges source has to have exactly one outgoing edge (functions argument).
 /// TODO add dragram
+#[inline]
 fn simple_loop(graph: &PtGraph, edge: EdgeIndex) -> Option<EdgeIndex> {
     let (source, target) = unwrap!(graph.edge_endpoints(edge));
     let in_source = graph.in_degree(source);
@@ -186,7 +181,8 @@ fn simple_loop(graph: &PtGraph, edge: EdgeIndex) -> Option<EdgeIndex> {
     None
 }
 
-fn decrease_weight(graph: &mut PtGraph, edge: EdgeIndex, inc_points: &mut Vec<NodeIndex>) {
+#[inline]
+fn decrease_weight(graph: &mut PtGraph, edge: EdgeIndex) {
     {
         let edge_mut = unwrap!(graph.edge_weight_mut(edge),
                                "Trying to decrease weight of non-existent edge");
@@ -196,9 +192,6 @@ fn decrease_weight(graph: &mut PtGraph, edge: EdgeIndex, inc_points: &mut Vec<No
         }
     }
     // weight is equal to zero - edge should be removed
-    let endpoints = unwrap!(graph.edge_endpoints(edge));
-    // add possible inconsistency points for shrinker to check
-    inc_points.extend_from_slice(&[endpoints.0, endpoints.1]);
     graph.remove_edge(edge);
 }
 
@@ -324,6 +317,7 @@ mod tests {
         })
     });
 
+    // w -> x -> y -> z -> x
     test!(deals_with_simple_cycle, {
         setup!(_l, graph, name, _second, _w, _x);
         catch_unwind(|| {
@@ -340,5 +334,36 @@ mod tests {
         })
     });
 
-    // TODO add more tessts for self_loop and simple_loop
+    // w -> x -> y -> x
+    test!(shrinks_self_loop, {
+        setup!(_l, graph, name, _second, _w, _x);
+        catch_unwind(|| {
+            let y = graph.add_node(());
+            graph.add_edge(_w, _x, (EdgeSlice::new(0), 1));
+            graph.add_edge(_x, y, (EdgeSlice::new(1), 2));
+            graph.add_edge(y, _x, (EdgeSlice::new(2), 2));
+            // graph.add_edge(z, _x, (EdgeSlice::new(3), 1));
+            assert_eq!(graph.edge_count(), 3);
+            let contigs = graph.collapse();
+            assert_eq!(contigs.len(), 1);
+            assert_eq!(contigs[0], format!("{}GCGC", &name[..unsafe { K_SIZE }]));
+        })
+    });
+
+    // w -> x -> z, x -> y -> x
+    test!(shrinks_simple_loop, {
+        setup!(_l, graph, name, _second, _w, _x);
+        catch_unwind(|| {
+            let y = graph.add_node(());
+            let z = graph.add_node(());
+            graph.add_edge(_w, _x, (EdgeSlice::new(0), 1));
+            graph.add_edge(_x, y, (EdgeSlice::new(1), 2));
+            graph.add_edge(y, _x, (EdgeSlice::new(2), 2));
+            graph.add_edge(_x, z, (EdgeSlice::new(3), 1));
+            assert_eq!(graph.edge_count(), 4);
+            let contigs = graph.collapse();
+            assert_eq!(contigs.len(), 1);
+            assert_eq!(contigs[0], format!("{}GCGCT", &name[..unsafe { K_SIZE }]));
+        })
+    });
 }

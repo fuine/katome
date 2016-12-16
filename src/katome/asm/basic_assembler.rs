@@ -74,6 +74,7 @@ fn assemble_with_graph<P: AsRef<Path>, G: Graph>(mut graph: G, _output: P,
     let serialized_contigs = graph.collapse();
     println!("I created {} contigs", serialized_contigs.len());
     let contigs = Contigs::new(original_genome_length, serialized_contigs);
+    info!("Stats for the contigs: {}", contigs.stats());
     contigs.print_stats();
     info!("All done!");
 }

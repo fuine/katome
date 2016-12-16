@@ -25,7 +25,7 @@ impl EdgeSlice {
         let other_idx = other.idx();
         let mut s = SEQUENCES.write();
         let other_uncompressed = decompress_edge(&*s[other_idx]);
-        assert!(other_uncompressed.len() > unsafe{ K1_SIZE });
+        assert!(other_uncompressed.len() > unsafe { K1_SIZE });
         let tmp = extend_edge(&*s[self_idx], &other_uncompressed[unsafe { K1_SIZE }..]);
         // clear other as we won't use it anymore
         s[other_idx] = Vec::new().into_boxed_slice();

@@ -25,10 +25,14 @@ pub trait Shrinkable {
     /// to a valid edge, which target has a single outgoing edge.
     /// Returns index of the shrinked path represented by edge.
     fn shrink_single_path(&mut self, base_edge: Self::EdgeIdx) -> Self::EdgeIdx;
+    /// Checks only specified point. Note that the point is not meant to be
+    /// the starting point of the straight path, but rather the middle point in
+    /// it.
+    fn shrink_point(&mut self, possible_inc_point: Self::NodeIdx);
     /// Checks only specified points. Note that these points are not meant to be
     /// the starting points of the straight path, but rather the middle point in
     /// them.
-    fn shrink_points(&mut self, possible_inc_points: Vec<Self::NodeIdx>);
+    fn shrink_points(&mut self, possible_inc_points: &[Self::NodeIdx]);
 }
 
 struct ShrinkTraverse {
@@ -96,26 +100,30 @@ impl Shrinkable for PtGraph {
     type EdgeIdx = EdgeIndex;
     type NodeIdx = NodeIndex;
     #[inline]
-    fn shrink_points(&mut self, possible_inc_points: Vec<Self::NodeIdx>) {
-        for n in possible_inc_points {
-            if self.out_degree(n) == 1 && self.in_degree(n) == 1 {
-                let edge_to_shrink = unwrap!(self.edges_directed(n, Incoming).next()).id();
-                self.shrink_single_path(edge_to_shrink);
-            }
+    fn shrink_points(&mut self, possible_inc_points: &[Self::NodeIdx]) {
+        for &n in possible_inc_points {
+            self.shrink_point(n);
         }
-        self.remove_single_vertices();
+    }
+    #[inline]
+    fn shrink_point(&mut self, n: Self::NodeIdx) {
+        if self.out_degree(n) == 1 && self.in_degree(n) == 1 {
+            let edge_to_shrink = unwrap!(self.edges_directed(n, Incoming).next()).id();
+            self.shrink_single_path(edge_to_shrink);
+        }
     }
     fn shrink(&mut self) {
-        debug!("Start shrinking");
+        info!("Start shrinking the graph with {} nodes and {} edges",
+              self.node_count(),
+              self.edge_count());
         let mut t = ShrinkTraverse::new(self);
-        let mut count = 0;
         while let Some(base_edge) = t.next(self) {
             self.shrink_single_path(base_edge);
-            count += 1;
         }
-        debug!("Shrinked: {}", count);
         self.remove_single_vertices();
-        debug!("End shrinking");
+        info!("Shrinking ended. Shrunk graph has {} nodes and {} edges",
+              self.node_count(),
+              self.edge_count());
     }
 
     #[inline]
@@ -133,7 +141,6 @@ impl Shrinkable for PtGraph {
                 tmp
             }
             else if base_edge == next_edge {
-                debug!("Self-referencing loop found");
                 return base_edge;
             }
             else {
