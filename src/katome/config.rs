@@ -14,8 +14,7 @@ config_option_enum! {
 }
 
 /// Config for assembler.
-#[derive(Debug)]
-#[derive(RustcDecodable)]
+#[derive(Debug, RustcDecodable)]
 pub struct Config<P: AsRef<Path>> {
     /// Path to input file.
     pub input_path: P,

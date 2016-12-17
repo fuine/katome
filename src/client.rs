@@ -2,7 +2,6 @@
 
 extern crate katome;
 extern crate toml;
-extern crate rustc_serialize;
 extern crate log4rs;
 
 use katome::{Assemble, BasicAsm, Config};
