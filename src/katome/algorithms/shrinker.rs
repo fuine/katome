@@ -36,14 +36,17 @@ pub trait Shrinkable {
 }
 
 struct ShrinkTraverse {
+    // bitset which holds information about visited nodes
     fb: FixedBitSet,
+    // stack of nodes to visit
     stack: Vec<NodeIndex>,
+    // offset on the bitset, used during cycle-on-top shrink
+    node_offset: usize,
 }
 
 impl ShrinkTraverse {
     pub fn new(graph: &PtGraph) -> ShrinkTraverse {
         let mut v = Vec::new();
-        // [TODO]: find perfect circles - 2016-10-30 04:35
         for n in graph.externals(Incoming) {
             v.push(n);
         }
@@ -51,46 +54,90 @@ impl ShrinkTraverse {
         ShrinkTraverse {
             fb: FixedBitSet::with_capacity(len),
             stack: v,
+            node_offset: 0,
         }
     }
 
+    #[inline]
     pub fn next(&mut self, graph: &PtGraph) -> Option<EdgeIndex> {
-        while let Some(&node) = self.stack.last() {
-            let mut current_node = node;
-            let mut new_ancestor;
-            loop {
-                new_ancestor = false;
-                for e in graph.edges_directed(current_node, Outgoing) {
-                    let n = e.target();
-                    if self.is_visited(n) {
-                        continue;
+        let mut iter = false;
+        let mut single_nodes = vec![];
+        loop {
+            while let Some(&node) = self.stack.last() {
+                let mut current_node = node;
+                let mut new_ancestor;
+                loop {
+                    new_ancestor = false;
+                    for e in graph.edges_directed(current_node, Outgoing) {
+                        let n = e.target();
+                        if self.is_visited(n) {
+                            continue;
+                        }
+                        self.mark_visited(n);
+                        if graph.out_degree(n) == 1 && graph.in_degree(n) == 1 {
+                            // current_node -> n -> x
+                            // that's the only thing we need to start shrinking
+                            return Some(e.id());
+                        }
+                        else {
+                            self.stack.push(n);
+                            current_node = n;
+                            new_ancestor = true;
+                            break;
+                        }
+
                     }
-                    self.mark_visited(n);
-                    if graph.out_degree(n) == 1 && graph.in_degree(n) == 1 {
-                        // current_node -> n -> x
-                        // that's the only thing we need to start shrinking
-                        return Some(e.id());
-                    }
-                    else {
-                        self.stack.push(n);
-                        current_node = n;
-                        new_ancestor = true;
+                    if !new_ancestor {
+                        self.stack.pop();
+                        self.mark_visited(current_node);
                         break;
                     }
                 }
-                if !new_ancestor {
-                    self.stack.pop();
+            }
+            // If we are here it means that graph has some component that has a
+            // cycle in its root - there are no incoming external nodes, yet
+            // some nodes have not been checked. Note that shrinker doesn't
+            // strictly have to start from the top - it will eventually shrink
+            // the whole graph just by shrinking pieces, even if it's not very
+            // performant
+
+            // find the next unvisited node in the graph and put it on the stack
+            for (i, n) in self.fb.zeros().skip(self.node_offset).enumerate() {
+                let node = NodeIndex::new(n);
+                // This if statement is technically not necessary, as algorithm
+                // works exactly the same without it, but it massively reduces
+                // the runtime. It filters all of the single nodes out --
+                // there's nothing to do for them either way.
+                if graph.in_degree(node) == 0 && graph.out_degree(node) == 0 {
+                    single_nodes.push(node);
+                }
+                else {
+                    self.stack.push(NodeIndex::new(n));
+                    // remember the current offset so we dont have to iterate
+                    // over it again -- all nodes up to this point have been
+                    // visited.
+                    self.node_offset += i;
+                    iter = true;
                     break;
                 }
+            }
+            if !iter {
+                break;
+            }
+            iter = false;
+            for node in single_nodes.drain(..) {
+                self.mark_visited(node);
             }
         }
         None
     }
 
+    #[inline]
     fn is_visited(&self, node: NodeIndex) -> bool {
         self.fb.contains(node.index())
     }
 
+    #[inline]
     fn mark_visited(&mut self, node: NodeIndex) {
         self.fb.insert(node.index());
     }
@@ -113,17 +160,17 @@ impl Shrinkable for PtGraph {
         }
     }
     fn shrink(&mut self) {
-        info!("Start shrinking the graph with {} nodes and {} edges",
-              self.node_count(),
-              self.edge_count());
+        debug!("Start shrinking the graph with {} nodes and {} edges",
+               self.node_count(),
+               self.edge_count());
         let mut t = ShrinkTraverse::new(self);
         while let Some(base_edge) = t.next(self) {
             self.shrink_single_path(base_edge);
         }
         self.remove_single_vertices();
-        info!("Shrinking ended. Shrunk graph has {} nodes and {} edges",
-              self.node_count(),
-              self.edge_count());
+        debug!("Shrinking ended. Shrunk graph has {} nodes and {} edges",
+               self.node_count(),
+               self.edge_count());
     }
 
     #[inline]
@@ -202,6 +249,7 @@ mod tests {
     // lock here
             let _l = LOCK.lock().unwrap();
             SEQUENCES.write().clear();
+            SEQUENCES.write().push(vec![].into_boxed_slice());
             SEQUENCES.write().push(c1.into_boxed_slice());
             SEQUENCES.write().push(c2.into_boxed_slice());
             SEQUENCES.write().push(c3.into_boxed_slice());
@@ -230,8 +278,8 @@ mod tests {
     #[test]
     fn simplest_case_single_node() {
         setup!();
-        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(0), 1)),
-                                          (1, 2, (EdgeSlice::new(1), 1))]);
+        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(1), 1)),
+                                          (1, 2, (EdgeSlice::new(2), 1))]);
         assert_eq!(g.node_count(), 3);
         assert_eq!(g.edge_count(), 2);
         g.shrink_single_path(EdgeIndex::new(0));
@@ -246,8 +294,8 @@ mod tests {
     #[test]
     fn simplest_case_traverse() {
         setup!();
-        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(0), 1)),
-                                          (1, 2, (EdgeSlice::new(1), 1))]);
+        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(1), 1)),
+                                          (1, 2, (EdgeSlice::new(2), 1))]);
         assert_eq!(g.node_count(), 3);
         assert_eq!(g.edge_count(), 2);
         g.shrink();
@@ -261,9 +309,9 @@ mod tests {
     #[test]
     fn simple_circle_single_node() {
         setup!();
-        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(0), 1)),
-                                          (1, 2, (EdgeSlice::new(1), 1)),
-                                          (2, 0, (EdgeSlice::new(2), 1))]);
+        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(1), 1)),
+                                          (1, 2, (EdgeSlice::new(2), 1)),
+                                          (2, 0, (EdgeSlice::new(3), 1))]);
         assert_eq!(g.node_count(), 3);
         assert_eq!(g.edge_count(), 3);
         g.shrink_single_path(EdgeIndex::new(0));
@@ -275,37 +323,28 @@ mod tests {
         check_edge!(g, 0, 0, "ACGTA");
     }
 
-    /* #[test]
+    #[test]
     fn simple_circle_traverse() {
-        let c1 = compress_edge(b"ACG");
-        let c2 = compress_edge(b"CGT");
-        let c3 = compress_edge(b"GTA");
-        // lock here
-        let _l = LOCK.lock().unwrap();
-        SEQUENCES.write().clear();
-        SEQUENCES.write().push(c1.into_boxed_slice());
-        SEQUENCES.write().push(c2.into_boxed_slice());
-        SEQUENCES.write().push(c3.into_boxed_slice());
-        let mut g = PtGraph::from_edges(&[
-            (0, 1, (EdgeSlice::new(0), 1)), (1, 2, (EdgeSlice::new(1), 1)),
-            (2, 0, (EdgeSlice::new(2), 1))
-        ]);
+        setup!();
+        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(1), 1)),
+                                          (1, 2, (EdgeSlice::new(2), 1)),
+                                          (2, 0, (EdgeSlice::new(3), 1))]);
         assert_eq!(g.node_count(), 3);
         assert_eq!(g.edge_count(), 3);
-        shrink(&mut g);
+        g.shrink();
         assert_eq!(g.edge_count(), 1);
         assert_eq!(g.node_count(), 1);
-        assert_eq!(g.out_degree(&NodeIndex::new(0)), 1);
-        assert_eq!(g.in_degree(&NodeIndex::new(0)), 1);
-    } */
+        assert_eq!(g.out_degree(NodeIndex::new(0)), 1);
+        assert_eq!(g.in_degree(NodeIndex::new(0)), 1);
+    }
 
     #[test]
     fn simple_circle_with_tail_traverse() {
         setup!();
-        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(0), 1)),
-                                          (1, 2, (EdgeSlice::new(1), 1)),
-                                          (2, 3, (EdgeSlice::new(2), 1)),
-                                          (3, 1, (EdgeSlice::new(3), 1))]);
+        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(1), 1)),
+                                          (1, 2, (EdgeSlice::new(2), 1)),
+                                          (2, 3, (EdgeSlice::new(3), 1)),
+                                          (3, 1, (EdgeSlice::new(4), 1))]);
         assert_eq!(g.node_count(), 4);
         assert_eq!(g.edge_count(), 4);
         g.shrink();
@@ -320,10 +359,10 @@ mod tests {
     #[test]
     fn two_rays_source_traverse() {
         setup!();
-        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(0), 1)),
-                                          (1, 2, (EdgeSlice::new(1), 1)),
-                                          (0, 3, (EdgeSlice::new(2), 1)),
-                                          (3, 4, (EdgeSlice::new(3), 1))]);
+        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(1), 1)),
+                                          (1, 2, (EdgeSlice::new(2), 1)),
+                                          (0, 3, (EdgeSlice::new(3), 1)),
+                                          (3, 4, (EdgeSlice::new(4), 1))]);
         assert_eq!(g.node_count(), 5);
         assert_eq!(g.edge_count(), 4);
         g.shrink();
@@ -340,10 +379,10 @@ mod tests {
     #[test]
     fn two_rays_sink_traverse() {
         setup!();
-        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(0), 1)),
-                                          (1, 2, (EdgeSlice::new(1), 1)),
-                                          (3, 4, (EdgeSlice::new(2), 1)),
-                                          (4, 2, (EdgeSlice::new(3), 1))]);
+        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(1), 1)),
+                                          (1, 2, (EdgeSlice::new(2), 1)),
+                                          (3, 4, (EdgeSlice::new(3), 1)),
+                                          (4, 2, (EdgeSlice::new(4), 1))]);
         assert_eq!(g.node_count(), 5);
         assert_eq!(g.edge_count(), 4);
         g.shrink();
@@ -355,5 +394,27 @@ mod tests {
         check_node!(g, 2, 2, 0);
         check_edge!(g, 0, 2, "ACGT");
         check_edge!(g, 1, 2, "GTAA");
+    }
+
+    // w -> x -> z, x -> y -> x, w -> k -> w
+    #[test]
+    fn shrinks_non_tree_graph() {
+        setup!();
+        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(1), 1)),
+                                          (1, 2, (EdgeSlice::new(2), 2)),
+                                          (2, 1, (EdgeSlice::new(3), 2)),
+                                          (1, 3, (EdgeSlice::new(4), 1)),
+                                          (0, 4, (EdgeSlice::new(5), 1)),
+                                          (4, 0, (EdgeSlice::new(5), 1))]);
+        assert_eq!(g.edge_count(), 6);
+        assert_eq!(g.node_count(), 5);
+        g.shrink();
+        check_node!(g, 0, 1, 2);
+        check_node!(g, 1, 2, 2);
+        check_node!(g, 2, 1, 0);
+        check_edge!(g, 0, 0, "AACC");
+        check_edge!(g, 0, 1, "ACG");
+        check_edge!(g, 1, 1, "CGTA");
+        check_edge!(g, 1, 2, "TAA");
     }
 }

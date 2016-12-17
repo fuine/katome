@@ -7,7 +7,7 @@ use collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
 use slices::BasicSlice;
 
 use petgraph::EdgeDirection;
-use petgraph::algo::connected_components;
+use petgraph::algo::{connected_components, tarjan_scc};
 use petgraph::visit::EdgeRef;
 
 /// Collapse `Graph` into `SerializedContigs`.
@@ -27,21 +27,46 @@ impl Collapsable for PtGraph {
         info!("Starting collapse of the graph");
         // ensure that we don't end up with straight paths longer than
         // one edge
+        info!("Start shrinking the graph with {} nodes and {} edges",
+              self.node_count(),
+              self.edge_count());
         self.shrink();
+        info!("Shrinking ended. Shrunk graph has {} nodes and {} edges",
+              self.node_count(),
+              self.edge_count());
         info!("Graph has {} weakly connected components", connected_components(&self));
         loop {
-            // get all starting nodes
-            let externals = self.externals(EdgeDirection::Incoming).collect::<Vec<NodeIndex>>();
-            if externals.is_empty() {
+
+            // this is a loop over nodes which have in_degree == 0
+            loop {
+                // get all starting nodes
+                let externals = self.externals(EdgeDirection::Incoming).collect::<Vec<NodeIndex>>();
+                if externals.is_empty() {
+                    break;
+                }
+                // create contigs from each starting node
+                for n in externals {
+                    let contigs_ = contigs_from_vertex(&mut self, n);
+                    contigs.extend(contigs_);
+                }
+                // remove fake starting nodes (nodes with in_degree == out_degree == 0
+                self.remove_single_vertices();
+            }
+
+            // Cycle in the input -- use dfspostorder to get the starting node
+            // in the cycle. At this point no node in the graph has in_degree == 0
+            // and so we need to find a starting node somewhere in the 'highest'
+            // cycle in terms of topology of the subgraph.
+            if self.node_count() != 0 {
+                // we guarantee that there's at least one node to unwrap here
+                let node_in_cycle = unwrap!(tarjan_scc(&self).iter().last())[0];
+                contigs.extend(contigs_from_vertex(&mut self, node_in_cycle));
+                self.shrink();
+            }
+            else {
                 break;
             }
-            // create contigs from each starting node
-            for n in externals {
-                let contigs_ = contigs_from_vertex(&mut self, n);
-                contigs.extend(contigs_);
-            }
-            // remove fake starting nodes (nodes with in_degree == out_degree == 0
-            self.remove_single_vertices();
+
         }
         debug!("{} nodes left in the graph after collapse", self.node_count());
         info!("Collapse ended. Created {} contigs which have {} nucleotides",
@@ -225,6 +250,7 @@ mod tests {
             {
                 let mut seq = SEQUENCES.write();
                 seq.clear();
+                seq.push(vec![].into_boxed_slice());
                 seq.push(c1.into_boxed_slice());
                 seq.push(c2.into_boxed_slice());
                 seq.push(c3.into_boxed_slice());
@@ -262,7 +288,7 @@ mod tests {
     test!(creates_one_small_contig, {
         setup!(_l, graph, name, _second, _w, _x);
         catch_unwind(|| {
-            graph.add_edge(_w, _x, (EdgeSlice::new(0), 1));
+            graph.add_edge(_w, _x, (EdgeSlice::new(1), 1));
             assert_eq!(graph.edge_count(), 1);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
@@ -275,9 +301,9 @@ mod tests {
         catch_unwind(|| {
             let y = graph.add_node(());
             let z = graph.add_node(());
-            graph.add_edge(_w, _x, (EdgeSlice::new(0), 1));
-            graph.add_edge(_x, y, (EdgeSlice::new(1), 1));
-            graph.add_edge(y, z, (EdgeSlice::new(2), 1));
+            graph.add_edge(_w, _x, (EdgeSlice::new(1), 1));
+            graph.add_edge(_x, y, (EdgeSlice::new(2), 1));
+            graph.add_edge(y, z, (EdgeSlice::new(3), 1));
             assert_eq!(graph.edge_count(), 3);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
@@ -290,8 +316,8 @@ mod tests {
         catch_unwind(|| {
             let y = graph.add_node(());
             let z = graph.add_node(());
-            graph.add_edge(_w, _x, (EdgeSlice::new(0), 1));
-            graph.add_edge(y, z, (EdgeSlice::new(2), 1));
+            graph.add_edge(_w, _x, (EdgeSlice::new(1), 1));
+            graph.add_edge(y, z, (EdgeSlice::new(3), 1));
             assert_eq!(graph.edge_count(), 2);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 2);
@@ -305,9 +331,9 @@ mod tests {
         catch_unwind(|| {
             let y = graph.add_node(());
             let z = graph.add_node(());
-            graph.add_edge(_w, _x, (EdgeSlice::new(0), 2));
-            graph.add_edge(_x, y, (EdgeSlice::new(1), 1));
-            graph.add_edge(_x, z, (EdgeSlice::new(4), 1));
+            graph.add_edge(_w, _x, (EdgeSlice::new(1), 2));
+            graph.add_edge(_x, y, (EdgeSlice::new(2), 1));
+            graph.add_edge(_x, z, (EdgeSlice::new(5), 1));
             assert_eq!(graph.edge_count(), 3);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 3);
@@ -323,10 +349,10 @@ mod tests {
         catch_unwind(|| {
             let y = graph.add_node(());
             let z = graph.add_node(());
-            graph.add_edge(_w, _x, (EdgeSlice::new(0), 1));
-            graph.add_edge(_x, y, (EdgeSlice::new(1), 1));
-            graph.add_edge(y, z, (EdgeSlice::new(2), 1));
-            graph.add_edge(z, _x, (EdgeSlice::new(3), 1));
+            graph.add_edge(_w, _x, (EdgeSlice::new(1), 1));
+            graph.add_edge(_x, y, (EdgeSlice::new(2), 1));
+            graph.add_edge(y, z, (EdgeSlice::new(3), 1));
+            graph.add_edge(z, _x, (EdgeSlice::new(4), 1));
             assert_eq!(graph.edge_count(), 4);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
@@ -335,14 +361,14 @@ mod tests {
     });
 
     // w -> x -> y -> x
-    test!(shrinks_self_loop, {
+    test!(collapses_self_loop, {
         setup!(_l, graph, name, _second, _w, _x);
         catch_unwind(|| {
             let y = graph.add_node(());
-            graph.add_edge(_w, _x, (EdgeSlice::new(0), 1));
-            graph.add_edge(_x, y, (EdgeSlice::new(1), 2));
-            graph.add_edge(y, _x, (EdgeSlice::new(2), 2));
-            // graph.add_edge(z, _x, (EdgeSlice::new(3), 1));
+            graph.add_edge(_w, _x, (EdgeSlice::new(1), 1));
+            graph.add_edge(_x, y, (EdgeSlice::new(2), 2));
+            graph.add_edge(y, _x, (EdgeSlice::new(3), 2));
+            // graph.add_edge(z, _x, (EdgeSlice::new(4), 1));
             assert_eq!(graph.edge_count(), 3);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
@@ -351,19 +377,39 @@ mod tests {
     });
 
     // w -> x -> z, x -> y -> x
-    test!(shrinks_simple_loop, {
+    test!(collapses_simple_loop, {
         setup!(_l, graph, name, _second, _w, _x);
         catch_unwind(|| {
             let y = graph.add_node(());
             let z = graph.add_node(());
-            graph.add_edge(_w, _x, (EdgeSlice::new(0), 1));
-            graph.add_edge(_x, y, (EdgeSlice::new(1), 2));
-            graph.add_edge(y, _x, (EdgeSlice::new(2), 2));
-            graph.add_edge(_x, z, (EdgeSlice::new(3), 1));
+            graph.add_edge(_w, _x, (EdgeSlice::new(1), 1));
+            graph.add_edge(_x, y, (EdgeSlice::new(2), 2));
+            graph.add_edge(y, _x, (EdgeSlice::new(3), 2));
+            graph.add_edge(_x, z, (EdgeSlice::new(4), 1));
             assert_eq!(graph.edge_count(), 4);
             let contigs = graph.collapse();
             assert_eq!(contigs.len(), 1);
             assert_eq!(contigs[0], format!("{}GCGCT", &name[..unsafe { K_SIZE }]));
+        })
+    });
+
+    // w -> x -> z, x -> y -> x, w -> k -> w
+    test!(collapses_non_tree_graph, {
+        setup!(_l, graph, name, _second, _w, _x);
+        catch_unwind(|| {
+            let y = graph.add_node(());
+            let z = graph.add_node(());
+            let k = graph.add_node(());
+            graph.add_edge(_w, _x, (EdgeSlice::new(1), 1));
+            graph.add_edge(_x, y, (EdgeSlice::new(2), 2));
+            graph.add_edge(y, _x, (EdgeSlice::new(3), 2));
+            graph.add_edge(_x, z, (EdgeSlice::new(4), 1));
+            graph.add_edge(_w, k, (EdgeSlice::new(5), 1));
+            graph.add_edge(k, _w, (EdgeSlice::new(5), 1));
+            assert_eq!(graph.edge_count(), 6);
+            let contigs = graph.collapse();
+            assert_eq!(contigs.len(), 1);
+            assert_eq!(contigs[0], format!("{}GGTGCGCT", &name[..unsafe { K1_SIZE }]));
         })
     });
 }
