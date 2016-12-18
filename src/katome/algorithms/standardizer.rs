@@ -1,4 +1,21 @@
-//! fn for standardization of edges/contigs in the `Graph`.
+//! Graph standardization module.
+//!
+//! Standardization of the `Graph` is a process in which weights of edges are
+//! standardized accordingly.
+//!
+//! In the first phase of the standardization procedure contigs are
+//! standardized. For each contig mean weight is calculated and all edges which
+//! belong to such contig have their weights set to the mean value. This reduces
+//! the number of short contigs created in the output.
+//!
+//! Secondly all edges should be standardized with respect to
+//! the calculated ratio, described by this formula:
+//!
+//! `(original_genome_length - k_size)  / (sum_of_all_weights - sum_of_weights_lower_than_threshold)`
+//!
+//! During this process all edges with weights lower than given threshold will
+//! be removed from the graph.
+
 
 use algorithms::pruner::Clean;
 use collections::Graph;
@@ -70,6 +87,7 @@ impl Standardizable for PtGraph {
     }
 }
 
+#[inline]
 fn get_contigs_from_node(graph: &PtGraph, starting_node: NodeIndex,
                          ambiguous_nodes: &<PtGraph as Graph>::AmbiguousNodes)
                          -> GraphContigs {
@@ -93,6 +111,7 @@ fn get_contigs_from_node(graph: &PtGraph, starting_node: NodeIndex,
 }
 
 // Set weights of consecutive `Edge`s in the `Contig` to the mean value
+#[inline]
 fn standardize_contig(graph: &mut PtGraph, contig: Contig) {
     // sum all weights in the contig
     let sum: usize = contig.iter()

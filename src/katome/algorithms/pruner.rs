@@ -3,6 +3,7 @@
 use asm::SEQUENCES;
 use collections::HmGIR;
 use collections::girs::edges::Edge;
+use collections::graphs::Graph;
 use collections::graphs::pt_graph::{EdgeIndex, Node, NodeIndex, PtGraph};
 use compress::{compress_node, encode_fasta_symbol};
 use prelude::{EdgeWeight, K1_SIZE, K_SIZE};
@@ -13,6 +14,7 @@ use petgraph::EdgeDirection;
 use std::collections::hash_map::Entry;
 use std::iter;
 use std::slice;
+use std::vec::Drain;
 
 
 /// Describes prunable structure in the sense of genome assembly
@@ -33,29 +35,34 @@ pub trait Clean {
 impl Prunable for PtGraph {
     fn remove_dead_paths(&mut self) {
         info!("Starting graph pruning");
+        let mut to_remove: Vec<EdgeIndex> = vec![];
         loop {
-            debug!("Detected {} input/output vertices",
+            trace!("Detected {} input/output vertices",
                    Externals::new(self.raw_nodes().iter().enumerate()).count());
-            let mut to_remove: Vec<EdgeIndex> = vec![];
             // analyze found input/output vertices
+            let mut path_check_vec = vec![];
             for v in Externals::new(self.raw_nodes().iter().enumerate()) {
                 // sort into output and input paths
                 match v {
                     VertexType::Input(v_) => {
                         // decide whether or not vertex is in the dead path
-                        if let Some(dead_path) = check_dead_path(self,
-                                                                 v_,
-                                                                 EdgeDirection::Incoming,
-                                                                 EdgeDirection::Outgoing) {
-                            to_remove.extend(dead_path);
+                        check_dead_path(self,
+                                        v_,
+                                        EdgeDirection::Incoming,
+                                        EdgeDirection::Outgoing,
+                                        &mut path_check_vec);
+                        if !path_check_vec.is_empty() {
+                            to_remove.extend(path_check_vec.drain(..));
                         }
                     }
                     VertexType::Output(v_) => {
-                        if let Some(dead_path) = check_dead_path(self,
-                                                                 v_,
-                                                                 EdgeDirection::Outgoing,
-                                                                 EdgeDirection::Incoming) {
-                            to_remove.extend(dead_path);
+                        check_dead_path(self,
+                                        v_,
+                                        EdgeDirection::Outgoing,
+                                        EdgeDirection::Incoming,
+                                        &mut path_check_vec);
+                        if !path_check_vec.is_empty() {
+                            to_remove.extend(path_check_vec.drain(..));
                         }
                     }
                 }
@@ -68,7 +75,7 @@ impl Prunable for PtGraph {
             // reverse sort edge indices such that removal won't cause any troubles with swapped
             // edge indices (see `petgraph`'s explanation of `remove_edge`)
             to_remove.sort_by(|a, b| b.cmp(a));
-            remove_paths(self, to_remove.as_slice());
+            remove_paths(self, to_remove.drain(..));
         }
     }
 }
@@ -186,27 +193,47 @@ impl<'a> Iterator for Externals<'a> {
 }
 
 /// Remove dead input path.
-fn remove_paths(graph: &mut PtGraph, to_remove: &[EdgeIndex]) {
-    debug!("Removing {} dead paths", to_remove.len());
-    for e in to_remove.iter() {
-        graph.remove_edge(*e);
+#[inline]
+fn remove_paths(graph: &mut PtGraph, to_remove: Drain<EdgeIndex>) {
+    trace!("Removing {} dead paths", to_remove.len());
+    for e in to_remove {
+        let edgepoints = graph.edge_endpoints(e);
+        graph.remove_edge(e);
+        // guarantee that removal of first node won't change the index of the
+        // second node
+        if let Some(e) = edgepoints {
+            if e.0 < e.1 {
+                remove_single_node(graph, e.1);
+                remove_single_node(graph, e.0);
+            }
+            else {
+                remove_single_node(graph, e.0);
+                remove_single_node(graph, e.1);
+            }
+        }
     }
-    graph.remove_single_vertices();
 }
 
+/// Remove node if it's single.
+#[inline]
+fn remove_single_node(graph: &mut PtGraph, node: NodeIndex) {
+    if graph.in_degree(node) == 0 && graph.out_degree(node) == 0 {
+        graph.remove_node(node);
+    }
+}
 
 /// Check if vertex initializes a dead path.
+#[inline]
 fn check_dead_path(graph: &PtGraph, vertex: NodeIndex, first_direction: EdgeDirection,
-                   second_direction: EdgeDirection)
-                   -> Option<Vec<EdgeIndex>> {
-    let mut output_vec = vec![];
+                   second_direction: EdgeDirection, output_vec: &mut Vec<EdgeIndex>) {
     let mut current_vertex = vertex;
     let mut cnt = 0;
     loop {
         cnt += 1;
         if cnt >= 2 * (unsafe { K_SIZE }) {
             // this path is not dead
-            return None;
+            output_vec.clear();
+            return;
         }
         // this line lets us check outgoing once, without the need to iterate twice
         let next_edge = graph.first_edge(current_vertex, second_direction);
@@ -218,10 +245,10 @@ fn check_dead_path(graph: &PtGraph, vertex: NodeIndex, first_direction: EdgeDire
         }
         // if vertex has no outgoing edges
         else {
-            return Some(output_vec);
+            return;
         }
         if graph.neighbors_directed(current_vertex, first_direction).nth(2).is_some() {
-            return Some(output_vec);
+            return;
         }
     }
 }
