@@ -223,16 +223,66 @@ pub fn decompress_char(mut chunk: u8, padding: usize) -> char {
 
 #[inline]
 /// Compress single character and put it inside carrier.
-pub fn encode_fasta_symbol(symbol: u8, carrier: u8) -> u8 {
-    // make room for a new character
-    let x = carrier << 2;
-    match symbol {
-        b'A' => x,
-        b'C' => x | 1,
-        b'G' => x | 2,
-        b'T' => x | 3,
-        u => panic!("Unknown FASTA character found: {}", u),
-    }
+///
+/// Note that this function accepts only 4 basic nucleotides as the symbol
+/// input, namely `A`, `C`, `G`, `T`. Any other symbol will result in
+/// **undefined behavior**. Compression will turn the given symbol into two-bit
+/// representation, looking as follows:
+///
+/// * `A -> 00`
+/// * `C -> 01`
+/// * `G -> 10`
+/// * `T -> 11`
+///
+/// Function will perform a double left shift and append the compressed symbol
+/// as two LSBs. It is callees responsibility to ensure that there is enough
+/// place for the new symbol in the carrier, otherwise some information will be
+/// lost.
+///
+/// # Example
+/// ```
+/// use katome::compress::encode_fasta_symbol;
+/// let vec = vec![b'A', b'C', b'G', b'T'];
+/// let mut result_as_vec = vec![];
+/// let mut result_as_block = 0u8;
+/// for v in vec {
+///     result_as_vec.push(encode_fasta_symbol(v, 0u8));
+///     result_as_block = encode_fasta_symbol(v, result_as_block);
+/// }
+/// assert_eq!(result_as_vec, vec![0, 1, 2, 3]);
+/// assert_eq!(result_as_block, 0b00011011);
+/// ```
+pub fn encode_fasta_symbol(mut symbol: u8, mut carrier: u8) -> u8 {
+    // please note that the actual implementation is an optimized version of
+    // algorithm, which can be best described by the following naive approach:
+    // let x = carrier << 2;
+    // match symbol {
+    //     b'A' => x,
+    //     b'C' => x | 1,
+    //     b'G' => x | 2,
+    //     b'T' => x | 3,
+    //     u => // undefined behavior here
+    // }
+
+    // make room for the new symbol
+    carrier <<= 2;
+
+    // make 'A' 0
+    symbol -= b'A';
+    // shift so that second bit is first
+    symbol >>= 1;
+    // first bit = ~C . D
+    // second bit = C + A
+    // where:
+    // A = 5th bit of the original symbol
+    // C = 3rd bit of the original symbol
+    // D = 2nd bit of the original symbol
+    let c_masked = (symbol & 2) >> 1;
+    let a_masked = (symbol & 8) >> 3;
+    let d_masked = symbol & 1;
+    let first_bit = (c_masked ^ 1) & d_masked;
+    let second_bit = c_masked | a_masked;
+    carrier | (((0 | second_bit) << 1) | first_bit)
 }
 
 #[inline]
