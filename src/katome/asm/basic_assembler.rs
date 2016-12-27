@@ -3,7 +3,7 @@
 use asm::{Assemble, Contigs, SEQUENCES};
 use collections::{GIR, Graph, Convert};
 use config::Config;
-use prelude::{EdgeWeight, set_global_k_sizes};
+use prelude::{EdgeWeight, K_SIZE, set_global_k_sizes};
 use stats::Stats;
 
 use std::path::Path;
@@ -63,9 +63,13 @@ fn assemble_with_graph<P: AsRef<Path>, G: Graph>(mut graph: G, _output: P,
     graph.print_stats();
     println!("Standardizing contigs.");
     graph.standardize_contigs();
+    graph.remove_weak_edges(minimal_weight_threshold as EdgeWeight);
+    graph.standardize_contigs();
     graph.print_stats();
     println!("Standardizing edges");
-    graph.standardize_edges(original_genome_length, minimal_weight_threshold as EdgeWeight);
+    graph.standardize_edges(original_genome_length,
+                            unsafe { K_SIZE },
+                            minimal_weight_threshold as EdgeWeight);
     graph.print_stats();
     println!("Second pruning");
     graph.remove_dead_paths();
@@ -76,5 +80,6 @@ fn assemble_with_graph<P: AsRef<Path>, G: Graph>(mut graph: G, _output: P,
     let contigs = Contigs::new(original_genome_length, serialized_contigs);
     info!("Stats for the contigs: {}", contigs.stats());
     contigs.print_stats();
+    contigs.save_to_file(_output);
     info!("All done!");
 }

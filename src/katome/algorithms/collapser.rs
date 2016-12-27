@@ -1,10 +1,11 @@
 //! Create string representation of contigs out of `Graph`.
 
 use algorithms::shrinker::Shrinkable;
-use algorithms::pruner::Clean;
 use collections::Graph;
 use collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
 use slices::BasicSlice;
+
+use fixedbitset::FixedBitSet;
 
 use petgraph::EdgeDirection;
 use petgraph::algo::{connected_components, tarjan_scc};
@@ -31,12 +32,14 @@ impl Collapsable for PtGraph {
               self.node_count(),
               self.edge_count());
         self.shrink();
+        let node_count = self.node_count();
+        let mut ambiguous_nodes = FixedBitSet::with_capacity(node_count);
+        let mut single_vertices: Vec<NodeIndex> = vec![];
         info!("Shrinking ended. Shrunk graph has {} nodes and {} edges",
               self.node_count(),
               self.edge_count());
         info!("Graph has {} weakly connected components", connected_components(&self));
         loop {
-
             // this is a loop over nodes which have in_degree == 0
             loop {
                 // get all starting nodes
@@ -46,11 +49,15 @@ impl Collapsable for PtGraph {
                 }
                 // create contigs from each starting node
                 for n in externals {
-                    let contigs_ = contigs_from_vertex(&mut self, n);
+                    let contigs_ = contigs_from_vertex(&mut self,
+                                                       n,
+                                                       &mut ambiguous_nodes,
+                                                       &mut single_vertices);
                     contigs.extend(contigs_);
                 }
                 // remove fake starting nodes (nodes with in_degree == out_degree == 0
-                self.remove_single_vertices();
+                // self.remove_single_vertices();
+                remove_single_with_ambiguity(&mut self, &mut single_vertices, &mut ambiguous_nodes);
             }
 
             // Cycle in the input -- use dfspostorder to get the starting node
@@ -60,8 +67,11 @@ impl Collapsable for PtGraph {
             if self.node_count() != 0 {
                 // we guarantee that there's at least one node to unwrap here
                 let node_in_cycle = unwrap!(tarjan_scc(&self).iter().last())[0];
-                contigs.extend(contigs_from_vertex(&mut self, node_in_cycle));
-                self.shrink();
+                contigs.extend(contigs_from_vertex(&mut self,
+                                                   node_in_cycle,
+                                                   &mut ambiguous_nodes,
+                                                   &mut single_vertices));
+                remove_single_with_ambiguity(&mut self, &mut single_vertices, &mut ambiguous_nodes);
             }
             else {
                 break;
@@ -76,53 +86,93 @@ impl Collapsable for PtGraph {
     }
 }
 
+/// Remove given nodes, but save information about ambiguity in the process.
 #[inline]
-fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex) -> SerializedContigs {
+fn remove_single_with_ambiguity(graph: &mut PtGraph, to_remove: &mut Vec<NodeIndex>,
+                                ambiguous_nodes: &mut FixedBitSet) {
+    // reverse sort node indices such that removal won't cause any swaps withing to_remove
+    to_remove.sort_by(|a, b| b.cmp(a));
+    let mut last_node = graph.node_count();
+    for node in to_remove.drain(..) {
+        last_node -= 1;
+        // copy information about ambiguity of the last node
+        ambiguous_nodes.copy_bit(last_node, node.index());
+        graph.remove_node(node);
+    }
+}
+
+#[inline]
+fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex, ambiguous_nodes: &mut FixedBitSet,
+                       single_vertices: &mut Vec<NodeIndex>)
+                       -> SerializedContigs {
     let mut contigs: SerializedContigs = vec![];
     let mut contig: SerializedContig = String::new();
     let mut current_vertex = v;
     let mut current_edge_index;
     let mut simple_loop_;
-    // vector which stores possibly inconsistent points (points lying in the
-    // middle of a sequence, which might be shrunk)
-    let mut possible_inc_points: Vec<NodeIndex> = Vec::with_capacity(2);
+    let mut num_in = graph.in_degree(current_vertex);
+    let mut num_out = graph.out_degree(current_vertex);
     loop {
         simple_loop_ = None;
-        let number_of_edges = graph.out_degree(current_vertex);
-        if number_of_edges == 0 {
+        if num_out == 0 {
+            if num_in == 0 {
+                single_vertices.push(current_vertex);
+            }
             if !contig.is_empty() {
                 contigs.push(contig.clone());
             }
             return contigs;
         }
-        current_edge_index = unwrap!(graph.first_edge(current_vertex, EdgeDirection::Outgoing));
-        match number_of_edges {
-            0 => {
-                unreachable!();
+        current_edge_index = unwrap!(graph.first_edge(current_vertex, EdgeDirection::Outgoing),
+                                     "{:?} out: {}",
+                                     current_vertex,
+                                     num_out);
+        if ambiguous_nodes.contains(current_vertex.index()) {
+            if !contig.is_empty() {
+                contigs.push(contig.clone());
+                contig.clear();
             }
-            1 => {
-                // make sure that we are not dealing with the loopy end
-                if self_loop(graph, current_vertex).is_none() {
-                    simple_loop_ = simple_loop(graph, current_edge_index);
+        }
+        else {
+            match (num_in, num_out) {
+                (2, 1) => {
+                    // make sure that we are not dealing with the loopy end
+                    // if it is a self-loop then it must be of shape
+                    // a -> b, b -> b
+                    if self_loop(graph, current_vertex).is_none() {
+                        simple_loop_ = simple_loop(graph, current_edge_index);
+                        if simple_loop_.is_none() {
+                            ambiguous_nodes.insert(current_vertex.index());
+                            if !contig.is_empty() {
+                                contigs.push(contig.clone());
+                                contig.clear();
+                            }
+                        }
+                    }
                 }
-            }
-            2 => {
-                // because we handle simple loops in the match arm for 1 then
-                // any vertex with 2 outgoing edges has either a self-loop or
-                // is ambiguous
-                if let Some(e) = self_loop(graph, current_vertex) {
-                    current_edge_index = e;
+                (1, 2) | (2, 2) => {
+                    // because we handle simple loops in the match arm for 1 then
+                    // any vertex with 2 outgoing edges has either a self-loop or
+                    // is ambiguous
+                    if let Some(e) = self_loop(graph, current_vertex) {
+                        current_edge_index = e;
+                    }
+                    else {
+                        ambiguous_nodes.insert(current_vertex.index());
+                        if !contig.is_empty() {
+                            contigs.push(contig.clone());
+                            contig.clear();
+                        }
+                    }
                 }
-                else if !contig.is_empty() {
-                    contigs.push(contig.clone());
-                    contig.clear();
-                }
-            }
-            _ => {
-                // ambiguous edge
-                if !contig.is_empty() {
-                    contigs.push(contig.clone());
-                    contig.clear();
+                (0, 1) | (1, 1) => {}
+                _ => {
+                    // ambiguous edge
+                    ambiguous_nodes.insert(current_vertex.index());
+                    if !contig.is_empty() {
+                        contigs.push(contig.clone());
+                        contig.clear();
+                    }
                 }
             }
         }
@@ -133,6 +183,7 @@ fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex) -> SerializedContigs {
             contig.push_str(&unwrap!(graph.edge_weight(current_edge_index)).0.remainder());
         }
         let (_, target) = unwrap!(graph.edge_endpoints(current_edge_index));
+        num_in = graph.in_degree(target);
         if let Some(e) = simple_loop_ {
             contig.push_str(&unwrap!(graph.edge_weight(e)).0.remainder());
             // make sure to possibly remove edges in the right order (petgraph
@@ -150,8 +201,11 @@ fn contigs_from_vertex(graph: &mut PtGraph, v: NodeIndex) -> SerializedContigs {
         else {
             decrease_weight(graph, current_edge_index);
         }
-        graph.shrink_point(current_vertex);
-        possible_inc_points.clear();
+        num_out = graph.out_degree(target);
+        // if old current_vertex became a single node it's time to remove it
+        if graph.in_degree(current_vertex) == 0 && graph.out_degree(current_vertex) == 0 {
+            single_vertices.push(current_vertex);
+        }
         current_vertex = target;
     }
 }
@@ -199,7 +253,11 @@ fn simple_loop(graph: &PtGraph, edge: EdgeIndex) -> Option<EdgeIndex> {
         return None;
     }
     for e in graph.edges_directed(target, EdgeDirection::Outgoing) {
-        if e.target() == source {
+        // if weight of the edge going to the target doesn't have higher weight
+        // then such loop would be broken at the source and contig would never
+        // reach to the specified target. This in turns leads to
+        // misassemblies/mismatches in the final contigs.
+        if e.target() == source && e.weight().1 < unwrap!(graph.edge_weight(edge)).1 {
             return Some(e.id());
         }
     }
@@ -336,10 +394,11 @@ mod tests {
             graph.add_edge(_x, z, (EdgeSlice::new(5), 1));
             assert_eq!(graph.edge_count(), 3);
             let contigs = graph.collapse();
-            assert_eq!(contigs.len(), 3);
+            assert_eq!(contigs.len(), 4);
             assert_eq!(contigs[0].as_str(), &name[..unsafe { K_SIZE }]);
-            assert_eq!(contigs[2].as_str(), &name[..unsafe { K_SIZE } + 1]);
+            assert_eq!(contigs[2].as_str(), &name[..unsafe { K_SIZE }]);
             assert_eq!(contigs[1], second);
+            assert_eq!(contigs[3], &name[1..unsafe { K_SIZE } + 1]);
         })
     });
 

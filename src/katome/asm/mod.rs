@@ -6,7 +6,12 @@ use collections::{GIR, Graph, Convert};
 use config::Config;
 use prelude::LockedSequences;
 
+use std::error::Error;
+use std::io::prelude::*;
+use std::fs::File;
 use std::path::Path;
+use std::io::BufWriter;
+
 lazy_static! {
     /// Global mutable vector of bytes. Contains unique reads slices (k-mers).
     ///
@@ -46,6 +51,23 @@ impl Contigs {
         Contigs {
             original_genome_length: length_,
             serialized_contigs: serialized,
+        }
+    }
+
+    /// Save `Contigs` to the file.
+    pub fn save_to_file<P: AsRef<Path>>(&self, path: P) {
+        // Open a file in write-only mode, returns `io::Result<File>`
+        let file = match File::create(&path) {
+            Err(why) => {
+                panic!("couldn't create {}: {}", path.as_ref().display(), why.description())
+            }
+            Ok(file) => file,
+        };
+
+        let mut writer = BufWriter::new(&file);
+        for (i, c) in self.serialized_contigs.iter().enumerate() {
+            writeln!(&mut writer, ">katome_{}", i).unwrap();
+            writeln!(&mut writer, "{}", c).unwrap();
         }
     }
 }

@@ -74,7 +74,10 @@ impl ShrinkTraverse {
                             continue;
                         }
                         self.mark_visited(n);
-                        if graph.out_degree(n) == 1 && graph.in_degree(n) == 1 {
+                        if current_node == n {
+                            continue;
+                        }
+                        else if graph.out_degree(n) == 1 && graph.in_degree(n) == 1 {
                             // current_node -> n -> x
                             // that's the only thing we need to start shrinking
                             return Some(e.id());
@@ -246,6 +249,9 @@ mod tests {
             let mut l5 = basic_.clone();
             l5.extend(b"AAC");
             let c5 = compress_edge(&l5);
+            let mut l6 = basic_.clone();
+            l6.extend(b"GTCAAT");
+            let c6 = compress_edge(&l6);
     // lock here
             let _l = LOCK.lock().unwrap();
             SEQUENCES.write().clear();
@@ -255,6 +261,7 @@ mod tests {
             SEQUENCES.write().push(c3.into_boxed_slice());
             SEQUENCES.write().push(c4.into_boxed_slice());
             SEQUENCES.write().push(c5.into_boxed_slice());
+            SEQUENCES.write().push(c6.into_boxed_slice());
         )
     );
 
@@ -396,6 +403,52 @@ mod tests {
         check_edge!(g, 1, 2, "GTAA");
     }
 
+    #[test]
+    fn two_rays_source_with_tail() {
+        setup!();
+        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(1), 1)),
+                                          (1, 2, (EdgeSlice::new(2), 1)),
+                                          (2, 3, (EdgeSlice::new(3), 1)),
+                                          (1, 4, (EdgeSlice::new(4), 1)),
+                                          (4, 5, (EdgeSlice::new(5), 1))]);
+        assert_eq!(g.node_count(), 6);
+        assert_eq!(g.edge_count(), 5);
+        g.shrink();
+        assert_eq!(g.node_count(), 4);
+        assert_eq!(g.edge_count(), 3);
+        check_node!(g, 0, 0, 1);
+        check_node!(g, 1, 1, 2);
+        check_node!(g, 2, 1, 0);
+        check_node!(g, 3, 1, 0);
+        // old node 4 is now node 2 due to index changes after removal
+        check_edge!(g, 0, 1, "ACG");
+        check_edge!(g, 1, 3, "CGTA");
+        check_edge!(g, 1, 2, "TAAC");
+    }
+
+    #[test]
+    fn two_rays_sink_with_tail() {
+        setup!();
+        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(1), 1)),
+                                          (1, 2, (EdgeSlice::new(2), 1)),
+                                          (3, 4, (EdgeSlice::new(3), 1)),
+                                          (4, 2, (EdgeSlice::new(4), 1)),
+                                          (2, 5, (EdgeSlice::new(5), 1))]);
+        assert_eq!(g.node_count(), 6);
+        assert_eq!(g.edge_count(), 5);
+        g.shrink();
+        assert_eq!(g.node_count(), 4);
+        assert_eq!(g.edge_count(), 3);
+        check_node!(g, 0, 0, 1);
+        check_node!(g, 3, 0, 1);
+        check_node!(g, 2, 2, 1);
+        // old node 5 is now node 1
+        check_node!(g, 1, 1, 0);
+        check_edge!(g, 0, 2, "ACGT");
+        check_edge!(g, 3, 2, "GTAA");
+        check_edge!(g, 2, 1, "AAC");
+    }
+
     // w -> x -> z, x -> y -> x, w -> k -> w
     #[test]
     fn shrinks_non_tree_graph() {
@@ -416,5 +469,21 @@ mod tests {
         check_edge!(g, 0, 1, "ACG");
         check_edge!(g, 1, 1, "CGTA");
         check_edge!(g, 1, 2, "TAA");
+    }
+
+    // x -> y -> z
+    #[test]
+    fn shrinks_non_equal_sequences() {
+        setup!();
+        let mut g = PtGraph::from_edges(&[(0, 1, (EdgeSlice::new(1), 1)),
+                                          (1, 2, (EdgeSlice::new(2), 1)),
+                                          (2, 3, (EdgeSlice::new(6), 1))]);
+        assert_eq!(g.edge_count(), 3);
+        assert_eq!(g.node_count(), 4);
+        g.shrink();
+        assert_eq!(g.edge_count(), 1);
+        check_node!(g, 0, 0, 1);
+        check_node!(g, 1, 1, 0);
+        check_edge!(g, 0, 1, "ACGTCAAT");
     }
 }

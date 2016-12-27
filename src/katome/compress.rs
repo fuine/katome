@@ -282,7 +282,7 @@ pub fn encode_fasta_symbol(mut symbol: u8, mut carrier: u8) -> u8 {
     let d_masked = symbol & 1;
     let first_bit = (c_masked ^ 1) & d_masked;
     let second_bit = c_masked | a_masked;
-    carrier | (((0 | second_bit) << 1) | first_bit)
+    carrier | ((second_bit << 1) | first_bit)
 }
 
 #[inline]

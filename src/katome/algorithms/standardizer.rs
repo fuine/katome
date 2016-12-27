@@ -20,7 +20,7 @@
 use algorithms::pruner::Clean;
 use collections::Graph;
 use collections::graphs::pt_graph::{EdgeIndex, NodeIndex, PtGraph};
-use prelude::{EdgeWeight, K_SIZE};
+use prelude::EdgeWeight;
 
 use petgraph::EdgeDirection;
 
@@ -32,13 +32,15 @@ type GraphContigs = Vec<Contig>;
 /// Trait describing standardization of the `Graph`.
 pub trait Standardizable {
     /// Standardize edges of the `Graph`.
-    fn standardize_edges(&mut self, original_genome_length: usize, threshold: EdgeWeight);
+    fn standardize_edges(&mut self, original_genome_length: usize, k_size: usize,
+                         threshold: EdgeWeight);
     /// Standardize each contig.
     fn standardize_contigs(&mut self);
 }
 
 impl Standardizable for PtGraph {
-    fn standardize_edges(&mut self, original_genome_length: usize, threshold: EdgeWeight) {
+    fn standardize_edges(&mut self, original_genome_length: usize, k_size: usize,
+                         threshold: EdgeWeight) {
         // calculate sum of all weights of edges (s) and sum of weights lower than threshold (l)
         let (s, l) = self.raw_edges()
             .iter()
@@ -50,16 +52,9 @@ impl Standardizable for PtGraph {
                     (acc.0 + e.weight.1 as usize, acc.1)
                 }
             });
-        let p: f64 = calculate_standardization_ratio(original_genome_length,
-                                                     unsafe { K_SIZE },
-                                                     s as usize,
-                                                     l as usize);
-        info!("Ratio: {} for g: {} k: {} s: {} l: {}",
-              p,
-              original_genome_length,
-              unsafe { K_SIZE },
-              s,
-              l);
+        let p: f64 =
+            calculate_standardization_ratio(original_genome_length, k_size, s as usize, l as usize);
+        info!("Ratio: {} for g: {} k: {} s: {} l: {}", p, original_genome_length, k_size, s, l);
         // normalize edges across the graph
         for weight in self.edge_weights_mut() {
             let new_weight = (weight.1 as f64 * p).round() as EdgeWeight;
@@ -69,7 +64,7 @@ impl Standardizable for PtGraph {
             }
             else {
                 new_weight
-            }
+            };
         }
         // remove edges with weight 0
         self.remove_weak_edges(1);
@@ -253,6 +248,67 @@ mod tests {
             assert_eq!(graph.edge_weight(EdgeIndex::new(0)).unwrap().1, 8);
             for i in 1..4 {
                 assert_eq!(graph.edge_weight(EdgeIndex::new(i)).unwrap().1, 40);
+            }
+        }
+
+        #[test]
+        fn standardizes_edges_from_example() {
+            let mut graph = PtGraph::from_edges(&[(0, 1, (EdgeSlice::default(), 8)),
+                                                  (1, 2, (EdgeSlice::default(), 8)),
+                                                  (2, 3, (EdgeSlice::default(), 8)),
+                                                  (3, 4, (EdgeSlice::default(), 16)),
+                                                  (4, 5, (EdgeSlice::default(), 16)),
+                                                  (5, 6, (EdgeSlice::default(), 9)),
+                                                  (6, 7, (EdgeSlice::default(), 9)),
+                                                  (7, 8, (EdgeSlice::default(), 1)),
+                                                  (7, 9, (EdgeSlice::default(), 4)),
+                                                  (9, 10, (EdgeSlice::default(), 4)),
+                                                  (3, 11, (EdgeSlice::default(), 8)),
+                                                  (11, 12, (EdgeSlice::default(), 8)),
+                                                  (12, 13, (EdgeSlice::default(), 8)),
+                                                  (13, 5, (EdgeSlice::default(), 8))]);
+            graph.standardize_edges(17, 3, 3);
+            assert_eq!(graph.edge_count(), 13);
+            // assert_eq!(graph.edge_weight(EdgeIndex::new(0)).unwrap().1, 8);
+            for i in 0..13 {
+                if [3, 4].contains(&i) {
+                    assert_eq!(graph.edge_weight(EdgeIndex::new(i)).unwrap().1, 2);
+                }
+                else {
+                    assert_eq!(graph.edge_weight(EdgeIndex::new(i)).unwrap().1, 1);
+                }
+            }
+        }
+
+        #[test]
+        fn standardizes_contigs_from_example() {
+            let mut graph = PtGraph::from_edges(&[(0, 1, (EdgeSlice::default(), 3)),
+                                                  (1, 2, (EdgeSlice::default(), 2)),
+                                                  (2, 3, (EdgeSlice::default(), 3)),
+                                                  (3, 4, (EdgeSlice::default(), 1)),
+                                                  (4, 5, (EdgeSlice::default(), 3)),
+                                                  (5, 6, (EdgeSlice::default(), 5)),
+                                                  (6, 7, (EdgeSlice::default(), 5)),
+                                                  (7, 8, (EdgeSlice::default(), 3)),
+                                                  (7, 9, (EdgeSlice::default(), 4)),
+                                                  (9, 10, (EdgeSlice::default(), 6)),
+                                                  (3, 11, (EdgeSlice::default(), 1)),
+                                                  (11, 12, (EdgeSlice::default(), 2)),
+                                                  (12, 13, (EdgeSlice::default(), 2)),
+                                                  (13, 5, (EdgeSlice::default(), 2))]);
+            graph.standardize_contigs();
+            assert_eq!(graph.edge_count(), 14);
+            // assert_eq!(graph.edge_weight(EdgeIndex::new(0)).unwrap().1, 8);
+            for i in 0..13 {
+                if [0, 1, 2, 7].contains(&i) {
+                    assert_eq!(graph.edge_weight(EdgeIndex::new(i)).unwrap().1, 3);
+                }
+                else if [5, 6, 8, 9].contains(&i) {
+                    assert_eq!(graph.edge_weight(EdgeIndex::new(i)).unwrap().1, 5);
+                }
+                else {
+                    assert_eq!(graph.edge_weight(EdgeIndex::new(i)).unwrap().1, 2);
+                }
             }
         }
     }

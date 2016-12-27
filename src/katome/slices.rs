@@ -356,5 +356,14 @@ mod tests {
                 assert!(es1.hash(&mut hasher) == es2.hash(&mut hasher));
             })
         });
+
+        test!(proper_remained_length, {
+            setup!(_l, name);
+            catch_unwind(|| {
+                let es1 = EdgeSlice::new(3);
+                assert_eq!(name.len(), unsafe{K_SIZE});
+                assert_eq!(es1.remainder().len(), 1);
+            })
+        });
     }
 }
