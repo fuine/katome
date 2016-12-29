@@ -6,7 +6,7 @@ use compress::CHARS_PER_BYTE;
 /// Index type for both nodes and edges in the graph/gir.
 pub type Idx = usize;
 /// Type for representing weight of the `Edge`.
-pub type EdgeWeight = u16;
+pub type EdgeWeight = u32;
 /// Size of k-mer. Please note that until compile-time environment arguments
 /// won't be implemented in Rust we need to use static mut to easily change this
 /// constant without recompilation/changing sources.

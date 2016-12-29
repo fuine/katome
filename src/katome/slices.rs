@@ -361,7 +361,7 @@ mod tests {
             setup!(_l, name);
             catch_unwind(|| {
                 let es1 = EdgeSlice::new(3);
-                assert_eq!(name.len(), unsafe{K_SIZE});
+                assert_eq!(name.len(), unsafe { K_SIZE });
                 assert_eq!(es1.remainder().len(), 1);
             })
         });

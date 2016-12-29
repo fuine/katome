@@ -39,17 +39,22 @@ pub trait Build: Init {
     /// return with information about total number of read bytes.
     ///
     /// Currently supports fastaq format.
-    fn create<P: AsRef<Path>>(path: P, ft: InputFileType, reverse_complement: bool) -> (Self, usize)
+    fn create<P: AsRef<Path>>(path: P, ft: InputFileType, reverse_complement: bool,
+                              minimal_weight_threshold: EdgeWeight)
+                              -> (Self, usize)
         where Self: Sized {
         match ft {
             InputFileType::Fasta => create_fasta(path, reverse_complement),
             InputFileType::Fastq => create_fastq(path, reverse_complement),
-            InputFileType::BFCounter => create_bfc(path, reverse_complement),
+            InputFileType::BFCounter => {
+                create_bfc(path, reverse_complement, minimal_weight_threshold)
+            }
         }
     }
 }
 
-fn create_bfc<P: AsRef<Path>, T: Sized + Init + Build>(path: P, reverse_complement: bool)
+fn create_bfc<P: AsRef<Path>, T: Sized + Init + Build>(path: P, reverse_complement: bool,
+                                                       minimal_weight_threshold: EdgeWeight)
                                                        -> (T, usize) {
     let mut total = 0usize;
     let edge_count = count_lines(&path);
@@ -65,7 +70,17 @@ fn create_bfc<P: AsRef<Path>, T: Sized + Init + Build>(path: P, reverse_compleme
         let e_ = e.unwrap();
         let mut iter = e_.split('\t');
         let edge = iter.next().unwrap().bytes().collect::<Vec<u8>>();
-        let weight = iter.next().unwrap().parse::<EdgeWeight>().unwrap();
+        let weight = match iter.next().unwrap().parse::<EdgeWeight>() {
+            Ok(w) => w,
+            Err(e) => {
+                panic!("Parse int error (if the kind is overflow user should change type of \
+                        EdgeWeight in prelude.rs): {}",
+                       e.description())
+            }
+        };
+        if weight < minimal_weight_threshold {
+            continue;
+        }
         total += edge.len() as Idx;
         collection.add_read_bfc(&edge, weight, reverse_complement);
     }
