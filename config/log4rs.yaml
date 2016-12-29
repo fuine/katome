@@ -1,0 +1,22 @@
+refresh_rate: 30 seconds
+appenders:
+  stdout:
+    kind: console
+    filters:
+        -
+          kind: threshold
+          level: info
+    encoder:
+      pattern: "{h({d(%H:%M:%S)(local)} - {M} {l} - {m})}{n}"
+  katome_logger:
+    kind: file
+    path: "log/katome.log"
+    encoder:
+      pattern: "{d(%Y-%m-%d %H:%M:%S %Z)(local)} - {M} {l} - {m}{n}"
+
+loggers:
+    katome:
+      level: trace
+      appenders:
+        - katome_logger
+        - stdout
