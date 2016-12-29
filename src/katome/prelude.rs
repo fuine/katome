@@ -21,7 +21,7 @@ pub type Sequences = Vec<Box<[u8]>>;
 pub type LockedSequences = RwLock<Sequences>;
 
 /// Set global variables `K_SIZE`, `K1_SIZE`, `COMPRESSED_K1_SIZE` using
-/// provided k_size. This function is not thread safe, and thus it is marked
+/// provided `k_size`. This function is not thread safe, and thus it is marked
 /// unsafe.
 pub unsafe fn set_global_k_sizes(k_size: usize) {
     assert!(k_size > 1);

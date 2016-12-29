@@ -5,9 +5,9 @@ use asm::SEQUENCES;
 use collections::{Convert, GIR};
 use collections::girs::edges::{Edge, Outgoing};
 use collections::graphs::pt_graph::{NodeIndex, PtGraph};
-use compress::{change_last_char_in_edge, compress_kmer, kmer_to_edge};
+use compress::{change_last_char_in_edge, compress_kmer, kmer_to_edge, compress_kmer_with_rev_compl};
 use config::InputFileType;
-use prelude::{Idx, K_SIZE};
+use prelude::{Idx, K_SIZE, K1_SIZE};
 use slices::{BasicSlice, EdgeSlice, NodeSlice};
 use super::hs_gir::create_or_modify_edge;
 
@@ -36,73 +36,119 @@ impl Init for HmGIR {
 
 impl Build for HmGIR {
     /// Add new reads to `HmGIR`, modify weights of existing edges.
-    fn add_read_fastaq(&mut self, read: &[u8]) {
+    fn add_read_fastaq(&mut self, read: &[u8], reverse_complement: bool) {
         assert!(read.len() as Idx >= unsafe { K_SIZE }, "Read is too short!");
-        let mut source_node = NodeSlice::new(0);
-        let mut target_node;
-        let mut insert = false;
-        for (cnt, window) in read.windows(unsafe { K_SIZE } as usize).enumerate() {
-            {
-                let mut s = SEQUENCES.write();
-                s[0] = compress_kmer(window).into_boxed_slice();
+        let mut s = NodeSlice::default();
+        let mut t = NodeSlice::default();
+        if reverse_complement {
+            // because underlying algorithm which adds nodes/edges to the graph
+            // relies on the fact that each time we slide the window the old
+            // target node becomes the new souce node, we cant insert reverse
+            // complement after kmer is compressed, but rather we need to store
+            // all reverse complements and add them after original read has been
+            // added. What is essentially happening in here is that first all
+            // read kmers are added and then all reverse complements are added.
+            // Generation of reverse complements is mangled together with
+            // compression of read kmers for performance reasons.
+            let mut reversed = Vec::with_capacity(read.len() - unsafe { K1_SIZE });
+            // let remainder = unsafe{ K1_SIZE } % 4;
+            for (cnt, window) in read.windows(unsafe { K_SIZE } as usize).enumerate() {
+                // compress k_mer, generate compressed reverse complement of the
+                // kmer and store it to add after all kmers for the read are
+                // generated
+                let (compressed_kmer, rev_compl_compr) = compress_kmer_with_rev_compl(window);
+                reversed.push((rev_compl_compr, window[window.len() - 1]));
+                add_single_edge(self,
+                                cnt == 0,
+                                compressed_kmer,
+                                &mut s,
+                                &mut t,
+                                window[window.len() - 1]);
             }
-            // insert source on the first pass of the loop
-            if cnt == 0 {
-                source_node = {
-                    // get a proper key to the hashmap
-                    match self.entry(source_node) {
-                        Entry::Occupied(oe) => *oe.key(),
-                        Entry::Vacant(_) => {
-                            // push to vector
-                            let mut s = SEQUENCES.write();
-                            let tmp = s[0].clone();
-                            let offset = s.len();
-                            s.push(tmp);
-                            insert = true;
-                            NodeSlice::new(2 * offset)
-                        }
-                    }
-                };
-
-                if insert {
-                    self.insert(source_node, Box::new([]));
-                }
+            // add reverse complements
+            let rev = reversed.len() - 1;
+            let last = reversed.remove(rev);
+            add_single_edge(self, true, last.0, &mut s, &mut t, last.1);
+            for r in reversed.drain(..).rev() {
+                add_single_edge(self, false, r.0, &mut s, &mut t, r.1);
             }
-
-            target_node = NodeSlice::new(1);
-            target_node = {
-                // get a proper key to the hashmap
-                match self.entry(target_node) {
-                    Entry::Occupied(oe) => {
-                        insert = false;
-                        *oe.key()
-                    }
-                    Entry::Vacant(_) => {
-                        // push to vector
-                        let offset = if !insert {
-                            let mut s = SEQUENCES.write();
-                            let tmp = s[0].clone();
-                            s.push(tmp);
-                            2 * s.len() - 1
-                        }
-                        else {
-                            source_node.offset() + 1
-                        };
-                        insert = true;
-                        NodeSlice::new(offset)
-                    }
-                }
-            };
-
-            if insert {
-                self.insert(target_node, Box::new([]));
-                insert = false;
+        }
+        else {
+            for (cnt, window) in read.windows(unsafe { K_SIZE } as usize).enumerate() {
+                let compressed_kmer = compress_kmer(window);
+                add_single_edge(self,
+                                cnt == 0,
+                                compressed_kmer,
+                                &mut s,
+                                &mut t,
+                                window[window.len() - 1]);
             }
-            let e: &mut Outgoing = unwrap!(self.get_mut(&source_node), "Node disappeared");
-            create_or_modify_edge(e, target_node.offset(), window[window.len() - 1]);
-            source_node = target_node;
         }
     }
+}
+
+#[inline]
+fn add_single_edge(gir: &mut HmGIR, first_node: bool, compressed: Vec<u8>,
+                   source_node: &mut NodeSlice, target_node: &mut NodeSlice, last_char: u8) {
+    let mut insert = false;
+    {
+        let mut s = SEQUENCES.write();
+        s[0] = compressed.into_boxed_slice();
+    }
+    // insert source on the first pass of the loop
+    if first_node {
+        *source_node = {
+            // get a proper key to the hashmap
+            match gir.entry(*source_node) {
+                Entry::Occupied(oe) => *oe.key(),
+                Entry::Vacant(_) => {
+                    // push to vector
+                    let mut s = SEQUENCES.write();
+                    let tmp = s[0].clone();
+                    let offset = s.len();
+                    s.push(tmp);
+                    insert = true;
+                    NodeSlice::new(2 * offset)
+                }
+            }
+        };
+
+        if insert {
+            gir.insert(*source_node, Box::new([]));
+        }
+    }
+
+    *target_node = NodeSlice::new(1);
+    *target_node = {
+        // get a proper key to the hashmap
+        match gir.entry(*target_node) {
+            Entry::Occupied(oe) => {
+                insert = false;
+                *oe.key()
+            }
+            Entry::Vacant(_) => {
+                // push to vector
+                let offset = if !insert {
+                    let mut s = SEQUENCES.write();
+                    let tmp = s[0].clone();
+                    s.push(tmp);
+                    2 * s.len() - 1
+                }
+                else {
+                    source_node.offset() + 1
+                };
+                insert = true;
+                NodeSlice::new(offset)
+            }
+        }
+    };
+
+    if insert {
+        gir.insert(*target_node, Box::new([]));
+    }
+    let e: &mut Outgoing = unwrap!(gir.get_mut(source_node), "Node disappeared");
+    create_or_modify_edge(e, target_node.offset(), last_char);
+    *source_node = *target_node;
 }
 
 

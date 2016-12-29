@@ -3,9 +3,9 @@
 use algorithms::builder::{Build, Init};
 use asm::SEQUENCES;
 use collections::graphs::Graph;
-use compress::{compress_kmer, kmer_to_edge};
+use compress::{compress_kmer, kmer_to_edge, compress_kmer_with_rev_compl};
 use config::InputFileType;
-use prelude::{EdgeWeight, Idx, K_SIZE};
+use prelude::{EdgeWeight, Idx, K_SIZE, K1_SIZE};
 use slices::{BasicSlice, EdgeSlice, NodeSlice};
 
 use fixedbitset::FixedBitSet;
@@ -83,9 +83,16 @@ struct PtGraphBuilder {
     seen_nodes: SeenNodes,
     reads_to_nodes: ReadsToNodes,
     fb: FixedBitSet,
+    counts: Vec<u8>,
+}
+
+#[inline]
+fn div_rem(x: usize) -> (usize, usize) {
+    (x / 32, x % 32)
 }
 
 impl PtGraphBuilder {
+    #[inline]
     fn add_bfc_node(&mut self, mut node: NodeSlice) -> NodeIndex {
         let mut insert = false;
         if let Some(key) = self.seen_nodes.get(&node) {
@@ -99,6 +106,8 @@ impl PtGraphBuilder {
         if insert {
             self.seen_nodes.insert(node);
             self.fb.set(node.offset(), true);
+            let block = node.offset() / 32;
+            self.counts[block] += 1;
             self.graph.add_node(())
         }
         else {
@@ -106,6 +115,7 @@ impl PtGraphBuilder {
         }
     }
 
+    #[inline]
     fn add_fasta_node(&mut self, node: NodeSlice) -> NodeIndex {
         match self.reads_to_nodes.entry(node) {
             Entry::Occupied(oe) => {
@@ -120,9 +130,64 @@ impl PtGraphBuilder {
         }
     }
 
+    #[inline]
     fn get_node_idx(&self, node: NodeSlice) -> NodeIndex {
         let off = node.offset();
-        NodeIndex::new(self.fb.count_ones(..off))
+        let (block_idx, last_block_offset) = div_rem(off);
+        let mut idx = 0;
+        for &i in &self.counts[..block_idx] {
+            idx += i as usize;
+        }
+        if last_block_offset != 0 {
+            let block = self.fb.as_slice()[block_idx];
+            let mask = u32::max_value() >> (32 - last_block_offset);
+            idx += (block & mask).count_ones() as usize;
+        }
+        NodeIndex::new(idx)
+    }
+
+    #[inline]
+    fn add_single_edge_fastaq(&mut self, first_edge: bool, compressed: Vec<u8>,
+                              s: &mut NodeIndex, t: &mut NodeIndex) {
+        let offset;
+        {
+            let mut s = SEQUENCES.write();
+            offset = s.len();
+            s.push(compressed.into_boxed_slice());
+        }
+        if first_edge {
+            let source = NodeSlice::new(2 * offset);
+            *s = self.add_fasta_node(source);
+        }
+        let target = NodeSlice::new(2 * offset + 1);
+        *t = self.add_fasta_node(target);
+        match self.graph.find_edge(*s, *t) {
+            // edge already in the graph, update it's weight
+            Some(e) => {
+                SEQUENCES.write().pop();
+                self.graph.edge_weight_mut(e).expect("This should never fail").1 += 1;
+            }
+            // insert new edge
+            None => {
+                self.graph.add_edge(*s, *t, (EdgeSlice::from(NodeSlice::new(2 * offset)), 1));
+            }
+        }
+        *s = *t;
+    }
+
+    #[inline]
+    fn add_single_edge_bfc(&mut self, compressed_kmer: Vec<u8>, weight: EdgeWeight) {
+        let offset;
+        {
+            let mut s = SEQUENCES.write();
+            offset = s.len();
+            s.push(compressed_kmer.into_boxed_slice());
+        }
+        let source = NodeSlice::new(2 * offset);
+        let target = NodeSlice::new(2 * offset + 1);
+        let s = self.add_bfc_node(source);
+        let t = self.add_bfc_node(target);
+        self.graph.add_edge(s, t, (EdgeSlice::from(source), weight));
     }
 }
 
@@ -161,6 +226,7 @@ impl Init for PtGraphBuilder {
                         ReadsToNodes::with_capacity_and_hasher(nodes,
                                                                BuildHash::<MetroHash>::default()),
                     fb: FixedBitSet::with_capacity(0),
+                    counts: Vec::with_capacity(0),
                 }
             }
             InputFileType::BFCounter => {
@@ -171,7 +237,12 @@ impl Init for PtGraphBuilder {
                                                             BuildHash::<MetroHash>::default()),
                     reads_to_nodes:
                         ReadsToNodes::with_capacity_and_hasher(0, BuildHash::<MetroHash>::default()),
-                    fb: FixedBitSet::with_capacity(2 * edges + 1),
+                    // each edge can create 2 nodes, and there are 2 dummy nodes
+                    // created by the 0 and 1 offset, used as temporary
+                    // placeholders in SEQUENCES. Refer to SEQUENCES
+                    // documentation for more information.
+                    fb: FixedBitSet::with_capacity(4 * edges + 2),
+                    counts: vec![0; ((4 * edges + 2) as f64 / 32.0).ceil() as usize],
                 }
             }
         }
@@ -179,60 +250,66 @@ impl Init for PtGraphBuilder {
 }
 
 impl Build for PtGraphBuilder {
-    fn add_read_fastaq(&mut self, read: &[u8]) {
+    #[inline]
+    fn add_read_fastaq(&mut self, read: &[u8], reverse_complement: bool) {
         assert!(read.len() as Idx >= unsafe { K_SIZE }, "Read is too short!");
-        let mut target;
         let mut s = NodeIndex::default();
-        let mut t;
-        for (cnt, window) in read.windows(unsafe { K_SIZE } as usize).enumerate() {
-            let compressed_kmer = compress_kmer(window);
-            let offset;
-            {
-                let mut s = SEQUENCES.write();
-                offset = s.len();
-                s.push(compressed_kmer.into_boxed_slice());
+        let mut t = NodeIndex::default();
+
+        if reverse_complement {
+            // because underlying algorithm which adds nodes/edges to the graph
+            // relies on the fact that each time we slide the window the old
+            // target node becomes the new souce node, we cant insert reverse
+            // complement after kmer is compressed, but rather we need to store
+            // all reverse complements and add them after original read has been
+            // added. What is essentially happening in here is that first all
+            // read kmers are added and then all reverse complements are added.
+            // Generation of reverse complements is mangled together with
+            // compression of read kmers for performance reasons.
+            let mut reversed = Vec::with_capacity(read.len() - unsafe { K1_SIZE });
+            // let remainder = unsafe{ K1_SIZE } % 4;
+            for (cnt, window) in read.windows(unsafe { K_SIZE } as usize).enumerate() {
+                // compress k_mer, generate compressed reverse complement of the
+                // kmer and store it to add after all kmers for the read are
+                // generated
+                let (compressed_kmer, rev_compl_compr) = compress_kmer_with_rev_compl(window);
+                reversed.push(rev_compl_compr);
+                self.add_single_edge_fastaq(cnt == 0, compressed_kmer, &mut s, &mut t);
             }
-            if cnt == 0 {
-                let source = NodeSlice::new(2 * offset);
-                s = self.add_fasta_node(source);
+            // add reverse complements
+            let rev = reversed.len() - 1;
+            self.add_single_edge_fastaq(true, reversed.remove(rev), &mut s, &mut t);
+            for r in reversed.drain(..).rev() {
+                self.add_single_edge_fastaq(false, r, &mut s, &mut t);
             }
-            target = NodeSlice::new(2 * offset + 1);
-            t = self.add_fasta_node(target);
-            match self.graph.find_edge(s, t) {
-                // edge already in the graph, update it's weight
-                Some(e) => {
-                    SEQUENCES.write().pop();
-                    self.graph.edge_weight_mut(e).expect("This should never fail").1 += 1;
-                }
-                // insert new edge
-                None => {
-                    self.graph.add_edge(s, t, (EdgeSlice::from(NodeSlice::new(2 * offset)), 1));
-                }
+        }
+        else {
+            for (cnt, window) in read.windows(unsafe { K_SIZE } as usize).enumerate() {
+                let compressed_kmer = compress_kmer(window);
+                self.add_single_edge_fastaq(cnt == 0, compressed_kmer, &mut s, &mut t);
             }
-            s = t;
         }
     }
 
-    fn add_read_bfc(&mut self, read: &[u8], weight: EdgeWeight) {
+    #[inline]
+    fn add_read_bfc(&mut self, read: &[u8], weight: EdgeWeight, reverse_complement: bool) {
         assert!(read.len() as Idx >= unsafe { K_SIZE }, "Read is too short!");
-        let compressed_kmer = compress_kmer(read);
-        let offset;
-        {
-            let mut s = SEQUENCES.write();
-            offset = s.len();
-            s.push(compressed_kmer.into_boxed_slice());
+        if reverse_complement {
+            let (compressed_kmer, rev_compl_compr) = compress_kmer_with_rev_compl(read);
+            self.add_single_edge_bfc(compressed_kmer, weight);
+            self.add_single_edge_bfc(rev_compl_compr, weight);
         }
-        let source = NodeSlice::new(2 * offset);
-        let target = NodeSlice::new(2 * offset + 1);
-        let s = self.add_bfc_node(source);
-        let t = self.add_bfc_node(target);
-        self.graph.add_edge(s, t, (EdgeSlice::from(source), weight));
+        else {
+            let compressed_kmer = compress_kmer(read);
+            self.add_single_edge_bfc(compressed_kmer, weight);
+        }
     }
 }
 
 impl Build for PtGraph {
-    fn create<P: AsRef<Path>>(path: P, ft: InputFileType) -> (Self, usize) where Self: Sized {
-        let (builder, number_of_read_bytes) = PtGraphBuilder::create(path, ft);
+    fn create<P: AsRef<Path>>(path: P, ft: InputFileType, reverse_complement: bool) -> (Self, usize)
+        where Self: Sized {
+        let (builder, number_of_read_bytes) = PtGraphBuilder::create(path, ft, reverse_complement);
         let mut s = SEQUENCES.write();
         for mut e in s.iter_mut().skip(1) {
             let new_box = kmer_to_edge(e).into_boxed_slice();
@@ -241,7 +318,7 @@ impl Build for PtGraph {
         (builder.graph, number_of_read_bytes)
     }
 
-    fn add_read_fastaq(&mut self, _read: &[u8]) {
+    fn add_read_fastaq(&mut self, _read: &[u8], _reverse_complement: bool) {
         unimplemented!();
     }
 }

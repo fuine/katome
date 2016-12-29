@@ -40,7 +40,7 @@ macro_rules! collapses_data_graph {
             let result = {
                 before_each!(_l, filenames, lengths);
                 catch_unwind(|| {
-                    let (graph, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq);
+                    let (graph, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq, false);
                     let contigs = graph.collapse();
                     assert_eq!(contigs.len(), lengths[$i]);
                 })
@@ -57,7 +57,7 @@ macro_rules! collapses_data_gir {
             let result = {
                 before_each!(_l, filenames, lengths);
                 catch_unwind(|| {
-                    let (gir, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq);
+                    let (gir, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq, false);
                     let graph = $g::create_from(gir);
                     let contigs = graph.collapse();
                     assert_eq!(contigs.len(), lengths[$i]);

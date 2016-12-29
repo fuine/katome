@@ -180,7 +180,7 @@ macro_rules! test_graph_on_data {
                 let result = {
                     before_each!(_l, stats, filenames);
                     catch_unwind(|| {
-                        let (mut graph, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq);
+                        let (mut graph, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq, false);
                         graph.remove_single_vertices();
                         assert_eq!(stats[$i][0], graph.stats());
                     })
@@ -193,7 +193,7 @@ macro_rules! test_graph_on_data {
                 let result = {
                     before_each!(_l, stats, filenames);
                     catch_unwind(|| {
-                        let (mut graph, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq);
+                        let (mut graph, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq, false);
                         graph.remove_weak_edges($w);
                         assert_eq!(stats[$i][1].counts, graph.stats().counts);
                     })
@@ -206,7 +206,7 @@ macro_rules! test_graph_on_data {
                 let result = {
                     before_each!(_l, stats, filenames);
                     catch_unwind(|| {
-                        let (mut graph, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq);
+                        let (mut graph, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq, false);
                         graph.remove_dead_paths();
                         assert_eq!(stats[$i][2].counts, graph.stats().counts);
                     })
@@ -227,7 +227,7 @@ macro_rules! test_gir_on_data {
                 let result = {
                     before_each!(_l, stats, filenames);
                     catch_unwind(|| {
-                        let (mut gir, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq);
+                        let (mut gir, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq, false);
                         gir.remove_single_vertices();
                         assert_eq!(stats[$i][0].counts, gir.stats().counts);
                         let graph = $g::create_from(gir);
@@ -242,7 +242,7 @@ macro_rules! test_gir_on_data {
                 let result = {
                     before_each!(_l, stats, filenames);
                     catch_unwind(|| {
-                        let (mut gir, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq);
+                        let (mut gir, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq, false);
                         gir.remove_weak_edges($w);
                         assert_eq!(stats[$i][1].counts, gir.stats().counts);
                     })

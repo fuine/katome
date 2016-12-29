@@ -28,4 +28,10 @@ pub struct Config<P: AsRef<Path>> {
     pub minimal_weight_threshold: usize,
     /// Size of the k-mer.
     pub k_mer_size: usize,
+    /// Create reverse complements of the read sequences.
+    ///
+    ///  While this option noticeably slows down the process of assembly it
+    ///  usually will create higher quality output. It is highly
+    ///  advisable to use that option when using BFCounter file input.
+    pub reverse_complement: bool,
 }

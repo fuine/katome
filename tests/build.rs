@@ -98,7 +98,7 @@ macro_rules! build_data_gir {
                 before_each!(_l, read_bytes, counts, filenames);
                 catch_unwind(|| {
                     setup_gir!(counts, stats);
-                    let (gir, number_of_read_bytes) = $t::create(filenames[$i].clone(), InputFileType::Fastq);
+                    let (gir, number_of_read_bytes) = $t::create(filenames[$i].clone(), InputFileType::Fastq, false);
                     assert_eq!(number_of_read_bytes, read_bytes[$i]);
                     assert_eq!(stats[$i], gir.stats());
                 })
@@ -116,7 +116,7 @@ macro_rules! build_data_graph {
                 before_each!(_l, read_bytes, _counts, filenames);
                 catch_unwind(|| {
                     setup_graph!(_counts, stats);
-                    let (graph, number_of_read_bytes) = PtGraph::create(filenames[$i].clone(), InputFileType::Fastq);
+                    let (graph, number_of_read_bytes) = PtGraph::create(filenames[$i].clone(), InputFileType::Fastq, false);
                     assert_eq!(number_of_read_bytes, read_bytes[$i]);
                     assert_eq!(stats[$i], graph.stats());
                 })
@@ -132,7 +132,7 @@ macro_rules! fail_build {
         fn $n() {
             before_each!(_l, _read_bytes, _counts, filenames);
             let result = catch_unwind(|| {
-                $t::create(filenames[$i].clone(), InputFileType::Fastq);
+                $t::create(filenames[$i].clone(), InputFileType::Fastq, false);
             });
             assert!(result.is_err());
         }

@@ -17,7 +17,8 @@ impl Assemble for BasicAsm {
         unsafe {
             set_global_k_sizes(config.k_mer_size);
         }
-        let (graph, number_of_read_bytes) = G::create(config.input_path, config.input_file_type);
+        let (graph, number_of_read_bytes) =
+            G::create(config.input_path, config.input_file_type, config.reverse_complement);
         let saved: usize = SEQUENCES.read().iter().map(|x| x.len()).sum();
         let total: usize = SEQUENCES.read().len();
         println!("Avg size of edge: {}", saved as f64 / total as f64);
@@ -36,7 +37,8 @@ impl Assemble for BasicAsm {
         unsafe {
             set_global_k_sizes(config.k_mer_size);
         }
-        let (gir, number_of_read_bytes) = T::create(config.input_path, config.input_file_type);
+        let (gir, number_of_read_bytes) =
+            T::create(config.input_path, config.input_file_type, config.reverse_complement);
         let saved: usize = SEQUENCES.read().iter().map(|x| x.len()).sum();
         let total: usize = SEQUENCES.read().len();
         println!("Avg size of edge: {}", saved as f64 / total as f64);

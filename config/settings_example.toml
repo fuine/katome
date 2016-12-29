@@ -16,3 +16,9 @@ input_file_type = "Fastq"
 
 # size of the k-mer
 k_mer_size = 40
+
+# Whether or not katome should create reverse complementary sequences to the
+# original reads. While this option noticeably slows down the process of
+# assembly it usually will create higher quality output. Note that it is highly
+# advisable to use that option when using BFCounter file input
+reverse_complement = true

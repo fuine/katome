@@ -6,8 +6,8 @@ use asm::SEQUENCES;
 use collections::{Convert, GIR};
 use collections::girs::edges::{Edges, Outgoing};
 use collections::graphs::pt_graph::{NodeIndex, PtGraph};
-use compress::{change_last_char_in_edge, compress_kmer, kmer_to_edge};
-use prelude::{Idx, K_SIZE};
+use compress::{change_last_char_in_edge, compress_kmer, kmer_to_edge, compress_kmer_with_rev_compl};
+use prelude::{Idx, K_SIZE, K1_SIZE};
 use slices::{BasicSlice, EdgeSlice, NodeSlice};
 
 use metrohash::MetroHash;
@@ -77,68 +77,115 @@ impl Init for HsGIR {}
 
 impl Build for HsGIR {
     /// Add new reads to `HmGIR`, modify weights of existing edges.
-    fn add_read_fastaq(&mut self, read: &[u8]) {
+    #[inline]
+    fn add_read_fastaq(&mut self, read: &[u8], reverse_complement: bool) {
         assert!(read.len() as Idx >= unsafe { K_SIZE }, "Read is too short!");
-        let mut source_vert: Box<Vertex> = Box::new(Vertex::default());
-        let mut target_vert: Box<Vertex>;
+        let mut s: Box<Vertex> = Box::new(Vertex::default());
+        let mut t: Box<Vertex> = Box::new(Vertex::default());
         let mut idx = self.len();
-        let mut insert = false;
 
-        for (cnt, window) in read.windows(unsafe { K_SIZE } as usize).enumerate() {
-            {
-                let mut s = SEQUENCES.write();
-                s[0] = compress_kmer(window).into_boxed_slice();
+        if reverse_complement {
+            // because underlying algorithm which adds nodes/edges to the graph
+            // relies on the fact that each time we slide the window the old
+            // target node becomes the new souce node, we cant insert reverse
+            // complement after kmer is compressed, but rather we need to store
+            // all reverse complements and add them after original read has been
+            // added. What is essentially happening in here is that first all
+            // read kmers are added and then all reverse complements are added.
+            // Generation of reverse complements is mangled together with
+            // compression of read kmers for performance reasons.
+            let mut reversed = Vec::with_capacity(read.len() - unsafe { K1_SIZE });
+            // let remainder = unsafe{ K1_SIZE } % 4;
+            for (cnt, window) in read.windows(unsafe { K_SIZE } as usize).enumerate() {
+                // compress k_mer, generate compressed reverse complement of the
+                // kmer and store it to add after all kmers for the read are
+                // generated
+                let (compressed_kmer, rev_compl_compr) = compress_kmer_with_rev_compl(window);
+                reversed.push((rev_compl_compr, window[window.len() - 1]));
+                add_single_edge(self,
+                                cnt == 0,
+                                compressed_kmer,
+                                &mut idx,
+                                &mut s,
+                                &mut t,
+                                window[window.len() - 1]);
             }
-            // insert source on the first pass
-            if cnt == 0 {
-                source_vert = Box::new(Vertex::new(NodeSlice::new(0), Edges::empty(idx)));
-                if let Some(v) = self.get(&source_vert) {
-                    source_vert = v.clone();
-                }
-                else {
-                    let mut s = SEQUENCES.write();
-                    let tmp = s[0].clone();
-                    source_vert.ns = NodeSlice::new(2 * s.len());
-                    s.push(tmp);
-                    insert = true;
-                    idx += 1;
-                }
-                if insert {
-                    self.insert(source_vert.clone());
-                }
+            // add reverse complements
+            let rev = reversed.len() - 1;
+            let last = reversed.remove(rev);
+            add_single_edge(self, true, last.0, &mut idx, &mut s, &mut t, last.1);
+            for r in reversed.drain(..).rev() {
+                add_single_edge(self, false, r.0, &mut idx, &mut s, &mut t, r.1);
             }
-
-            target_vert = Box::new(Vertex::new(NodeSlice::new(1), Edges::empty(idx + 1)));
-            if let Some(v) = self.get(&target_vert) {
-                target_vert = v.clone();
-                insert = false;
+        }
+        else {
+            for (cnt, window) in read.windows(unsafe { K_SIZE } as usize).enumerate() {
+                let compressed_kmer = compress_kmer(window);
+                add_single_edge(self,
+                                cnt == 0,
+                                compressed_kmer,
+                                &mut idx,
+                                &mut s,
+                                &mut t,
+                                window[window.len() - 1]);
             }
-            else {
-                let offset = if !insert {
-                    let mut s = SEQUENCES.write();
-                    let tmp = s[0].clone();
-                    s.push(tmp);
-                    2 * s.len() - 1
-                }
-                else {
-                    source_vert.ns.offset() + 1
-                };
-                target_vert.ns = NodeSlice::new(offset);
-                insert = true;
-                target_vert.edges.idx = idx;
-                idx += 1;
-            }
-            if insert {
-                self.insert(target_vert.clone());
-                insert = false;
-            }
-            create_or_modify_edge(&mut source_vert.edges.outgoing,
-                                  target_vert.edges.idx,
-                                  window[window.len() - 1]);
-            self.replace(source_vert);
-            source_vert = target_vert;
         }
     }
+}
+
+#[inline]
+fn add_single_edge(gir: &mut HsGIR, first_node: bool, compressed: Vec<u8>, idx: &mut usize,
+                   source_vert: &mut Box<Vertex>, target_vert: &mut Box<Vertex>, last_char: u8) {
+    let mut insert = false;
+    {
+        let mut s = SEQUENCES.write();
+        s[0] = compressed.into_boxed_slice();
+    }
+    // insert source on the first pass
+    if first_node {
+        *source_vert = Box::new(Vertex::new(NodeSlice::new(0), Edges::empty(*idx)));
+        if let Some(v) = gir.get(source_vert) {
+            *source_vert = v.clone();
+        }
+        else {
+            let mut s = SEQUENCES.write();
+            let tmp = s[0].clone();
+            source_vert.ns = NodeSlice::new(2 * s.len());
+            s.push(tmp);
+            insert = true;
+            *idx += 1;
+        }
+        if insert {
+            gir.insert(source_vert.clone());
+        }
+    }
+
+    *target_vert = Box::new(Vertex::new(NodeSlice::new(1), Edges::empty(*idx + 1)));
+    if let Some(v) = gir.get(target_vert) {
+        *target_vert = v.clone();
+        insert = false;
+    }
+    else {
+        let offset = if !insert {
+            let mut s = SEQUENCES.write();
+            let tmp = s[0].clone();
+            s.push(tmp);
+            2 * s.len() - 1
+        }
+        else {
+            source_vert.ns.offset() + 1
+        };
+        target_vert.ns = NodeSlice::new(offset);
+        insert = true;
+        target_vert.edges.idx = *idx;
+        *idx += 1;
+    }
+    if insert {
+        gir.insert(target_vert.clone());
+    }
+    create_or_modify_edge(&mut source_vert.edges.outgoing, target_vert.edges.idx, last_char);
+    gir.replace(source_vert.clone());
+    *source_vert = target_vert.clone();
 }
 
 /// Create edge if it previously haven't existed, otherwise increase it's weight.
