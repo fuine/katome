@@ -47,13 +47,13 @@ pub fn compress_kmer_with_rev_compl(kmer: &[u8]) -> (Vec<u8>, Vec<u8>) {
 /// Supports only A, C, T, G as it's alphabet.
 #[inline]
 pub fn compress_node(slice: &[u8], collection: &mut Vec<u8>) {
-    let mut byte = 0u8;
+    let mut byte = 0_u8;
     for chunk in slice.chunks(CHARS_PER_BYTE) {
         for c in chunk {
             byte = encode_fasta_symbol(*c, byte);
         }
         collection.push(byte);
-        byte = 0u8;
+        byte = 0_u8;
     }
     if let Some(x) = slice.chunks(CHARS_PER_BYTE).last() {
         let l = CHARS_PER_BYTE - x.len();
@@ -102,7 +102,7 @@ fn get_last_char_from_node(node: &[u8]) -> u8 {
 #[inline]
 pub fn change_char_in_chunk(mut chunk: u8, offset: usize, to: u8) -> u8 {
     let mask = 0b11111100 << (2 * offset);
-    let compressed_char = encode_fasta_symbol(to, 0u8) << (2 * offset);
+    let compressed_char = encode_fasta_symbol(to, 0_u8) << (2 * offset);
     chunk &= mask;
     chunk |= compressed_char;
     chunk
@@ -126,7 +126,7 @@ pub fn reverse_compressed_node(compr: &[u8], remainder_size: usize) -> Vec<u8> {
         *x = !*x;
     }
     // force zero padding
-    reverse[last_byte] &= !(((1u8 << padding) - 1) as u8);
+    reverse[last_byte] &= !(((1_u8 << padding) - 1) as u8);
     reverse
 }
 
@@ -170,7 +170,7 @@ pub fn add_char_to_edge(edge: &[u8], mut chr: u8) -> Vec<u8> {
     let len = edge.len() - 1;
     let new_pad = padding.wrapping_sub(1) % CHARS_PER_BYTE as u8;
     let mask = 0b11111100 << (2 * new_pad);
-    chr = encode_fasta_symbol(chr, 0u8);
+    chr = encode_fasta_symbol(chr, 0_u8);
     if new_pad != 3 {
         let mut output = Vec::from(edge);
         output[len] &= mask;
@@ -206,22 +206,22 @@ pub fn kmer_to_edge(kmer: &[u8]) -> Vec<u8> {
 /// ```
 /// use katome::compress::compress_edge;
 /// let compressed = compress_edge(b"AGGTCG");
-/// assert_eq!(vec![2u8, 0b00101011, 0b01100000], compressed);
+/// assert_eq!(vec![2_u8, 0b00101011, 0b01100000], compressed);
 /// ```
 #[inline]
 pub fn compress_edge(edge: &[u8]) -> Vec<u8> {
     assert!(edge.len() > 0);
     let compressed_size = 1 + ((edge.len() as f64) / 4.0).ceil() as usize;
     let mut compressed = Vec::with_capacity(compressed_size);
-    let mut byte = 0u8;
-    compressed.push(0u8);
+    let mut byte = 0_u8;
+    compressed.push(0_u8);
     // CHARS_PER_BYTE characters per byte
     for chunk in edge.chunks(CHARS_PER_BYTE) {
         for c in chunk {
             byte = encode_fasta_symbol(*c, byte);
         }
         compressed.push(byte);
-        byte = 0u8;
+        byte = 0_u8;
     }
     let padding = CHARS_PER_BYTE -
                   edge.chunks(CHARS_PER_BYTE).last().expect("This should never fail").len();
@@ -238,7 +238,7 @@ pub fn compress_edge(edge: &[u8]) -> Vec<u8> {
 ///
 /// ```
 /// use katome::compress::decompress_edge;
-/// let decompressed = decompress_edge(&vec![2u8, 0b00101011, 0b01100000]);
+/// let decompressed = decompress_edge(&vec![2_u8, 0b00101011, 0b01100000]);
 /// assert_eq!(b"AGGTCG", decompressed.as_slice());
 /// ```
 #[inline]
@@ -264,7 +264,7 @@ pub fn decompress_last_char_edge(edge: &[u8]) -> char {
 #[inline]
 /// Decompress single character from chunk.
 pub fn decompress_char(mut chunk: u8, padding: usize) -> char {
-    let mask = 3u8;
+    let mask = 3_u8;
     chunk >>= 2 * padding;
     match chunk & mask {
         0 => 'A', // A
@@ -298,9 +298,9 @@ pub fn decompress_char(mut chunk: u8, padding: usize) -> char {
 /// use katome::compress::encode_fasta_symbol;
 /// let vec = vec![b'A', b'C', b'G', b'T'];
 /// let mut result_as_vec = vec![];
-/// let mut result_as_block = 0u8;
+/// let mut result_as_block = 0_u8;
 /// for v in vec {
-///     result_as_vec.push(encode_fasta_symbol(v, 0u8));
+///     result_as_vec.push(encode_fasta_symbol(v, 0_u8));
 ///     result_as_block = encode_fasta_symbol(v, result_as_block);
 /// }
 /// assert_eq!(result_as_vec, vec![0, 1, 2, 3]);
@@ -341,9 +341,9 @@ pub fn encode_fasta_symbol(mut symbol: u8, mut carrier: u8) -> u8 {
 
 #[inline]
 fn decode_compressed_chunk(mut chunk: u8) -> [u8; CHARS_PER_BYTE] {
-    let mut output = [0u8; CHARS_PER_BYTE];
+    let mut output = [0_u8; CHARS_PER_BYTE];
     // two first bits
-    let mask = 3u8;
+    let mask = 3_u8;
     for i in (0..CHARS_PER_BYTE).rev() {
         let symbol: u8 = chunk & mask;
         chunk >>= 2;
@@ -367,10 +367,10 @@ pub fn shift_left_bit_array(input: &mut [u8], mut shift_val: usize) {
     if shift_val == 0 {
         return;
     }
-    let mut old_tmp = 0u8;
+    let mut old_tmp = 0_u8;
     let mut new_tmp;
     let shift_remainder = 8 - shift_val;
-    let mask = (((1u8 << shift_val) - 1) << shift_remainder) as u8;
+    let mask = (((1_u8 << shift_val) - 1) << shift_remainder) as u8;
     for byte in input.iter_mut().rev() {
         new_tmp = *byte & mask;
         *byte <<= shift_val;
@@ -389,10 +389,10 @@ pub fn shift_right_bit_array(input: &mut [u8], mut shift_val: usize) {
     if shift_val == 0 {
         return;
     }
-    let mut old_tmp = 0u8;
+    let mut old_tmp = 0_u8;
     let mut new_tmp;
     let shift_remainder = 8 - shift_val;
-    let mask = ((1u8 << shift_val) - 1) as u8;
+    let mask = ((1_u8 << shift_val) - 1) as u8;
     for byte in input.iter_mut() {
         new_tmp = *byte & mask;
         *byte >>= shift_val;
@@ -414,7 +414,7 @@ mod tests {
     fn properly_compresses_single_chunk() {
         let a = "ACTG";
         let proper_result = a.bytes().collect::<Vec<_>>();
-        let mut byte = 0u8;
+        let mut byte = 0_u8;
         for c in a.bytes() {
             byte = encode_fasta_symbol(c, byte);
         }
@@ -425,7 +425,7 @@ mod tests {
     #[test]
     fn properly_decompresses_last_char() {
         let a = "ACTG";
-        let mut byte = 0u8;
+        let mut byte = 0_u8;
         for c in a.bytes() {
             byte = encode_fasta_symbol(c, byte);
         }
@@ -440,10 +440,10 @@ mod tests {
             .take(unsafe { K_SIZE })
             .map(|x| {
                 match x % 4 {
-                    0 => 65u8,
-                    1 => 67u8,
-                    2 => 84u8,
-                    3 => 71u8,
+                    0 => 65_u8,
+                    1 => 67_u8,
+                    2 => 84_u8,
+                    3 => 71_u8,
                     _ => unreachable!(),
                 }
             })
@@ -457,61 +457,61 @@ mod tests {
     fn adds_char_to_edge() {
         // pad 0
         let compressed = compress_edge(b"AGGT");
-        assert_eq!(vec![0u8, 0b00101011], compressed);
+        assert_eq!(vec![0_u8, 0b00101011], compressed);
         let added = add_char_to_edge(&compressed, b'T');
-        assert_eq!(vec![3u8, 0b00101011, 0b11000000], added);
+        assert_eq!(vec![3_u8, 0b00101011, 0b11000000], added);
 
         // pad 1
         let compressed = compress_edge(b"AGGTCGG");
-        assert_eq!(vec![1u8, 0b00101011, 0b01101000], compressed);
+        assert_eq!(vec![1_u8, 0b00101011, 0b01101000], compressed);
         let added = add_char_to_edge(&compressed, b'T');
-        assert_eq!(vec![0u8, 0b00101011, 0b01101011], added);
+        assert_eq!(vec![0_u8, 0b00101011, 0b01101011], added);
 
         // pad 2
         let compressed = compress_edge(b"AGGTCG");
-        assert_eq!(vec![2u8, 0b00101011, 0b01100000], compressed);
+        assert_eq!(vec![2_u8, 0b00101011, 0b01100000], compressed);
         let added = add_char_to_edge(&compressed, b'T');
-        assert_eq!(vec![1u8, 0b00101011, 0b01101100], added);
+        assert_eq!(vec![1_u8, 0b00101011, 0b01101100], added);
 
         // pad 3
         let compressed = compress_edge(b"AGGTC");
-        assert_eq!(vec![3u8, 0b00101011, 0b01000000], compressed);
+        assert_eq!(vec![3_u8, 0b00101011, 0b01000000], compressed);
         let added = add_char_to_edge(&compressed, b'G');
-        assert_eq!(vec![2u8, 0b00101011, 0b01100000], added);
+        assert_eq!(vec![2_u8, 0b00101011, 0b01100000], added);
     }
 
     #[test]
     fn change_last_char_edge() {
-        let in_ = vec![3u8, 0b00101011, 0b11000000];
+        let in_ = vec![3_u8, 0b00101011, 0b11000000];
         let out = change_last_char_in_edge(&in_, b'A');
-        assert_eq!(vec![3u8, 0b00101011, 0b00000000], out);
+        assert_eq!(vec![3_u8, 0b00101011, 0b00000000], out);
     }
 
     #[test]
     fn extend_edge_test() {
         // pad 1
         let compressed = compress_edge(b"AGGT");
-        assert_eq!(vec![0u8, 0b00101011], compressed);
+        assert_eq!(vec![0_u8, 0b00101011], compressed);
         let added = extend_edge(&compressed, b"GTC");
-        assert_eq!(vec![1u8, 0b00101011, 0b10110100], added);
+        assert_eq!(vec![1_u8, 0b00101011, 0b10110100], added);
 
         // pad 2
         let compressed = compress_edge(b"AGGTCGG");
-        assert_eq!(vec![1u8, 0b00101011, 0b01101000], compressed);
+        assert_eq!(vec![1_u8, 0b00101011, 0b01101000], compressed);
         let added = extend_edge(&compressed, b"GTC");
-        assert_eq!(vec![2u8, 0b00101011, 0b01101010, 0b11010000], added);
+        assert_eq!(vec![2_u8, 0b00101011, 0b01101010, 0b11010000], added);
 
         // pad 3
         let compressed = compress_edge(b"AGGTCG");
-        assert_eq!(vec![2u8, 0b00101011, 0b01100000], compressed);
+        assert_eq!(vec![2_u8, 0b00101011, 0b01100000], compressed);
         let added = extend_edge(&compressed, b"GTC");
-        assert_eq!(vec![3u8, 0b00101011, 0b01101011, 0b01000000], added);
+        assert_eq!(vec![3_u8, 0b00101011, 0b01101011, 0b01000000], added);
 
         // pad 0
         let compressed = compress_edge(b"AGGTC");
-        assert_eq!(vec![3u8, 0b00101011, 0b01000000], compressed);
+        assert_eq!(vec![3_u8, 0b00101011, 0b01000000], compressed);
         let added = extend_edge(&compressed, b"GTC");
-        assert_eq!(vec![0u8, 0b00101011, 0b01101101], added);
+        assert_eq!(vec![0_u8, 0b00101011, 0b01101101], added);
     }
 
     #[test]

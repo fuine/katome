@@ -239,10 +239,10 @@ mod tests {
                 .take(unsafe{K_SIZE})
                 .map(|x| {
                     match x % 4 {
-                        0 => 65u8,
-                        1 => 67u8,
-                        2 => 84u8,
-                        3 => 71u8,
+                        0 => 65_u8,
+                        1 => 67_u8,
+                        2 => 84_u8,
+                        3 => 71_u8,
                         _ => unreachable!(),
                     }
                 })

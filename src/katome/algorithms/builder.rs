@@ -56,7 +56,7 @@ pub trait Build: Init {
 fn create_bfc<P: AsRef<Path>, T: Sized + Init + Build>(path: P, reverse_complement: bool,
                                                        minimal_weight_threshold: EdgeWeight)
                                                        -> (T, usize) {
-    let mut total = 0usize;
+    let mut total = 0_usize;
     let edge_count = count_lines(&path);
     let mut collection = T::init(Some(edge_count), None, InputFileType::BFCounter);
     let reader = match lines_from_file(&path) {
@@ -91,7 +91,7 @@ fn create_bfc<P: AsRef<Path>, T: Sized + Init + Build>(path: P, reverse_compleme
 // TODO: remove nasty code duplication
 fn create_fasta<P: AsRef<Path>, T: Sized + Init + Build>(path: P, reverse_complement: bool)
                                                          -> (T, usize) {
-    let mut total = 0usize;
+    let mut total = 0_usize;
     let mut collection = T::default();
     let reader = match fasta::Reader::from_file(&path) {
         Err(why) => {
@@ -115,7 +115,7 @@ fn create_fasta<P: AsRef<Path>, T: Sized + Init + Build>(path: P, reverse_comple
 
 fn create_fastq<P: AsRef<Path>, T: Sized + Init + Build>(path: P, reverse_complement: bool)
                                                          -> (T, usize) {
-    let mut total = 0usize;
+    let mut total = 0_usize;
     let mut collection = T::default();
     let reader = match fastq::Reader::from_file(&path) {
         Err(why) => {

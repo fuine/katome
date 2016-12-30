@@ -140,11 +140,11 @@ impl Stats<CollectionStats> for PtGraph {
         let avg_edge_weight_ = self.raw_edges()
             .iter()
             .map(|w| w.weight.1)
-            .fold(0usize, |s, w| s + w as usize) as f64 /
+            .fold(0_usize, |s, w| s + w as usize) as f64 /
                                self.edge_count() as f64;
         let max_out_degree_ = self.node_indices().map(|n| self.out_degree(n)).max().unwrap_or(0);
         let avg_out_degree_ = (self.node_indices()
-            .fold(0usize, |m, n| m + self.out_degree(n))) as f64 /
+            .fold(0_usize, |m, n| m + self.out_degree(n))) as f64 /
                               self.node_count() as f64;
         let (node_cap, edge_cap) = self.capacity();
         CollectionStats {

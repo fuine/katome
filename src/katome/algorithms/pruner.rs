@@ -133,14 +133,14 @@ fn has_incoming_edges(gir: &mut HmGIR, node: &NodeSlice) -> bool {
     let mut v = Vec::new();
     compress_node(&vec, &mut v);
     SEQUENCES.write()[0] = v.into_boxed_slice();
-    let mask = 0b00111111u8;
+    let mask = 0b00111111_u8;
     // try to bruteforce by inserting all possible characters: ACTGN
     let tmp_ns = NodeSlice::new(0);
     for chr in &[b'A', b'C', b'T', b'G'] {
         {
             let mut s = SEQUENCES.write();
             s[0][0] &= mask;
-            s[0][0] |= encode_fasta_symbol(*chr, 0u8) << 6;
+            s[0][0] |= encode_fasta_symbol(*chr, 0_u8) << 6;
         }
         // dummy read slice used to check if we can find it in the gir
         if let Entry::Occupied(e) = gir.entry(tmp_ns) {

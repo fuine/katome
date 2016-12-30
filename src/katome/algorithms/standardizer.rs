@@ -44,7 +44,7 @@ impl Standardizable for PtGraph {
         // calculate sum of all weights of edges (s) and sum of weights lower than threshold (l)
         let (s, l) = self.raw_edges()
             .iter()
-            .fold((0usize, 0usize), |acc, e| {
+            .fold((0_usize, 0_usize), |acc, e| {
                 if e.weight.1 < threshold {
                     (acc.0 + e.weight.1 as usize, acc.1 + e.weight.1 as usize)
                 }
