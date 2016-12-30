@@ -11,6 +11,10 @@ appenders:
   katome_logger:
     kind: file
     path: "log/katome.log"
+    filters:
+        -
+          kind: threshold
+          level: debug
     encoder:
       pattern: "{d(%Y-%m-%d %H:%M:%S %Z)(local)} - {M} {l} - {m}{n}"
 
