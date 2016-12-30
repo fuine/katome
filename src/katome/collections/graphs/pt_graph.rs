@@ -72,8 +72,29 @@ impl Graph for PtGraph {
     }
 }
 
+// SeenNodes stores information about already seen nodes. Due to the nature of
+// the data in BFCounter all edges are unique, but they may reuse some already
+// seen nodes. To reduce memory usage we only store NodeSlices against which we
+// compare new reads. To get the NodeIndex on the PtGraph we need to devise a
+// way to map NodeSlice's offset to NodeIndex. Given a NodeSlice we can get
+// the index of the node if we account for the nodes in the SEQUENCES that
+// are not unique (empty). To do this we store a map of the nodes in SEQUENCES
+// in the fixedbitset and then we count unique nodes up to the given NodeSlice.
+// This method gives us a working NodeIndex.
 type SeenNodes = HashSet<NodeSlice, BuildHash<MetroHash>>;
 type ReadsToNodes = HashMap<NodeSlice, NodeIndex, BuildHash<MetroHash>>;
+
+// Algorithm described in the above comment works flawlessly although is slow
+// due to the nature of repeatable calling count_ones() on fixedbitset. To fight
+// this we store a vector of unique nodes counts per multiple blocks in
+// fixedbitset. This means that when we need to sum unique nodes up to the given
+// offset we need to sum the megablocks up to the one containing the offset and
+// then call count_ones() on the remaining several hundred blocks. This approach
+// seems to be VERY performant, as LLVM can vectorize the sum. Below constants
+// control how many blocks we account for in a single number in the vector of
+// counts.
+const BLOCKS_PER_NUMBER: usize = 512;
+const NODES_PER_NUMBER: usize = BLOCKS_PER_NUMBER * 32;
 
 // Graph builder which stores information about already seen vertices
 // TODO maybe change that to the tagged union?
@@ -83,12 +104,12 @@ struct PtGraphBuilder {
     seen_nodes: SeenNodes,
     reads_to_nodes: ReadsToNodes,
     fb: FixedBitSet,
-    counts: Vec<u8>,
+    counts: Vec<Idx>,
 }
 
 #[inline]
 fn div_rem(x: usize) -> (usize, usize) {
-    (x / 32, x % 32)
+    (x / NODES_PER_NUMBER, x % NODES_PER_NUMBER)
 }
 
 impl PtGraphBuilder {
@@ -106,7 +127,7 @@ impl PtGraphBuilder {
         if insert {
             self.seen_nodes.insert(node);
             self.fb.set(node.offset(), true);
-            let block = node.offset() / 32;
+            let block = node.offset() / NODES_PER_NUMBER;
             self.counts[block] += 1;
             self.graph.add_node(())
         }
@@ -134,16 +155,11 @@ impl PtGraphBuilder {
     fn get_node_idx(&self, node: NodeSlice) -> NodeIndex {
         let off = node.offset();
         let (block_idx, last_block_offset) = div_rem(off);
-        let mut idx = 0;
-        for &i in &self.counts[..block_idx] {
-            idx += i as usize;
-        }
+        let mut idx = self.counts[..block_idx].iter().sum::<Idx>();
         if last_block_offset != 0 {
-            let block = self.fb.as_slice()[block_idx];
-            let mask = u32::max_value() >> (32 - last_block_offset);
-            idx += (block & mask).count_ones() as usize;
+            idx += self.fb.count_ones(block_idx * NODES_PER_NUMBER..off) as Idx;
         }
-        NodeIndex::new(idx)
+        NodeIndex::new(idx as usize)
     }
 
     #[inline]
@@ -242,7 +258,8 @@ impl Init for PtGraphBuilder {
                     // placeholders in SEQUENCES. Refer to SEQUENCES
                     // documentation for more information.
                     fb: FixedBitSet::with_capacity(4 * edges + 2),
-                    counts: vec![0; ((4 * edges + 2) as f64 / 32.0).ceil() as usize],
+                    counts:
+                        vec![0; ((4 * edges + 2) as f64 / NODES_PER_NUMBER as f64).ceil() as usize],
                 }
             }
         }
