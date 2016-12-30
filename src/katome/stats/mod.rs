@@ -8,6 +8,10 @@ pub trait Stats<T: Display> {
     fn print_stats(&self) {
         print!("{}", self.stats());
     }
+    /// Logs stats.
+    fn log_stats(&self) {
+        debug!("{}", self.stats());
+    }
 }
 
 mod contigs;

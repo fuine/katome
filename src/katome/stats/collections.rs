@@ -8,7 +8,6 @@ use petgraph::EdgeDirection;
 
 use std::fmt;
 use std::fmt::Display;
-use std::iter::repeat;
 
 /// Just like `Option`, but allows for custom `fmt::Display` implementation.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -100,14 +99,14 @@ impl<T: Display> Display for Opt<T> {
 
 impl Display for Counts {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        writeln!(f, "{} nodes and {} edges", self.node_count, self.edge_count)
+        write!(f, "{} nodes and {} edges", self.node_count, self.edge_count)
     }
 }
 
 impl Display for CollectionStats {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         writeln!(f,
-                 "I have the capacity of {}, {} for {}",
+                 "Collection has the capacity of {}, {} for {}",
                  self.capacity.0,
                  self.capacity.1,
                  self.counts)?;
@@ -131,8 +130,7 @@ impl Display for CollectionStats {
         writeln!(f,
                  "Outgoing vertices count: {} ({:.2}%)",
                  self.outgoing_vert_count,
-                 out_percentage)?;
-        writeln!(f, "{}", repeat("*").take(20).collect::<String>())
+                 out_percentage)
     }
 }
 

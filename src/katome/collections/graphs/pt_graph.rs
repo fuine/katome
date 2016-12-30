@@ -44,7 +44,7 @@ pub fn write_to_dot(graph: &PtGraph, path_: &str) {
     };
     match write!(file, "{:?}", Dot::with_config(graph, &[Config::NodeIndexLabel])) {
         Err(why) => panic!("couldn't write to {}: {}", display, why.description()),
-        Ok(_) => println!("successfully wrote to {}", display),
+        Ok(_) => info!("successfully wrote to {}", display),
     }
 }
 

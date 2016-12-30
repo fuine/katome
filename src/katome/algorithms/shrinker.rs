@@ -163,17 +163,17 @@ impl Shrinkable for PtGraph {
         }
     }
     fn shrink(&mut self) {
-        debug!("Start shrinking the graph with {} nodes and {} edges",
-               self.node_count(),
-               self.edge_count());
+        info!("Start shrinking the graph with {} nodes and {} edges",
+              self.node_count(),
+              self.edge_count());
         let mut t = ShrinkTraverse::new(self);
         while let Some(base_edge) = t.next(self) {
             self.shrink_single_path(base_edge);
         }
         self.remove_single_vertices();
-        debug!("Shrinking ended. Shrunk graph has {} nodes and {} edges",
-               self.node_count(),
-               self.edge_count());
+        info!("Shrinking ended. Shrunk graph has {} nodes and {} edges",
+              self.node_count(),
+              self.edge_count());
     }
 
     #[inline]

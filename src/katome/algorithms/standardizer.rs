@@ -58,7 +58,6 @@ impl Standardizable for PtGraph {
         // normalize edges across the graph
         for weight in self.edge_weights_mut() {
             let new_weight = (weight.1 as f64 * p).round() as EdgeWeight;
-            // debug!("Old: {} New: {}", *weight, new_weight);
             weight.1 = if new_weight == 0 && weight.1 >= threshold {
                 1
             }
@@ -72,7 +71,7 @@ impl Standardizable for PtGraph {
 
     fn standardize_contigs(&mut self) {
         let ambiguous_nodes = self.get_ambiguous_nodes();
-        debug!("I found {} ambiguous nodes", ambiguous_nodes.len());
+        info!("Found {} ambiguous nodes", ambiguous_nodes.len());
         for node in &ambiguous_nodes {
             let contigs = get_contigs_from_node(self, *node, &ambiguous_nodes);
             for contig in contigs {

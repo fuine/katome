@@ -28,16 +28,10 @@ impl Collapsable for PtGraph {
         info!("Starting collapse of the graph");
         // ensure that we don't end up with straight paths longer than
         // one edge
-        info!("Start shrinking the graph with {} nodes and {} edges",
-              self.node_count(),
-              self.edge_count());
         self.shrink();
         let node_count = self.node_count();
         let mut ambiguous_nodes = FixedBitSet::with_capacity(node_count);
         let mut single_vertices: Vec<NodeIndex> = vec![];
-        info!("Shrinking ended. Shrunk graph has {} nodes and {} edges",
-              self.node_count(),
-              self.edge_count());
         info!("Graph has {} weakly connected components", connected_components(&self));
         loop {
             // this is a loop over nodes which have in_degree == 0
@@ -78,7 +72,7 @@ impl Collapsable for PtGraph {
             }
 
         }
-        debug!("{} nodes left in the graph after collapse", self.node_count());
+        trace!("{} nodes left in the graph after collapse", self.node_count());
         info!("Collapse ended. Created {} contigs which have {} nucleotides",
               contigs.len(),
               contigs.iter().map(|x| x.len()).sum::<usize>());
