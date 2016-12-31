@@ -30,6 +30,14 @@ impl Display for ContigsStats {
 
 impl Stats<ContigsStats> for Contigs {
     fn stats(&self) -> ContigsStats {
+        if self.serialized_contigs.is_empty() {
+            return ContigsStats {
+                n50: 0,
+                l50: 0,
+                n90: 0,
+                ng50: 0,
+            };
+        }
         let mut contigs = self.serialized_contigs
             .iter()
             .map(|x| x.len())
