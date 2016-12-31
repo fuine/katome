@@ -5,12 +5,12 @@ use prelude::{EdgeWeight, Idx};
 
 
 use std::error::Error;
-use std::fs::File;
+use std::fs::{File, metadata, canonicalize};
 use std::io;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Result as Res;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 extern crate bio;
 use self::bio::io::{fasta, fastq};
@@ -39,99 +39,126 @@ pub trait Build: Init {
     /// return with information about total number of read bytes.
     ///
     /// Currently supports fastaq format.
-    fn create<P: AsRef<Path>>(path: P, ft: InputFileType, reverse_complement: bool,
+    fn create<P: AsRef<Path>>(input_files: &[P], ft: InputFileType, reverse_complement: bool,
                               minimal_weight_threshold: EdgeWeight)
                               -> (Self, usize)
         where Self: Sized {
+        let files = check_files(input_files);
         match ft {
-            InputFileType::Fasta => create_fasta(path, reverse_complement),
-            InputFileType::Fastq => create_fastq(path, reverse_complement),
+            InputFileType::Fasta => create_fasta(&files, reverse_complement),
+            InputFileType::Fastq => create_fastq(&files, reverse_complement),
             InputFileType::BFCounter => {
-                create_bfc(path, reverse_complement, minimal_weight_threshold)
+                create_bfc(&files, reverse_complement, minimal_weight_threshold)
             }
         }
     }
 }
 
-fn create_bfc<P: AsRef<Path>, T: Sized + Init + Build>(path: P, reverse_complement: bool,
-                                                       minimal_weight_threshold: EdgeWeight)
-                                                       -> (T, usize) {
-    let mut total = 0_usize;
-    let edge_count = count_lines(&path);
-    let mut collection = T::init(Some(edge_count), None, InputFileType::BFCounter);
-    let reader = match lines_from_file(&path) {
-        Err(why) => {
-            panic!("Couldn't open {}: {}", path.as_ref().display(), Error::description(&why))
-        }
-        Ok(lines) => lines,
-    };
-    info!("Starting to build collection");
-    for e in reader {
-        let e_ = e.unwrap();
-        let mut iter = e_.split('\t');
-        let edge = iter.next().unwrap().bytes().collect::<Vec<u8>>();
-        let weight = match iter.next().unwrap().parse::<EdgeWeight>() {
-            Ok(w) => w,
-            Err(e) => {
-                panic!("Parse int error (if the kind is overflow user should change type of \
-                        EdgeWeight in prelude.rs): {}",
-                       e.description())
+fn check_files<P: AsRef<Path>>(input_files: &[P]) -> Vec<PathBuf> {
+    let mut output = vec![];
+    for file in input_files {
+        let file = match canonicalize(file) {
+            Ok(f) => f,
+            Err(f) => panic!("Coulndt resolve path: {}", f.description()),
+        };
+        match metadata(&file) {
+            Ok(attr) => {
+                if attr.is_dir() {
+                    panic!("{} is a directory", file.display());
+                }
+            }
+            Err(_) => {
+                panic!("{} does not exist", file.display());
             }
         };
-        if weight < minimal_weight_threshold {
-            continue;
+        output.push(file);
+    }
+    output
+}
+
+fn create_bfc<T: Sized + Init + Build>(input_files: &[PathBuf], reverse_complement: bool,
+                                       minimal_weight_threshold: EdgeWeight)
+                                       -> (T, usize) {
+    let mut total = 0_usize;
+    let mut edge_count = 0_usize;
+    for file in input_files {
+        edge_count += count_lines(file);
+    }
+    let mut collection = T::init(Some(edge_count), None, InputFileType::BFCounter);
+    let readers: Vec<_> = match input_files.iter().map(lines_from_file).collect() {
+        Ok(r) => r,
+        Err(why) => panic!("Couldn't open all files: {}", Error::description(&why)),
+    };
+    info!("Starting to build collection");
+    for reader in readers {
+        for e in reader {
+            let e_ = e.unwrap();
+            let mut iter = e_.split('\t');
+            let edge = iter.next().unwrap().bytes().collect::<Vec<u8>>();
+            let weight = match iter.next().unwrap().parse::<EdgeWeight>() {
+                Ok(w) => w,
+                Err(e) => {
+                    panic!("Parse int error (if the kind is overflow user should change type of \
+                            EdgeWeight in prelude.rs): {}",
+                           e.description())
+                }
+            };
+            if weight < minimal_weight_threshold {
+                continue;
+            }
+            total += edge.len() as Idx;
+            collection.add_read_bfc(&edge, weight, reverse_complement);
         }
-        total += edge.len() as Idx;
-        collection.add_read_bfc(&edge, weight, reverse_complement);
     }
     info!("Collection built");
     (collection, total)
 }
 
 // TODO: remove nasty code duplication
-fn create_fasta<P: AsRef<Path>, T: Sized + Init + Build>(path: P, reverse_complement: bool)
-                                                         -> (T, usize) {
+fn create_fasta<T: Sized + Init + Build>(input_files: &[PathBuf], reverse_complement: bool)
+                                         -> (T, usize) {
     let mut total = 0_usize;
     let mut collection = T::default();
-    let reader = match fasta::Reader::from_file(&path) {
-        Err(why) => {
-            panic!("Couldn't open {}: {}", path.as_ref().display(), Error::description(&why))
-        }
-        Ok(lines) => lines,
+    let readers: Vec<_> = match input_files.iter().map(fasta::Reader::from_file).collect() {
+        Ok(r) => r,
+        Err(why) => panic!("Couldn't open all files: {}", Error::description(&why)),
     };
     info!("Starting to build collection");
-    for sequence in reader.records() {
-        let res = sequence.unwrap();
-        let seq = res.seq();
-        if !seq.iter().all(|&x| "ACGT".bytes().any(|i| i == x)) {
-            continue;
+    for reader in readers {
+        for sequence in reader.records() {
+            let res = sequence.unwrap();
+            let seq = res.seq();
+            if !seq.iter().all(|&x| "ACGT".bytes().any(|i| i == x)) {
+                continue;
+            }
+            total += seq.len() as Idx;
+            collection.add_read_fastaq(seq, reverse_complement);
         }
-        total += seq.len() as Idx;
-        collection.add_read_fastaq(seq, reverse_complement);
     }
     info!("Collection built");
     (collection, total)
 }
 
-fn create_fastq<P: AsRef<Path>, T: Sized + Init + Build>(path: P, reverse_complement: bool)
-                                                         -> (T, usize) {
+fn create_fastq<T: Sized + Init + Build>(input_files: &[PathBuf], reverse_complement: bool)
+                                         -> (T, usize) {
     let mut total = 0_usize;
     let mut collection = T::default();
-    let reader = match fastq::Reader::from_file(&path) {
-        Err(why) => {
-            panic!("Couldn't open {}: {}", path.as_ref().display(), Error::description(&why))
-        }
-        Ok(lines) => lines,
+    let readers: Vec<_> = match input_files.iter().map(fastq::Reader::from_file).collect() {
+        Ok(r) => r,
+        Err(why) => panic!("Couldn't open all files: {}", Error::description(&why)),
     };
     info!("Starting to build collection");
-    for sequence in reader.records() {
-        let res = sequence.unwrap();
-        let seq = res.seq();
-        if !seq.iter().all(|&x| "ACGT".bytes().any(|i| i == x)) {
-            continue;
+    for (reader, filename) in readers.into_iter().zip(input_files.iter()) {
+        for sequence in reader.records() {
+            let res = sequence.unwrap();
+            let seq = res.seq();
+            if !seq.iter().all(|&x| "ACGT".bytes().any(|i| i == x)) {
+                continue;
+            }
+            total += seq.len() as Idx;
+            collection.add_read_fastaq(seq, reverse_complement);
         }
-        total += seq.len() as Idx;
-        collection.add_read_fastaq(seq, reverse_complement);
+        info!("Done with {}", filename.display());
     }
     info!("Collection built");
     (collection, total)

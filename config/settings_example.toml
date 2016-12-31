@@ -1,8 +1,8 @@
-# input file path
-input_path = "/path/to/input/file"
+# input files path, should contain at least one filename
+input_files = ["/path/to/input/file", "/path/to/another/input/file"]
 
 # output file path
-output_path = "/path/to/output/file"
+output_file = "/path/to/output/file"
 
 # original genome length
 original_genome_length = 100

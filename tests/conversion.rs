@@ -86,7 +86,7 @@ macro_rules! converts_gir {
             let result = {
                 before_each!(_l, filenames, stats);
                 catch_unwind(|| {
-                    let (gir, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq, false, 0);
+                    let (gir, _) = $t::create(&filenames[$i..$i+1], InputFileType::Fastq, false, 0);
                     let gir_counts = gir.stats().counts;
                     let graph = $g::create_from(gir);
                     assert_eq!(gir_counts, graph.stats().counts);

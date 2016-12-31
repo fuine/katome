@@ -324,12 +324,12 @@ impl Build for PtGraphBuilder {
 }
 
 impl Build for PtGraph {
-    fn create<P: AsRef<Path>>(path: P, ft: InputFileType, reverse_complement: bool,
+    fn create<P: AsRef<Path>>(input_files: &[P], ft: InputFileType, reverse_complement: bool,
                               minimal_weight_threshold: EdgeWeight)
                               -> (Self, usize)
         where Self: Sized {
         let (builder, number_of_read_bytes) =
-            PtGraphBuilder::create(path, ft, reverse_complement, minimal_weight_threshold);
+            PtGraphBuilder::create(input_files, ft, reverse_complement, minimal_weight_threshold);
         let mut s = SEQUENCES.write();
         for mut e in s.iter_mut().skip(1) {
             let new_box = kmer_to_edge(e).into_boxed_slice();

@@ -46,7 +46,7 @@ macro_rules! shrinks_graph {
             let result = {
                 before_each!(_l, filenames, counts_pre, counts_post);
                 catch_unwind(|| {
-                    let (mut graph, _) = $t::create(filenames[$i].clone(), InputFileType::Fastq, false, 0);
+                    let (mut graph, _) = $t::create(&filenames[$i..$i+1], InputFileType::Fastq, false, 0);
                     assert_eq!(graph.stats().counts, counts_pre[$i]);
                     graph.shrink();
                     assert_eq!(graph.stats().counts, counts_post[$i]);

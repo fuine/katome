@@ -20,13 +20,13 @@ impl Assemble for BasicAsm {
             set_global_k_sizes(config.k_mer_size);
         }
         let (graph, number_of_read_bytes) =
-            G::create(config.input_path,
+            G::create(&config.input_files,
                       config.input_file_type,
                       config.reverse_complement,
                       config.minimal_weight_threshold as EdgeWeight);
         sequences_stats(number_of_read_bytes);
         assemble_with_graph(graph,
-                            config.output_path,
+                            config.output_file,
                             config.original_genome_length,
                             config.minimal_weight_threshold,
                             start);
@@ -38,7 +38,7 @@ impl Assemble for BasicAsm {
         unsafe {
             set_global_k_sizes(config.k_mer_size);
         }
-        let (gir, number_of_read_bytes) = T::create(config.input_path,
+        let (gir, number_of_read_bytes) = T::create(&config.input_files,
                                                     config.input_file_type,
                                                     config.reverse_complement,
                                                     config.minimal_weight_threshold as EdgeWeight);
@@ -46,7 +46,7 @@ impl Assemble for BasicAsm {
         gir.log_stats();
         let graph = G::create_from(gir);
         assemble_with_graph(graph,
-                            config.output_path,
+                            config.output_file,
                             config.original_genome_length,
                             config.minimal_weight_threshold,
                             start);

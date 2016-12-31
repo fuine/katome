@@ -16,12 +16,12 @@ config_option_enum! {
 /// Config for assembler.
 #[derive(Debug, RustcDecodable)]
 pub struct Config<P: AsRef<Path>> {
-    /// Path to input file.
-    pub input_path: P,
+    /// Paths of input files.
+    pub input_files: Vec<P>,
     /// Type of the input file.
     pub input_file_type: InputFileType,
-    /// Path to output file.
-    pub output_path: P,
+    /// Path to the output file.
+    pub output_file: P,
     /// Length of the original (reference) genome.
     pub original_genome_length: usize,
     /// Minimal weight of the edge in de Bruijn graph.
