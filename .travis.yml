@@ -6,5 +6,5 @@ rust:
   - nightly
 os:
   - linux
-  - osx
+  # - osx
 cache: cargo
