@@ -97,6 +97,7 @@ fn add_single_edge(gir: &mut HmGIR, first_node: bool, compressed: Vec<u8>,
     }
     // insert source on the first pass of the loop
     if first_node {
+        *source_node = NodeSlice::new(0);
         *source_node = {
             // get a proper key to the hashmap
             match gir.entry(*source_node) {
