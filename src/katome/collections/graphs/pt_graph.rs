@@ -86,13 +86,13 @@ type ReadsToNodes = HashMap<NodeSlice, NodeIndex, BuildHash<MetroHash>>;
 
 // Algorithm described in the above comment works flawlessly although is slow
 // due to the nature of repeatable calling count_ones() on fixedbitset. To fight
-// this we store a vector of unique nodes counts per multiple blocks in
+// this we store a vector of unique node counts, called regions, per multiple blocks in
 // fixedbitset. This means that when we need to sum unique nodes up to the given
 // offset we need to sum the megablocks up to the one containing the offset and
 // then call count_ones() on the remaining several hundred blocks. This approach
 // seems to be VERY performant, as LLVM can vectorize the sum. Below constants
 // control how many blocks we account for in a single number in the vector of
-// counts.
+// regions.
 const BLOCKS_PER_NUMBER: usize = 512;
 const NODES_PER_NUMBER: usize = BLOCKS_PER_NUMBER * 32;
 
@@ -104,7 +104,7 @@ struct PtGraphBuilder {
     seen_nodes: SeenNodes,
     reads_to_nodes: ReadsToNodes,
     fb: FixedBitSet,
-    counts: Vec<Idx>,
+    regions: Vec<Idx>,
 }
 
 #[inline]
@@ -128,7 +128,7 @@ impl PtGraphBuilder {
             self.seen_nodes.insert(node);
             self.fb.set(node.offset(), true);
             let block = node.offset() / NODES_PER_NUMBER;
-            self.counts[block] += 1;
+            self.regions[block] += 1;
             self.graph.add_node(())
         }
         else {
@@ -154,10 +154,14 @@ impl PtGraphBuilder {
     #[inline]
     fn get_node_idx(&self, node: NodeSlice) -> NodeIndex {
         let off = node.offset();
-        let (block_idx, last_block_offset) = div_rem(off);
-        let mut idx = self.counts[..block_idx].iter().sum::<Idx>();
+        // get the index of the last region and number of bits that need to be
+        // counted via `count_ones`
+        let (last_region, last_block_offset) = div_rem(off);
+        // sum regions
+        let mut idx = self.regions[..last_region].iter().sum::<Idx>();
+        // count remainder
         if last_block_offset != 0 {
-            idx += self.fb.count_ones(block_idx * NODES_PER_NUMBER..off) as Idx;
+            idx += self.fb.count_ones(last_region * NODES_PER_NUMBER..off) as Idx;
         }
         NodeIndex::new(idx as usize)
     }
@@ -242,7 +246,7 @@ impl Init for PtGraphBuilder {
                         ReadsToNodes::with_capacity_and_hasher(nodes,
                                                                BuildHash::<MetroHash>::default()),
                     fb: FixedBitSet::with_capacity(0),
-                    counts: Vec::with_capacity(0),
+                    regions: Vec::with_capacity(0),
                 }
             }
             InputFileType::BFCounter => {
@@ -258,7 +262,7 @@ impl Init for PtGraphBuilder {
                     // placeholders in SEQUENCES. Refer to SEQUENCES
                     // documentation for more information.
                     fb: FixedBitSet::with_capacity(4 * edges + 2),
-                    counts:
+                    regions:
                         vec![0; ((4 * edges + 2) as f64 / NODES_PER_NUMBER as f64).ceil() as usize],
                 }
             }

@@ -20,5 +20,9 @@ k_mer_size = 40
 # Whether or not katome should create reverse complementary sequences to the
 # original reads. While this option noticeably slows down the process of
 # assembly it usually will create higher quality output. Note that it is highly
-# advisable to use that option when using BFCounter file input
+# advisable to use that option when using BFCounter file input due to the fact
+# that it randomly chooses between complementary and 'normal' representation of
+# the edge and resulting graph without complementary sequences will contain a
+# lot of small weakly connected components, which results in poor assembly
+# quality
 reverse_complement = true

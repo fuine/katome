@@ -247,6 +247,7 @@ fn check_dead_path(graph: &PtGraph, vertex: NodeIndex, first_direction: EdgeDire
         else {
             return;
         }
+        // if out_degree(current_vertex) > 1
         if graph.neighbors_directed(current_vertex, first_direction).nth(2).is_some() {
             return;
         }

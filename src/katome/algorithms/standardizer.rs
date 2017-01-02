@@ -268,7 +268,6 @@ mod tests {
                                                   (13, 5, (EdgeSlice::default(), 8))]);
             graph.standardize_edges(17, 3, 3);
             assert_eq!(graph.edge_count(), 13);
-            // assert_eq!(graph.edge_weight(EdgeIndex::new(0)).unwrap().1, 8);
             for i in 0..13 {
                 if [3, 4].contains(&i) {
                     assert_eq!(graph.edge_weight(EdgeIndex::new(i)).unwrap().1, 2);

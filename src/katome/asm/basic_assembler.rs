@@ -25,11 +25,7 @@ impl Assemble for BasicAsm {
                       config.reverse_complement,
                       config.minimal_weight_threshold as EdgeWeight);
         sequences_stats(number_of_read_bytes);
-        assemble_with_graph(graph,
-                            config.output_file,
-                            config.original_genome_length,
-                            config.minimal_weight_threshold,
-                            start);
+        assemble_with_graph(graph, config, start);
     }
 
     fn assemble_with_gir<P: AsRef<Path>, G, T: GIR>(config: Config<P>) where G: Graph + Convert<T> {
@@ -45,11 +41,7 @@ impl Assemble for BasicAsm {
         sequences_stats(number_of_read_bytes);
         gir.log_stats();
         let graph = G::create_from(gir);
-        assemble_with_graph(graph,
-                            config.output_file,
-                            config.original_genome_length,
-                            config.minimal_weight_threshold,
-                            start);
+        assemble_with_graph(graph, config, start);
     }
 }
 
@@ -63,31 +55,29 @@ fn sequences_stats(number_of_read_bytes: usize) {
              (saved * 100) as f64 / number_of_read_bytes as f64);
 }
 
-fn assemble_with_graph<P: AsRef<Path>, G: Graph>(mut graph: G, _output: P,
-                                                 original_genome_length: usize,
-                                                 minimal_weight_threshold: usize, start: Instant) {
+fn assemble_with_graph<P: AsRef<Path>, G: Graph>(mut graph: G, config: Config<P>, start: Instant) {
     graph.log_stats();
     info!("First pruning.");
     graph.remove_dead_paths();
     graph.log_stats();
     info!("Standardizing contigs.");
     graph.standardize_contigs();
-    graph.remove_weak_edges(minimal_weight_threshold as EdgeWeight);
+    graph.remove_weak_edges(config.minimal_weight_threshold as EdgeWeight);
     graph.standardize_contigs();
     graph.log_stats();
     info!("Standardizing edges");
-    graph.standardize_edges(original_genome_length,
+    graph.standardize_edges(config.original_genome_length,
                             unsafe { K_SIZE },
-                            minimal_weight_threshold as EdgeWeight);
+                            config.minimal_weight_threshold as EdgeWeight);
     graph.log_stats();
     info!("Second pruning");
     graph.remove_dead_paths();
     graph.log_stats();
     let serialized_contigs = graph.collapse();
     info!("I created {} contigs", serialized_contigs.len());
-    let contigs = Contigs::new(original_genome_length, serialized_contigs);
+    let contigs = Contigs::new(config.original_genome_length, serialized_contigs);
     contigs.log_stats();
-    contigs.save_to_file(_output);
+    contigs.save_to_file(config.output_file);
     let duration = start.elapsed();
     let secs = duration.as_secs();
     let hours = secs / 3600;
