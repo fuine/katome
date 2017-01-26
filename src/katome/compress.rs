@@ -1,19 +1,24 @@
 //! Efficient compression/decompression algorithm for sequences with basic
 //! nucleotydes.
 
-use prelude::{K1_SIZE, K_SIZE, COMPRESSED_K1_SIZE};
+use prelude::{K1_SIZE, K_SIZE, COMPRESSED_K1_SIZE, CDC};
+use std::mem::size_of;
 
 /// Number of characters fitting inside the byte.
-pub const CHARS_PER_BYTE: usize = 4;
+///
+/// **NOTE** This value is always half of the number of bits of `prelude::CDC`.
+/// If you change it please change the `prelude::CDC` accordingly.
+pub const CHARS_PER_CARRIER: usize = 4;
 
 /// Compress kmer representation. Output is roughly 2 times smaller,
 /// because it needs to store two compressed nodes independently.
 ///
 /// Symbols are put into chunks of 4 and represented as single byte.
 #[inline]
-pub fn compress_kmer(kmer: &[u8]) -> Vec<u8> {
+pub fn compress_kmer(kmer: &[u8]) -> Vec<CDC> {
     assert!(kmer.len() > 2);
-    let compressed_size = 2 * ((kmer.len() as f64 - 1.0) / 4.0).ceil() as usize;
+    let compressed_size = 2 *
+                          ((kmer.len() as f64 - 1.0) / CHARS_PER_CARRIER as f64).ceil() as usize;
     let mut compressed = Vec::with_capacity(compressed_size);
     let start_node = &kmer[..kmer.len() - 1];
     let end_node = &kmer[1..];
@@ -26,16 +31,17 @@ pub fn compress_kmer(kmer: &[u8]) -> Vec<u8> {
 /// reverse complement representation. Return values are
 /// (`compressed_repr`, `compressed_reverse_complement`).
 #[inline]
-pub fn compress_kmer_with_rev_compl(kmer: &[u8]) -> (Vec<u8>, Vec<u8>) {
+pub fn compress_kmer_with_rev_compl(kmer: &[u8]) -> (Vec<CDC>, Vec<CDC>) {
     assert!(kmer.len() > 2);
-    let compressed_size = 2 * ((kmer.len() as f64 - 1.0) / 4.0).ceil() as usize;
+    let compressed_size = 2 *
+                          ((kmer.len() as f64 - 1.0) / CHARS_PER_CARRIER as f64).ceil() as usize;
     let mut compressed = Vec::with_capacity(compressed_size);
     let mut reverse = Vec::with_capacity(compressed_size);
     let start_node = &kmer[..kmer.len() - 1];
     let end_node = &kmer[1..];
     compress_node(start_node, &mut compressed);
     compress_node(end_node, &mut compressed);
-    let remainder = unsafe { K1_SIZE } % CHARS_PER_BYTE;
+    let remainder = unsafe { K1_SIZE } % CHARS_PER_CARRIER;
     reverse.extend(reverse_compressed_node(&compressed[unsafe{COMPRESSED_K1_SIZE}..], remainder));
     reverse.extend(reverse_compressed_node(&compressed[..unsafe{COMPRESSED_K1_SIZE}], remainder));
     (compressed, reverse)
@@ -46,18 +52,18 @@ pub fn compress_kmer_with_rev_compl(kmer: &[u8]) -> (Vec<u8>, Vec<u8>) {
 ///
 /// Supports only A, C, T, G as it's alphabet.
 #[inline]
-pub fn compress_node(slice: &[u8], collection: &mut Vec<u8>) {
-    let mut byte = 0_u8;
-    for chunk in slice.chunks(CHARS_PER_BYTE) {
+pub fn compress_node(slice: &[u8], collection: &mut Vec<CDC>) {
+    let mut carrier: CDC = 0;
+    for chunk in slice.chunks(CHARS_PER_CARRIER) {
         for c in chunk {
-            byte = encode_fasta_symbol(*c, byte);
+            carrier = encode_fasta_symbol(*c, carrier);
         }
-        collection.push(byte);
-        byte = 0_u8;
+        collection.push(carrier);
+        carrier = 0;
     }
-    if let Some(x) = slice.chunks(CHARS_PER_BYTE).last() {
-        let l = CHARS_PER_BYTE - x.len();
-        // move remaining bytes to the end of the u8, such that they can be
+    if let Some(x) = slice.chunks(CHARS_PER_CARRIER).last() {
+        let l = CHARS_PER_CARRIER - x.len();
+        // move remaining bytes to the end of the CDC, such that they can be
         // properly decrompressed
         if l != 0 {
             let len = collection.len();
@@ -69,7 +75,7 @@ pub fn compress_node(slice: &[u8], collection: &mut Vec<u8>) {
 /// Decompress node representation from the compressed form. Returns vector of
 /// symbols.
 #[inline]
-pub fn decompress_node(node: &[u8]) -> Vec<u8> {
+pub fn decompress_node(node: &[CDC]) -> Vec<u8> {
     let mut output: Vec<u8> = Vec::with_capacity(unsafe { K1_SIZE });
     for chunk in node {
         output.extend(decode_compressed_chunk(*chunk).iter().cloned());
@@ -81,7 +87,7 @@ pub fn decompress_node(node: &[u8]) -> Vec<u8> {
 /// Decompress kmer representation from the compressed form. Returns vector of
 /// symbols.
 #[inline]
-pub fn decompress_kmer(kmer: &[u8]) -> Vec<u8> {
+pub fn decompress_kmer(kmer: &[CDC]) -> Vec<u8> {
     let mut output: Vec<u8> = Vec::with_capacity(unsafe { K_SIZE });
     let slice_ = &kmer[..unsafe { COMPRESSED_K1_SIZE }];
     let dec = decompress_node(slice_);
@@ -91,55 +97,87 @@ pub fn decompress_kmer(kmer: &[u8]) -> Vec<u8> {
 }
 
 #[inline]
-fn get_last_char_from_node(node: &[u8]) -> u8 {
-    let padding = unsafe { K1_SIZE } % CHARS_PER_BYTE;
-    let last_byte: u8 = node[node.len() - 1];
-    let padding = (CHARS_PER_BYTE - padding) % CHARS_PER_BYTE;
-    decompress_char(last_byte, padding) as u8
+fn get_last_char_from_node(node: &[CDC]) -> u8 {
+    let padding = unsafe { K1_SIZE } % CHARS_PER_CARRIER;
+    let last_carrier = node[node.len() - 1];
+    let padding = (CHARS_PER_CARRIER - padding) % CHARS_PER_CARRIER;
+    decompress_char(last_carrier, padding) as u8
 }
 
 /// Change a single character in the chunk at the given offset.
 #[inline]
-pub fn change_char_in_chunk(mut chunk: u8, offset: usize, to: u8) -> u8 {
-    let mask = 0b11111100 << (2 * offset);
-    let compressed_char = encode_fasta_symbol(to, 0_u8) << (2 * offset);
+pub fn change_char_in_chunk(mut chunk: CDC, offset: usize, to: u8) -> CDC {
+    let mask = (CDC::max_value() - 3) << (2 * offset);
+    let compressed_char = encode_fasta_symbol(to, 0) << (2 * offset);
     chunk &= mask;
     chunk |= compressed_char;
     chunk
 }
 
+trait Reverse {
+    fn reverse(x: &mut Self);
+}
+
+impl Reverse for u8 {
+    #[inline]
+    fn reverse(x: &mut Self) {
+        // *x = (*x & 0xCC) >> 2 | (*x & 0x33) << 2;
+        // *x = (*x & 0xF0) >> 4 | (*x & 0x0F) << 4;
+        // swap consecutive pairs
+        *x = ((*x >> 2) & 0x33) | ((*x & 0x33) << 2);
+        // swap nibbles ...
+        *x = ((*x >> 4) & 0x0F) | ((*x & 0x0F) << 4);
+    }
+}
+
+impl Reverse for u64 {
+    #[inline]
+    fn reverse(x: &mut Self) {
+        // swap consecutive pairs
+        *x = ((*x >> 2) & 0x3333333333333333) | ((*x & 0x3333333333333333) << 2);
+        // swap nibbles ...
+        *x = ((*x >> 4) & 0x0F0F0F0F0F0F0F0F) | ((*x & 0x0F0F0F0F0F0F0F0F) << 4);
+        // swap bytes
+        *x = ((*x >> 8) & 0x00FF00FF00FF00FF) | ((*x & 0x00FF00FF00FF00FF) << 8);
+        // swap 2-byte long pairs
+        *x = ((*x >> 8) & 0x0000FFFF0000FFFF) | ((*x & 0x0000FFFF0000FFFF) << 16);
+        // swap 4-byte long pairs
+        *x = (*x >> 32) | (*x << 32);
+
+    }
+}
+
 /// Reverse compressed node. Remainder size is the number of bits in the last
 /// block.
 #[inline]
-pub fn reverse_compressed_node(compr: &[u8], remainder_size: usize) -> Vec<u8> {
-    let padding = ((CHARS_PER_BYTE - remainder_size) % CHARS_PER_BYTE) * 2;
-    let mut reverse = Vec::from(compr);
-    let last_byte = reverse.len() - 1;
-    shift_right_bit_array(&mut reverse, padding);
+pub fn reverse_compressed_node(compr: &[CDC], remainder_size: usize) -> Vec<CDC> {
+    let padding = ((CHARS_PER_CARRIER - remainder_size) % CHARS_PER_CARRIER) * 2;
+    let mut reversed = Vec::from(compr);
+    let last_byte = reversed.len() - 1;
+    shift_right_bit_array(&mut reversed, padding);
     // reverse all bytes in the node
-    reverse.reverse();
+    reversed.reverse();
     // reverse symbols in each byte
-    for x in &mut reverse {
-        *x = (*x & 0xF0) >> 4 | (*x & 0x0F) << 4;
-        *x = (*x & 0xCC) >> 2 | (*x & 0x33) << 2;
+    for x in &mut reversed {
+        CDC::reverse(x);
         // make it complementary
         *x = !*x;
     }
     // force zero padding
-    reverse[last_byte] &= !(((1_u8 << padding) - 1) as u8);
-    reverse
+    reversed[last_byte] &= !(((1 << padding) - 1) as CDC);
+    reversed
 }
 
 /// Extend edge with the given data. Edge should be compressed, whereas data
 /// should be uncompressed.
 #[inline]
-pub fn extend_edge(edge: &[u8], with: &[u8]) -> Vec<u8> {
+pub fn extend_edge(edge: &[CDC], with: &[u8]) -> Vec<CDC> {
     let padding = edge[0];
-    let mut vec: Vec<u8> = Vec::new();
+    let mut vec: Vec<CDC> = Vec::new();
     vec.extend_from_slice(edge);
     let mut new_remainder = Vec::new();
     if padding != 0 {
-        let padding = (CHARS_PER_BYTE - edge[0] as usize) % CHARS_PER_BYTE;
+        let padding = (CHARS_PER_CARRIER - edge[0] as usize) % CHARS_PER_CARRIER;
         new_remainder.extend_from_slice(&decode_compressed_chunk(unwrap!(vec.pop())));
         new_remainder.truncate(padding);
     }
@@ -152,7 +190,7 @@ pub fn extend_edge(edge: &[u8], with: &[u8]) -> Vec<u8> {
 
 /// Change last character in the compressed edge representation.
 #[inline]
-pub fn change_last_char_in_edge(edge: &[u8], to: u8) -> Vec<u8> {
+pub fn change_last_char_in_edge(edge: &[CDC], to: u8) -> Vec<CDC> {
     let mut output = edge.to_vec();
     let padding = output[0] as usize;
     // mask for zeroing out the last char
@@ -164,13 +202,13 @@ pub fn change_last_char_in_edge(edge: &[u8], to: u8) -> Vec<u8> {
 
 /// Append a single character to the compressed edge.
 #[inline]
-pub fn add_char_to_edge(edge: &[u8], mut chr: u8) -> Vec<u8> {
+pub fn add_char_to_edge(edge: &[CDC], chr: u8) -> Vec<CDC> {
     assert!(edge.len() > 1);
     let padding = edge[0];
     let len = edge.len() - 1;
-    let new_pad = padding.wrapping_sub(1) % CHARS_PER_BYTE as u8;
+    let new_pad = padding.wrapping_sub(1) % CHARS_PER_CARRIER as CDC;
     let mask = 0b11111100 << (2 * new_pad);
-    chr = encode_fasta_symbol(chr, 0_u8);
+    let chr = encode_fasta_symbol(chr, 0);
     if new_pad != 3 {
         let mut output = Vec::from(edge);
         output[len] &= mask;
@@ -190,7 +228,7 @@ pub fn add_char_to_edge(edge: &[u8], mut chr: u8) -> Vec<u8> {
 
 /// Recompress kmer as edge representation.
 #[inline]
-pub fn kmer_to_edge(kmer: &[u8]) -> Vec<u8> {
+pub fn kmer_to_edge(kmer: &[CDC]) -> Vec<CDC> {
     compress_edge(&decompress_kmer(kmer))
 }
 
@@ -209,26 +247,26 @@ pub fn kmer_to_edge(kmer: &[u8]) -> Vec<u8> {
 /// assert_eq!(vec![2_u8, 0b00101011, 0b01100000], compressed);
 /// ```
 #[inline]
-pub fn compress_edge(edge: &[u8]) -> Vec<u8> {
+pub fn compress_edge(edge: &[u8]) -> Vec<CDC> {
     assert!(edge.len() > 0);
-    let compressed_size = 1 + ((edge.len() as f64) / 4.0).ceil() as usize;
+    let compressed_size = 1 + ((edge.len() as f64) / CHARS_PER_CARRIER as f64).ceil() as usize;
     let mut compressed = Vec::with_capacity(compressed_size);
-    let mut byte = 0_u8;
-    compressed.push(0_u8);
-    // CHARS_PER_BYTE characters per byte
-    for chunk in edge.chunks(CHARS_PER_BYTE) {
+    let mut byte = 0;
+    compressed.push(0);
+    // CHARS_PER_CARRIER characters per byte
+    for chunk in edge.chunks(CHARS_PER_CARRIER) {
         for c in chunk {
             byte = encode_fasta_symbol(*c, byte);
         }
         compressed.push(byte);
-        byte = 0_u8;
+        byte = 0;
     }
-    let padding = CHARS_PER_BYTE -
-                  edge.chunks(CHARS_PER_BYTE).last().expect("This should never fail").len();
+    let padding = CHARS_PER_CARRIER -
+                  edge.chunks(CHARS_PER_CARRIER).last().expect("This should never fail").len();
     // move remaining bytes to the end of the u8, such that they can be
     // properly decrompressed
     compressed[compressed_size - 1] <<= 2 * padding;
-    compressed[0] = padding as u8;
+    compressed[0] = padding as CDC;
     compressed
 }
 
@@ -242,9 +280,9 @@ pub fn compress_edge(edge: &[u8]) -> Vec<u8> {
 /// assert_eq!(b"AGGTCG", decompressed.as_slice());
 /// ```
 #[inline]
-pub fn decompress_edge(edge: &[u8]) -> Vec<u8> {
+pub fn decompress_edge(edge: &[CDC]) -> Vec<u8> {
     let padding = edge[0] as usize;
-    let mut output: Vec<u8> = Vec::with_capacity(((edge.len() - 1) * CHARS_PER_BYTE) - padding);
+    let mut output: Vec<u8> = Vec::with_capacity(((edge.len() - 1) * CHARS_PER_CARRIER) - padding);
     let slice_ = &edge[1..];
     for chunk in slice_ {
         output.extend_from_slice(&decode_compressed_chunk(*chunk));
@@ -256,15 +294,15 @@ pub fn decompress_edge(edge: &[u8]) -> Vec<u8> {
 
 /// Get last character from the compressed edge.
 #[inline]
-pub fn decompress_last_char_edge(edge: &[u8]) -> char {
+pub fn decompress_last_char_edge(edge: &[CDC]) -> char {
     let padding = edge[0] as usize;
     decompress_char(edge[edge.len() - 1], padding)
 }
 
 #[inline]
 /// Decompress single character from chunk.
-pub fn decompress_char(mut chunk: u8, padding: usize) -> char {
-    let mask = 3_u8;
+pub fn decompress_char(mut chunk: CDC, padding: usize) -> char {
+    let mask = 3;
     chunk >>= 2 * padding;
     match chunk & mask {
         0 => 'A', // A
@@ -306,7 +344,7 @@ pub fn decompress_char(mut chunk: u8, padding: usize) -> char {
 /// assert_eq!(result_as_vec, vec![0, 1, 2, 3]);
 /// assert_eq!(result_as_block, 0b00011011);
 /// ```
-pub fn encode_fasta_symbol(mut symbol: u8, mut carrier: u8) -> u8 {
+pub fn encode_fasta_symbol(mut symbol: u8, mut carrier: CDC) -> CDC {
     // please note that the actual implementation is an optimized version of
     // algorithm, which can be best described by the following naive approach:
     // let x = carrier << 2;
@@ -336,16 +374,16 @@ pub fn encode_fasta_symbol(mut symbol: u8, mut carrier: u8) -> u8 {
     let d_masked = symbol & 1;
     let first_bit = (c_masked ^ 1) & d_masked;
     let second_bit = c_masked | a_masked;
-    carrier | ((second_bit << 1) | first_bit)
+    carrier | (((second_bit << 1) | first_bit) as CDC)
 }
 
 #[inline]
-fn decode_compressed_chunk(mut chunk: u8) -> [u8; CHARS_PER_BYTE] {
-    let mut output = [0_u8; CHARS_PER_BYTE];
+fn decode_compressed_chunk(mut chunk: CDC) -> [u8; CHARS_PER_CARRIER] {
+    let mut output = [0_u8; CHARS_PER_CARRIER];
     // two first bits
-    let mask = 3_u8;
-    for i in (0..CHARS_PER_BYTE).rev() {
-        let symbol: u8 = chunk & mask;
+    let mask = 3;
+    for i in (0..CHARS_PER_CARRIER).rev() {
+        let symbol: u8 = (chunk & mask) as u8;
         chunk >>= 2;
         output[i] = match symbol {
             0 => b'A',
@@ -362,15 +400,16 @@ fn decode_compressed_chunk(mut chunk: u8) -> [u8; CHARS_PER_BYTE] {
 /// so make sure that you only shift with proper padding. Can be used to align
 /// compressed representation to the left.
 #[inline]
-pub fn shift_left_bit_array(input: &mut [u8], mut shift_val: usize) {
-    shift_val %= 8;
+pub fn shift_left_bit_array(input: &mut [CDC], mut shift_val: usize) {
+    let bits_in_carrier = 8 * size_of::<CDC>();
+    shift_val %= bits_in_carrier;
     if shift_val == 0 {
         return;
     }
-    let mut old_tmp = 0_u8;
+    let mut old_tmp = 0;
     let mut new_tmp;
-    let shift_remainder = 8 - shift_val;
-    let mask = (((1_u8 << shift_val) - 1) << shift_remainder) as u8;
+    let shift_remainder = bits_in_carrier - shift_val;
+    let mask = (((1 << shift_val) - 1) << shift_remainder) as CDC;
     for byte in input.iter_mut().rev() {
         new_tmp = *byte & mask;
         *byte <<= shift_val;
@@ -384,15 +423,16 @@ pub fn shift_left_bit_array(input: &mut [u8], mut shift_val: usize) {
 /// usually used to align the underlying representation during calculation of
 /// reverse of the compressed k-mer.
 #[inline]
-pub fn shift_right_bit_array(input: &mut [u8], mut shift_val: usize) {
-    shift_val %= 8;
+pub fn shift_right_bit_array(input: &mut [CDC], mut shift_val: usize) {
+    let bits_in_carrier = 8 * size_of::<CDC>();
+    shift_val %= bits_in_carrier;
     if shift_val == 0 {
         return;
     }
-    let mut old_tmp = 0_u8;
+    let mut old_tmp = 0;
     let mut new_tmp;
-    let shift_remainder = 8 - shift_val;
-    let mask = ((1_u8 << shift_val) - 1) as u8;
+    let shift_remainder = bits_in_carrier - shift_val;
+    let mask = ((1 << shift_val) - 1) as CDC;
     for byte in input.iter_mut() {
         new_tmp = *byte & mask;
         *byte >>= shift_val;
@@ -414,7 +454,7 @@ mod tests {
     fn properly_compresses_single_chunk() {
         let a = "ACTG";
         let proper_result = a.bytes().collect::<Vec<_>>();
-        let mut byte = 0_u8;
+        let mut byte = 0;
         for c in a.bytes() {
             byte = encode_fasta_symbol(c, byte);
         }
@@ -425,7 +465,7 @@ mod tests {
     #[test]
     fn properly_decompresses_last_char() {
         let a = "ACTG";
-        let mut byte = 0_u8;
+        let mut byte = 08;
         for c in a.bytes() {
             byte = encode_fasta_symbol(c, byte);
         }

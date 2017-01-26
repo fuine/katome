@@ -7,7 +7,7 @@ use collections::girs::edges::{Edge, Outgoing};
 use collections::graphs::pt_graph::{NodeIndex, PtGraph};
 use compress::{change_last_char_in_edge, compress_kmer, kmer_to_edge, compress_kmer_with_rev_compl};
 use config::InputFileType;
-use prelude::{Idx, K_SIZE, K1_SIZE};
+use prelude::{CDC, Idx, K_SIZE, K1_SIZE};
 use slices::{BasicSlice, EdgeSlice, NodeSlice};
 use super::hs_gir::create_or_modify_edge;
 
@@ -88,7 +88,7 @@ impl Build for HmGIR {
 }
 
 #[inline]
-fn add_single_edge(gir: &mut HmGIR, first_node: bool, compressed: Vec<u8>,
+fn add_single_edge(gir: &mut HmGIR, first_node: bool, compressed: Vec<CDC>,
                    source_node: &mut NodeSlice, target_node: &mut NodeSlice, last_char: u8) {
     let mut insert = false;
     {

@@ -6,13 +6,14 @@ use collections::girs::edges::Edge;
 use collections::graphs::Graph;
 use collections::graphs::pt_graph::{EdgeIndex, Node, NodeIndex, PtGraph};
 use compress::{compress_node, encode_fasta_symbol};
-use prelude::{EdgeWeight, K1_SIZE, K_SIZE};
+use prelude::{CDC, EdgeWeight, K1_SIZE, K_SIZE};
 use slices::{BasicSlice, NodeSlice};
 
 use petgraph::EdgeDirection;
 
 use std::collections::hash_map::Entry;
 use std::iter;
+use std::mem;
 use std::slice;
 use std::vec::Drain;
 
@@ -133,14 +134,15 @@ fn has_incoming_edges(gir: &mut HmGIR, node: &NodeSlice) -> bool {
     let mut v = Vec::new();
     compress_node(&vec, &mut v);
     SEQUENCES.write()[0] = v.into_boxed_slice();
-    let mask = 0b00111111_u8;
+    let shift_num = (mem::size_of::<CDC>() - 1) * 8 + 6;
+    let mask = !((3) << shift_num);
     // try to bruteforce by inserting all possible characters: ACTGN
     let tmp_ns = NodeSlice::new(0);
     for chr in &[b'A', b'C', b'T', b'G'] {
         {
             let mut s = SEQUENCES.write();
             s[0][0] &= mask;
-            s[0][0] |= encode_fasta_symbol(*chr, 0_u8) << 6;
+            s[0][0] |= encode_fasta_symbol(*chr, 0) << shift_num;
         }
         // dummy read slice used to check if we can find it in the gir
         if let Entry::Occupied(e) = gir.entry(tmp_ns) {

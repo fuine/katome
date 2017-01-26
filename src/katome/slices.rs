@@ -197,13 +197,14 @@ impl BasicSlice for NodeSlice {
     }
 
     fn last_char(&self) -> char {
-        let s = SEQUENCES.read();
-        if self.offset() % 2 > 0 {
-            s[self.idx()][s.len() - 1] as char
-        }
-        else {
-            s[self.idx()][0] as char
-        }
+        // let s = SEQUENCES.read();
+        // if self.offset() % 2 > 0 {
+        // s[self.idx()][s.len() - 1] as char
+        // }
+        // else {
+        // s[self.idx()][0] as char
+        // }
+        unimplemented!()
     }
 
     fn idx(&self) -> usize {

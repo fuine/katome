@@ -5,7 +5,7 @@ use asm::SEQUENCES;
 use collections::graphs::Graph;
 use compress::{compress_kmer, kmer_to_edge, compress_kmer_with_rev_compl};
 use config::InputFileType;
-use prelude::{EdgeWeight, Idx, K_SIZE, K1_SIZE};
+use prelude::{CDC, EdgeWeight, Idx, K_SIZE, K1_SIZE};
 use slices::{BasicSlice, EdgeSlice, NodeSlice};
 
 use fixedbitset::FixedBitSet;
@@ -61,11 +61,13 @@ impl Graph for PtGraph {
             .collect::<Self::AmbiguousNodes>()
     }
 
+    #[inline]
     fn out_degree(&self, node: Self::NodeIdentifier) -> usize {
         self.neighbors_directed(node, petgraph::EdgeDirection::Outgoing)
             .count()
     }
 
+    #[inline]
     fn in_degree(&self, node: Self::NodeIdentifier) -> usize {
         self.neighbors_directed(node, petgraph::EdgeDirection::Incoming)
             .count()
@@ -167,7 +169,7 @@ impl PtGraphBuilder {
     }
 
     #[inline]
-    fn add_single_edge_fastaq(&mut self, first_edge: bool, compressed: Vec<u8>,
+    fn add_single_edge_fastaq(&mut self, first_edge: bool, compressed: Vec<CDC>,
                               s: &mut NodeIndex, t: &mut NodeIndex) {
         let offset;
         {
@@ -196,7 +198,7 @@ impl PtGraphBuilder {
     }
 
     #[inline]
-    fn add_single_edge_bfc(&mut self, compressed_kmer: Vec<u8>, weight: EdgeWeight) {
+    fn add_single_edge_bfc(&mut self, compressed_kmer: Vec<CDC>, weight: EdgeWeight) {
         let offset;
         {
             let mut s = SEQUENCES.write();

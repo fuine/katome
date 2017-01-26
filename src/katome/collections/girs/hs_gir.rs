@@ -7,7 +7,7 @@ use collections::{Convert, GIR};
 use collections::girs::edges::{Edges, Outgoing};
 use collections::graphs::pt_graph::{NodeIndex, PtGraph};
 use compress::{change_last_char_in_edge, compress_kmer, kmer_to_edge, compress_kmer_with_rev_compl};
-use prelude::{Idx, K_SIZE, K1_SIZE};
+use prelude::{CDC, Idx, K_SIZE, K1_SIZE};
 use slices::{BasicSlice, EdgeSlice, NodeSlice};
 
 use metrohash::MetroHash;
@@ -134,7 +134,7 @@ impl Build for HsGIR {
 }
 
 #[inline]
-fn add_single_edge(gir: &mut HsGIR, first_node: bool, compressed: Vec<u8>, idx: &mut usize,
+fn add_single_edge(gir: &mut HsGIR, first_node: bool, compressed: Vec<CDC>, idx: &mut usize,
                    source_vert: &mut Box<Vertex>, target_vert: &mut Box<Vertex>, last_char: u8) {
     let mut insert = false;
     {
