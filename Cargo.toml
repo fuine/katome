@@ -14,20 +14,20 @@ name = "katome"
 path = "src/katome/lib.rs"
 
 [dependencies]
-log = "^0.3.6"
-toml = "^0.2.1"
-rustc-serialize = "^0.3.22"
-lazy_static = "^0.2"
-petgraph = "^0.4.1"
-metrohash = "^0.2.0"
-unwrap = "~1.1.0"
-bio = "^0.10.0"
-itertools = "^0.5.7"
+log = "0.3.6"
+toml = "0.2.1"
+rustc-serialize = "0.3.22"
+lazy_static = "0.2"
+petgraph = "0.4.1"
+metrohash = "0.2.0"
+unwrap = "1.1.0"
+bio = "0.10.0"
+itertools = "0.5.7"
 parking_lot = "0.3.2"
 # fixedbitset = "0.1.5"
 
 [dependencies.log4rs]
-version = "^0.5.0"
+version = "0.5.0"
 features = ["threshold_filter"]
 
 [dependencies.fixedbitset]
@@ -35,7 +35,7 @@ git = "https://github.com/fuine/fixedbitset"
 branch = "zeros"
 
 [dev-dependencies]
-rand = "^0.3.15"
+rand = "0.3.15"
 
 # The development profile, used for `cargo build`.
 [profile.dev]
